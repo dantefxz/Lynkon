@@ -3,40 +3,53 @@ const path = require('path');
 const fs = require('fs');
 const { createMockFirestore } = require('./firestore-mock');
 
-// Cargar serviceAccountKey.json
-const serviceAccountPath = path.join(__dirname, '../../serviceAccountKey.json');
-if (!fs.existsSync(serviceAccountPath)) {
-  console.error('[ERROR] serviceAccountKey.json no encontrado en', serviceAccountPath);
-  process.exit(1);
-}
-
 let serviceAccount;
-try {
-  serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-  console.log('[OK] serviceAccountKey.json cargado');
-  console.log(`[INFO] Proyecto: ${serviceAccount.project_id}`);
-} catch (err) {
-  console.error('[ERROR] Error al parsear serviceAccountKey.json:', err.message);
-  process.exit(1);
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    // Reparar saltos de línea críticos
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    console.log('[OK] Firebase: Configuración cargada desde variables de entorno');
+  } catch (err) {
+    console.error('[ERROR] Error al parsear FIREBASE_SERVICE_ACCOUNT:', err.message);
+  }
 }
 
-if (!admin.apps.length) {
-  try {
-    const config = {
-      credential: admin.credential.cert(serviceAccount),
-    };
-    console.log('[INFO] Inicializando Firebase Admin SDK...');
-    
-    admin.initializeApp(config);
-    console.log('[OK] Firebase Admin SDK inicializado correctamente');
-  } catch (err) {
-    console.error('[ERROR] Error al inicializar Firebase Admin SDK:', err.message);
-    console.error('[STACK]', err.stack);
+if (!serviceAccount) {
+  const serviceAccountPath = path.join(__dirname, '../../serviceAccountKey.json');
+  
+  if (fs.existsSync(serviceAccountPath)) {
+    try {
+      serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+      console.log('[OK] Firebase: serviceAccountKey.json cargado desde archivo');
+    } catch (err) {
+      console.error('[ERROR] Error al parsear serviceAccountKey.json:', err.message);
+    }
+  }
+}
+
+if (!serviceAccount) {
+  console.error('[ERROR] No se encontraron credenciales de Firebase (ni archivo ni variable).');
+  if (process.env.NODE_ENV !== 'development') {
     process.exit(1);
   }
 }
 
-// Obtener referencias de Auth y Firestore
+if (!admin.apps.length && serviceAccount) {
+  try {
+    console.log('[INFO] Inicializando Firebase Admin SDK...');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log('[OK] Firebase Admin SDK inicializado correctamente');
+  } catch (err) {
+    console.error('[ERROR] Error al inicializar Firebase Admin SDK:', err.message);
+    process.exit(1);
+  }
+}
+
+// Obtener referencias
 let auth, db;
 
 try {
@@ -44,18 +57,17 @@ try {
   console.log('[OK] Firebase Auth inicializado');
 } catch (err) {
   console.error('[ERROR] Error inicializando Auth:', err.message);
-  process.exit(1);
 }
 
 try {
   db = admin.firestore();
   console.log('[OK] Firestore inicializado');
 } catch (err) {
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development' || !serviceAccount) {
     console.warn('[WARN] Firestore no disponible. Usando mock en memoria.');
     db = createMockFirestore();
   } else {
-    throw err;
+    console.error('[ERROR] Fallo crítico en Firestore:', err.message);
   }
 }
 
