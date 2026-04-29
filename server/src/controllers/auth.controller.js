@@ -2,6 +2,7 @@ const { db, auth } = require('../config/firebase');
 const { parseRegisterDTO, parseLoginDTO } = require('../dtos/auth.dto');
 const { generateUsername } = require('../utils/username.utils');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
 // Secret para firmar JWTs (en producción, usar variable de entorno)
 const JWT_SECRET = process.env.JWT_SECRET || 'lynkon-dev-secret-key-2026';
@@ -84,7 +85,7 @@ const register = async (req, res, next) => {
 
 /**
  * POST /api/auth/login
- * Valida las credenciales y devuelve un idToken válido
+ * Valida las credenciales usando Firebase Auth REST API y devuelve un JWT
  */
 const login = async (req, res, next) => {
   try {
@@ -94,29 +95,46 @@ const login = async (req, res, next) => {
       return res.status(400).json({ errors: ['email and password are required'] });
     }
 
-    // Obtener usuario por email
-    let userRecord;
+    const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+    if (!FIREBASE_API_KEY) {
+      console.error('[ERROR] FIREBASE_API_KEY no está definida en .env');
+      return res.status(500).json({ error: 'Server misconfiguration: missing FIREBASE_API_KEY' });
+    }
+
+    // Validar credenciales via Firebase Auth REST API (única forma server-side de verificar password)
+    let firebaseUser;
     try {
-      userRecord = await auth.getUserByEmail(email);
+      const firebaseRes = await axios.post(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+        { email, password, returnSecureToken: true }
+      );
+      firebaseUser = firebaseRes.data;
     } catch (err) {
-      if (err.code === 'auth/user-not-found') {
+      const code = err.response?.data?.error?.message;
+      console.warn('[WARN] Firebase login error:', code);
+      if (
+        code === 'INVALID_PASSWORD' ||
+        code === 'EMAIL_NOT_FOUND' ||
+        code === 'INVALID_LOGIN_CREDENTIALS' ||
+        code === 'USER_DISABLED'
+      ) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
       throw err;
     }
 
-    // Nota: Firebase Admin SDK no valida passwords directamente
-    // La validación de password ocurre en el cliente o via REST API de Firebase
-    // Aquí simplemente verificamos que el usuario existe y generamos el token
-    const userSnap = await db.collection('users').doc(userRecord.uid).get();
+    // Verificar que el perfil en Firestore existe
+    const userSnap = await db.collection('users').doc(firebaseUser.localId).get();
 
     if (!userSnap.exists) {
       return res.status(404).json({ error: 'User profile not found. Complete registration first.' });
     }
 
     const u = userSnap.data();
+
+    // Generar JWT firmado por el servidor
     const idToken = jwt.sign(
-      { uid: userRecord.uid, email: u.email, username: u.username },
+      { uid: u.uid, email: u.email, username: u.username },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
