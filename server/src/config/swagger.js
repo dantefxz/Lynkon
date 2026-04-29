@@ -9,7 +9,7 @@ const options = {
       description: 'API REST para Lynkon - Unificador de perfiles de videojuegos',
     },
     servers: [
-      { url: 'https://lynkon-back.onrender.com/api', description: 'Producción' },
+      { url: 'https://lynkon.onrender.com/api', description: 'Producción' },
       { url: 'http://localhost:3000/api', description: 'Local' },
     ],
     components: {
