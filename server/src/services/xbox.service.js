@@ -1,33 +1,35 @@
-/**
- * Xbox Service via xbl.io
- * Dev key del servidor : process.env.XBL_API_KEY  (global, en .env — gratis en xbl.io/console)
- * Credencial del usuario: xuid  (guardado en Firestore, provisto por el usuario al vincular)
- *
- * Obtener el xuid: el cliente puede resolverlo via GET https://xbl.io/api/v2/friends/search?gt={gamertag}
- */
 const axios = require('axios');
-
 const BASE    = 'https://xbl.io/api/v2';
 const headers = () => ({ 'X-Authorization': process.env.XBL_API_KEY, Accept: 'application/json' });
 
-/** @param {string} xuid - de Firestore */
+const resolveXuid = async (input) => {
+  // Si ya es numérico, lo usamos directo
+  if (/^\d+$/.test(input)) return input;
+
+  // Si es gamertag, lo resolvemos
+  const res = await axios.get(`${BASE}/friends/search?gt=${encodeURIComponent(input)}`, { headers: headers() });
+  const profile = res.data.profileUsers?.[0];
+  if (!profile) throw Object.assign(new Error('Xbox gamertag not found'), { status: 404 });
+  return profile.id;
+};
+
 const getStats = async (xuid) => {
-  const res     = await axios.get(`${BASE}/account/${xuid}`, { headers: headers() });
+  const resolvedId = await resolveXuid(xuid);
+  const res     = await axios.get(`${BASE}/account/${resolvedId}`, { headers: headers() });
   const profile = res.data.profileUsers?.[0];
   const get     = (id) => profile?.settings?.find((s) => s.id === id)?.value;
-
   return {
     platform:    'xbox',
-    xuid,
+    xuid:        resolvedId,
     gamertag:    get('Gamertag'),
     gamerscore:  get('Gamerscore'),
     accountTier: get('AccountTier'),
   };
 };
 
-/** @param {string} xuid - de Firestore */
 const getGames = async (xuid) => {
-  const res = await axios.get(`${BASE}/achievements/player/${xuid}`, { headers: headers() });
+  const resolvedId = await resolveXuid(xuid);
+  const res = await axios.get(`${BASE}/achievements/player/${resolvedId}`, { headers: headers() });
   return (res.data.titles || []).map((t) => ({
     gameId:               String(t.titleId),
     name:                 t.name,
@@ -39,9 +41,9 @@ const getGames = async (xuid) => {
   }));
 };
 
-/** @param {string} xuid - de Firestore */
 const getAchievements = async (xuid) => {
-  const res = await axios.get(`${BASE}/achievements/player/${xuid}`, { headers: headers() });
+  const resolvedId = await resolveXuid(xuid);
+  const res = await axios.get(`${BASE}/achievements/player/${resolvedId}`, { headers: headers() });
   return (res.data.titles || []).slice(0, 10).map((t) => ({
     gameId:               String(t.titleId),
     gameName:             t.name,
@@ -51,4 +53,4 @@ const getAchievements = async (xuid) => {
   }));
 };
 
-module.exports = { getStats, getGames, getAchievements };
+module.exports = { getStats, getGames, getAchievements, resolveXuid };

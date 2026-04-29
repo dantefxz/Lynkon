@@ -63,14 +63,20 @@ const linkPlatform = async (req, res, next) => {
     if (platforms.find((p) => p.platform === data.platform))
       return res.status(409).json({ error: `${data.platform} is already linked` });
 
-    // Guardamos solo platform, platformUserId (la credencial del usuario) y linkedAt.
-    // Las dev keys del servidor nunca se guardan en Firestore.
+    let platformUserId = data.platformUserId;
+    if (data.platform === 'steam') {
+      platformUserId = await steamService.resolveId(data.platformUserId);
+    }
+    if (data.platform === 'xbox') {
+      platformUserId = await xboxService.resolveXuid(data.platformUserId);
+    }
+
     await db.collection('users').doc(userId).update({
       platforms: [
         ...platforms,
         {
           platform:       data.platform,
-          platformUserId: data.platformUserId, // steamId | puuid | xuid | npssoToken
+          platformUserId,
           linkedAt:       new Date().toISOString(),
         },
       ],

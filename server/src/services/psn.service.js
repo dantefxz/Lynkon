@@ -1,56 +1,77 @@
-/**
- * PSN Service
- * Dev key del servidor : ❌ no existe — PSN no provee dev keys públicas
- * Credencial del usuario: npssoToken  (guardado en Firestore, provisto por el usuario al vincular)
- *
- * El npssoToken es un token personal de 64 chars que el usuario obtiene desde
- * las cookies de su sesión de PSN en el navegador (cookie "npsso").
- * Docs: https://www.npmjs.com/package/psn-api
- *
- * Para activar: npm install psn-api y descomentar el código.
- */
+const {
+  exchangeNpssoForCode,
+  exchangeCodeForAccessToken,
+  getUserTitles,
+  getUserTrophySummary,
+  getTitleTrophies,
+  getUserTrophiesEarnedForTitle,
+} = require('psn-api');
 
-// const {
-//   exchangeNpssoForCode,
-//   exchangeCodeForAccessToken,
-//   getUserTitles,
-//   getUserTrophySummary,
-//   getUserTrophiesEarnedForTitle,
-// } = require('psn-api');
-
-/**
- * Intercambia el npssoToken del usuario por un accessToken de sesión.
- * @param {string} npssoToken - de Firestore (credencial personal del usuario)
- */
 const getAccessToken = async (npssoToken) => {
-  // const code = await exchangeNpssoForCode(npssoToken);
-  // const { accessToken } = await exchangeCodeForAccessToken(code);
-  // return accessToken;
-  throw new Error('PSN: instalar psn-api y descomentar getAccessToken');
+  const code = await exchangeNpssoForCode(npssoToken);
+  const { accessToken } = await exchangeCodeForAccessToken(code);
+  return accessToken;
 };
 
-/** @param {string} npssoToken - de Firestore */
 const getStats = async (npssoToken) => {
+  throw Object.assign(new Error('PSN: integración en desarrollo, próximamente disponible'), { status: 501 });
   const accessToken = await getAccessToken(npssoToken);
-  // const { trophySummary } = await getUserTrophySummary({ accessToken });
-  // return { platform: 'psn', trophySummary };
-  throw new Error('PSN: getStats no implementado aún');
+  const { trophySummary } = await getUserTrophySummary({ accessToken }, 'me');
+  return {
+    platform:      'psn',
+    accountId:     trophySummary.accountId,
+    trophyLevel:   trophySummary.trophyLevel,
+    progress:      trophySummary.progress,
+    bronzeCount:   trophySummary.earnedTrophies.bronze,
+    silverCount:   trophySummary.earnedTrophies.silver,
+    goldCount:     trophySummary.earnedTrophies.gold,
+    platinumCount: trophySummary.earnedTrophies.platinum,
+  };
 };
 
-/** @param {string} npssoToken - de Firestore */
 const getGames = async (npssoToken) => {
+  throw Object.assign(new Error('PSN: integración en desarrollo, próximamente disponible'), { status: 501 });
   const accessToken = await getAccessToken(npssoToken);
-  // const { titles } = await getUserTitles({ accessToken }, 'me');
-  // return titles.map(t => ({ gameId: t.titleId, name: t.name, platform: 'psn' }));
-  throw new Error('PSN: getGames no implementado aún');
+  const { trophyTitles } = await getUserTitles({ accessToken }, 'me');
+  return (trophyTitles || []).map((t) => ({
+    gameId:        t.npCommunicationId,
+    name:          t.trophyTitleName,
+    platform:      t.trophyTitlePlatform,
+    bronzeCount:   t.earnedTrophies.bronze,
+    silverCount:   t.earnedTrophies.silver,
+    goldCount:     t.earnedTrophies.gold,
+    platinumCount: t.earnedTrophies.platinum,
+    lastPlayed:    t.lastUpdatedDateTime,
+  }));
 };
 
-/** @param {string} npssoToken - de Firestore */
 const getAchievements = async (npssoToken) => {
+  throw Object.assign(new Error('PSN: integración en desarrollo, próximamente disponible'), { status: 501 });
   const accessToken = await getAccessToken(npssoToken);
-  // const trophies = await getUserTrophiesEarnedForTitle({ accessToken }, 'me', 'all');
-  // return trophies;
-  throw new Error('PSN: getAchievements no implementado aún');
+  const { trophyTitles } = await getUserTitles({ accessToken }, 'me');
+  if (!trophyTitles?.length) return [];
+  const top = trophyTitles[0];
+  const [allTrophies, earnedTrophies] = await Promise.all([
+    getTitleTrophies({ accessToken }, top.npCommunicationId, 'all'),
+    getUserTrophiesEarnedForTitle({ accessToken }, 'me', top.npCommunicationId, 'all'),
+  ]);
+  const earnedMap = new Map(
+    (earnedTrophies.trophies || []).map((t) => [t.trophyId, t])
+  );
+  return {
+    gameId:   top.npCommunicationId,
+    gameName: top.trophyTitleName,
+    trophies: (allTrophies.trophies || [])
+      .filter((t) => earnedMap.get(t.trophyId)?.earned)
+      .slice(0, 20)
+      .map((t) => ({
+        trophyId: t.trophyId,
+        name:     t.trophyName,
+        detail:   t.trophyDetail,
+        type:     t.trophyType,
+        earnedAt: earnedMap.get(t.trophyId)?.earnedDateTime,
+      })),
+  };
 };
 
 module.exports = { getStats, getGames, getAchievements };

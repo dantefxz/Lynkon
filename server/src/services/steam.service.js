@@ -2,7 +2,7 @@ const axios = require('axios');
 const BASE    = 'https://api.steampowered.com';
 const DEV_KEY = () => process.env.STEAM_API_KEY;
 
-const resolveSteamId = async (input) => {
+const resolveId = async (input) => {
   if (/^\d{17}$/.test(input)) return input;
   const res = await axios.get(`${BASE}/ISteamUser/ResolveVanityURL/v1/`, {
     params: { key: DEV_KEY(), vanityurl: input },
@@ -11,6 +11,8 @@ const resolveSteamId = async (input) => {
   if (success !== 1) throw Object.assign(new Error('Steam vanity URL not found'), { status: 404 });
   return steamid;
 };
+
+module.exports = { getStats, getGames, getAchievements, resolveId };
 
 const getStats = async (steamId) => {
   const resolvedId = await resolveSteamId(steamId);
