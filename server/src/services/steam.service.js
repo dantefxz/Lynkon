@@ -1,14 +1,7 @@
-/**
- * Steam Service
- * Dev key del servidor : process.env.STEAM_API_KEY  (global, en .env)
- * Credencial del usuario: steamId  (guardado en Firestore, provisto por el usuario al vincular)
- */
 const axios = require('axios');
-
 const BASE    = 'https://api.steampowered.com';
 const DEV_KEY = () => process.env.STEAM_API_KEY;
 
-/** @param {string} steamId - de Firestore */
 const getStats = async (steamId) => {
   const [gamesRes, summaryRes] = await Promise.all([
     axios.get(`${BASE}/IPlayerService/GetOwnedGames/v1/`, {
@@ -18,11 +11,9 @@ const getStats = async (steamId) => {
       params: { key: DEV_KEY(), steamids: steamId },
     }),
   ]);
-
   const games        = gamesRes.data.response.games || [];
   const player       = summaryRes.data.response.players?.[0] || {};
   const totalMinutes = games.reduce((s, g) => s + (g.playtime_forever || 0), 0);
-
   return {
     platform:    'steam',
     steamId,
@@ -34,7 +25,6 @@ const getStats = async (steamId) => {
   };
 };
 
-/** @param {string} steamId - de Firestore */
 const getGames = async (steamId) => {
   const res = await axios.get(`${BASE}/IPlayerService/GetOwnedGames/v1/`, {
     params: { key: DEV_KEY(), steamid: steamId, include_appinfo: true, include_played_free_games: true },
@@ -50,22 +40,18 @@ const getGames = async (steamId) => {
   }));
 };
 
-/** @param {string} steamId - de Firestore */
 const getAchievements = async (steamId) => {
   const gamesRes = await axios.get(`${BASE}/IPlayerService/GetOwnedGames/v1/`, {
     params: { key: DEV_KEY(), steamid: steamId, include_appinfo: true },
   });
   const games = (gamesRes.data.response.games || []).sort((a, b) => b.playtime_forever - a.playtime_forever);
   if (!games.length) return [];
-
   const top    = games[0];
   const achRes = await axios.get(`${BASE}/ISteamUserStats/GetPlayerAchievements/v1/`, {
     params: { key: DEV_KEY(), steamid: steamId, appid: top.appid, l: 'english' },
   });
-
   const all      = achRes.data.playerstats?.achievements || [];
   const unlocked = all.filter((a) => a.achieved === 1);
-
   return {
     gameId:               String(top.appid),
     gameName:             top.name,
