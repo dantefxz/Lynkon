@@ -76,7 +76,7 @@ router.post('/me/requests', authenticate, ctrl.sendFriendRequest);
  *         name: requestId
  *         required: true
  *         schema:
- *           type: string
+ *           type: boolean
  *     requestBody:
  *       required: true
  *       content:
@@ -86,9 +86,9 @@ router.post('/me/requests', authenticate, ctrl.sendFriendRequest);
  *             required: [action]
  *             properties:
  *               action:
- *                 type: string
- *                 enum: [accept, reject]
- *                 example: "accept"
+ *                 type: boolean
+ *                 enum: [true, false]
+ *                 example: "true"
  *     responses:
  *       200:
  *         description: Solicitud procesada

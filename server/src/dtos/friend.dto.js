@@ -20,7 +20,7 @@ const parseSendFriendRequestDTO = (body, senderUid) => {
 
 /**
  * @typedef {Object} RespondFriendRequestDTO
- * @property {'accept'|'reject'} action
+ * @property {true|false} action
  */
 
 const parseRespondFriendRequestDTO = (body) => {
@@ -29,7 +29,7 @@ const parseRespondFriendRequestDTO = (body) => {
 
   if (!action) errors.push('action is required');
   else if (![true, false].includes(action))
-    errors.push("action must be 'accept' or 'reject'");
+    errors.push("action must be 'true' or 'false' (boolean)");
 
   if (errors.length) return { data: null, errors };
   return { data: { action }, errors: [] };
