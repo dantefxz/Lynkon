@@ -10,7 +10,7 @@ const userRoutes     = require('./routes/user.routes');
 const platformRoutes = require('./routes/platform.routes');
 const friendRoutes   = require('./routes/friend.routes');
 const messageRoutes  = require('./routes/message.routes');
-
+const { auth } = require('./config/firebase'); 
 const app = express();
 
 // ─── Middlewares globales ────────────────────────────────────────────────────
@@ -37,17 +37,20 @@ app.get('/api/health', (_req, res) =>
 // ─── Debug: test Firebase ────────────────────────────────────────────────────
 app.get('/api/debug/firebase', async (_req, res) => {
   try {
-    const { auth } = require('./config/firebase');
-    // Intentar hacer una operación simple
-    const testUser = await auth.getUser('test-debug-only');
-    res.json({ status: 'Firebase working', user: testUser.email });
+    const { auth } = require('./config/firebase'); 
+    await auth.getUser('check-connection-123');
+    
+    res.json({ status: 'Firebase OK', message: 'Conexión establecida correctamente' });
   } catch (err) {
     if (err.code === 'auth/user-not-found') {
-      return res.json({ status: 'Firebase working correctly', message: 'User not found (expected)' });
+      return res.json({ 
+        status: 'Firebase OK', 
+        message: 'Conexión exitosa (el usuario no existe, pero Firebase respondió)' 
+      });
     }
     res.status(500).json({ 
-      status: 'Firebase error',
-      error: err.message,
+      status: 'Firebase Error', 
+      error: err.message, 
       code: err.code 
     });
   }
