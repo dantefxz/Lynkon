@@ -8,7 +8,10 @@ const options = {
       version: '1.0.0',
       description: 'API REST para Lynkon - Unificador de perfiles de videojuegos',
     },
-    servers: [{ url: 'http://localhost:3000/api' }],
+    servers: [
+      { url: 'https://lynkon-back.onrender.com/api', description: 'Producción' },
+      { url: 'http://localhost:3000/api', description: 'Local' },
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -21,7 +24,7 @@ const options = {
     },
     security: [{ bearerAuth: [] }],
   },
-  apis: ['./src/routes/*.js'], // lee los comentarios de las rutas
+  apis: ['./src/routes/*.js'],
 };
 
 module.exports = swaggerJsdoc(options);

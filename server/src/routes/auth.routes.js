@@ -3,6 +3,13 @@ const ctrl   = require('../controllers/auth.controller');
 
 /**
  * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Registro y login de usuarios
+ */
+
+/**
+ * @swagger
  * /auth/register:
  *   post:
  *     summary: Registra un nuevo usuario
@@ -27,6 +34,10 @@ const ctrl   = require('../controllers/auth.controller');
  *               username:
  *                 type: string
  *                 example: "NeonWolf#4823"
+ *               authProvider:
+ *                 type: string
+ *                 enum: [email, google]
+ *                 example: "email"
  *     responses:
  *       201:
  *         description: Usuario registrado exitosamente
