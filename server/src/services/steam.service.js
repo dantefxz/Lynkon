@@ -12,10 +12,8 @@ const resolveId = async (input) => {
   return steamid;
 };
 
-module.exports = { getStats, getGames, getAchievements, resolveId };
-
 const getStats = async (steamId) => {
-  const resolvedId = await resolveSteamId(steamId);
+  const resolvedId = await resolveId(steamId);
   const [gamesRes, summaryRes] = await Promise.all([
     axios.get(`${BASE}/IPlayerService/GetOwnedGames/v1/`, {
       params: { key: DEV_KEY(), steamid: resolvedId, include_appinfo: true, include_played_free_games: true },
@@ -39,7 +37,7 @@ const getStats = async (steamId) => {
 };
 
 const getGames = async (steamId) => {
-  const resolvedId = await resolveSteamId(steamId);
+  const resolvedId = await resolveId(steamId);
   const res = await axios.get(`${BASE}/IPlayerService/GetOwnedGames/v1/`, {
     params: { key: DEV_KEY(), steamid: resolvedId, include_appinfo: true, include_played_free_games: true },
   });
@@ -55,7 +53,7 @@ const getGames = async (steamId) => {
 };
 
 const getAchievements = async (steamId) => {
-  const resolvedId = await resolveSteamId(steamId);
+  const resolvedId = await resolveId(steamId);
   const gamesRes = await axios.get(`${BASE}/IPlayerService/GetOwnedGames/v1/`, {
     params: { key: DEV_KEY(), steamid: resolvedId, include_appinfo: true },
   });
@@ -81,4 +79,4 @@ const getAchievements = async (steamId) => {
   };
 };
 
-module.exports = { getStats, getGames, getAchievements };
+module.exports = { getStats, getGames, getAchievements, resolveId };
