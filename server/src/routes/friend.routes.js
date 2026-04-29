@@ -76,7 +76,8 @@ router.post('/me/requests', authenticate, ctrl.sendFriendRequest);
  *         name: requestId
  *         required: true
  *         schema:
- *           type: boolean
+ *           type: string
+ *         example: "abc123xyz"
  *     requestBody:
  *       required: true
  *       content:
@@ -87,8 +88,7 @@ router.post('/me/requests', authenticate, ctrl.sendFriendRequest);
  *             properties:
  *               action:
  *                 type: boolean
- *                 enum: [true, false]
- *                 example: "true"
+ *                 example: true
  *     responses:
  *       200:
  *         description: Solicitud procesada
@@ -99,6 +99,7 @@ router.post('/me/requests', authenticate, ctrl.sendFriendRequest);
  *       409:
  *         description: Solicitud ya procesada
  */
+
 router.patch('/me/requests/:requestId', authenticate, ctrl.respondToRequest);
 
 /**
