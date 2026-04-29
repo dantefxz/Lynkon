@@ -99,11 +99,11 @@ const respondToRequest = async (req, res, next) => {
     if (reqData.status !== 'pending') return res.status(409).json({ error: 'Request already processed' });
 
     await db.collection('friendRequests').doc(requestId).update({
-      status: data.action === 'accept' ? 'accepted' : 'rejected',
+      status: data.action === true ? 'accepted' : 'rejected',
       respondedAt: new Date().toISOString(),
     });
 
-    if (data.action === 'accept') {
+    if (data.action === true) {
       const [userSnap, fromSnap] = await Promise.all([
         db.collection('users').doc(userId).get(),
         db.collection('users').doc(reqData.fromUserId).get(),

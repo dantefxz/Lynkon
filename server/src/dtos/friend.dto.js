@@ -28,7 +28,7 @@ const parseRespondFriendRequestDTO = (body) => {
   const { action } = body;
 
   if (!action) errors.push('action is required');
-  else if (!['accept', 'reject'].includes(action))
+  else if (![true, false].includes(action))
     errors.push("action must be 'accept' or 'reject'");
 
   if (errors.length) return { data: null, errors };
