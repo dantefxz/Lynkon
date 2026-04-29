@@ -133,9 +133,14 @@ const removeFriend = async (req, res, next) => {
       db.collection('users').doc(friendId).get(),
     ]);
 
+    // ← validación que faltaba
+    const userFriends = userSnap.data().friends || [];
+    if (!userFriends.includes(friendId))
+      return res.status(404).json({ error: 'This user is not your friend' });
+
     const batch = db.batch();
     batch.update(db.collection('users').doc(userId), {
-      friends: (userSnap.data().friends || []).filter((id) => id !== friendId),
+      friends: userFriends.filter((id) => id !== friendId),
     });
     if (friendSnap.exists) {
       batch.update(db.collection('users').doc(friendId), {
