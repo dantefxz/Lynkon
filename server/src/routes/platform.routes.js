@@ -19,46 +19,34 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de plataformas soportadas (steam, psn, xbox, riot)
+ *         description: Lista de plataformas soportadas (steam, psn, xbox)
  */
 router.get('/supported', authenticate, ctrl.getSupportedPlatforms);
 
 /**
  * @swagger
- * /platforms/{userId}:
+ * /platforms/me:
  *   get:
- *     summary: Plataformas vinculadas del usuario
+ *     summary: Plataformas vinculadas del usuario autenticado
  *     tags: [Platforms]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: Lista de plataformas vinculadas
  *       404:
  *         description: Usuario no encontrado
  */
-router.get('/:userId', authenticate, ctrl.getLinkedPlatforms);
+router.get('/me', authenticate, ctrl.getLinkedPlatforms);
 
 /**
  * @swagger
- * /platforms/{userId}/link:
+ * /platforms/me/link:
  *   post:
- *     summary: Vincula una plataforma al usuario
+ *     summary: Vincula una plataforma al usuario autenticado
  *     tags: [Platforms]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -69,11 +57,11 @@ router.get('/:userId', authenticate, ctrl.getLinkedPlatforms);
  *             properties:
  *               platform:
  *                 type: string
- *                 enum: [steam, psn, xbox, riot]
+ *                 enum: [steam, psn, xbox]
  *                 example: "steam"
  *               platformUserId:
  *                 type: string
- *                 description: steamId / puuid / xuid / npssoToken según la plataforma
+ *                 description: steamId / xuid / npssoToken según la plataforma
  *                 example: "76561198xxxxxxxxx"
  *     responses:
  *       201:
@@ -83,118 +71,98 @@ router.get('/:userId', authenticate, ctrl.getLinkedPlatforms);
  *       409:
  *         description: Plataforma ya vinculada
  */
-router.post('/:userId/link', authenticate, authorizeOwner, ctrl.linkPlatform);
+router.post('/me/link', authenticate, ctrl.linkPlatform);
 
 /**
  * @swagger
- * /platforms/{userId}/{platform}:
+ * /platforms/me/{platform}:
  *   delete:
- *     summary: Desvincula una plataforma del usuario
+ *     summary: Desvincula una plataforma del usuario autenticado
  *     tags: [Platforms]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *       - in: path
  *         name: platform
  *         required: true
  *         schema:
  *           type: string
- *           enum: [steam, psn, xbox, riot]
+ *           enum: [steam, psn, xbox]
  *     responses:
  *       200:
  *         description: Plataforma desvinculada
  *       404:
  *         description: Plataforma no vinculada
  */
-router.delete('/:userId/:platform', authenticate, authorizeOwner, ctrl.unlinkPlatform);
+router.delete('/me/:platform', authenticate, ctrl.unlinkPlatform);
 
 /**
  * @swagger
- * /platforms/{userId}/{platform}/stats:
+ * /platforms/me/{platform}/stats:
  *   get:
- *     summary: Estadísticas del usuario en una plataforma
+ *     summary: Estadísticas del usuario autenticado en una plataforma
  *     tags: [Platforms]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *       - in: path
  *         name: platform
  *         required: true
  *         schema:
  *           type: string
- *           enum: [steam, psn, xbox, riot]
+ *           enum: [steam, psn, xbox]
  *     responses:
  *       200:
  *         description: Estadísticas de la plataforma
  *       404:
  *         description: Plataforma no vinculada
  */
-router.get('/:userId/:platform/stats', authenticate, ctrl.getPlatformStats);
+router.get('/me/:platform/stats', authenticate, ctrl.getPlatformStats);
 
 /**
  * @swagger
- * /platforms/{userId}/{platform}/games:
+ * /platforms/me/{platform}/games:
  *   get:
- *     summary: Lista de juegos del usuario en una plataforma
+ *     summary: Lista de juegos del usuario autenticado en una plataforma
  *     tags: [Platforms]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *       - in: path
  *         name: platform
  *         required: true
  *         schema:
  *           type: string
- *           enum: [steam, psn, xbox, riot]
+ *           enum: [steam, psn, xbox]
  *     responses:
  *       200:
  *         description: Lista de juegos
  *       404:
  *         description: Plataforma no vinculada
  */
-router.get('/:userId/:platform/games', authenticate, ctrl.getPlatformGames);
+router.get('/me/:platform/games', authenticate, ctrl.getPlatformGames);
 
 /**
  * @swagger
- * /platforms/{userId}/{platform}/achievements:
+ * /platforms/me/{platform}/achievements:
  *   get:
- *     summary: Logros del usuario en una plataforma
+ *     summary: Logros del usuario autenticado en una plataforma
  *     tags: [Platforms]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *       - in: path
  *         name: platform
  *         required: true
  *         schema:
  *           type: string
- *           enum: [steam, psn, xbox, riot]
+ *           enum: [steam, psn, xbox]
  *     responses:
  *       200:
  *         description: Lista de logros
  *       404:
  *         description: Plataforma no vinculada
  */
-router.get('/:userId/:platform/achievements', authenticate, ctrl.getPlatformAchievements);
+router.get('/me/:platform/achievements', authenticate, ctrl.getPlatformAchievements);
 
 module.exports = router;

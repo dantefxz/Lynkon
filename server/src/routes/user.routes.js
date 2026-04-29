@@ -11,6 +11,22 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
 
 /**
  * @swagger
+ * /users/me/profile:
+ *   get:
+ *     summary: Obtiene el perfil del usuario autenticado
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Perfil del usuario autenticado
+ *       401:
+ *         description: No autorizado
+ */
+router.get('/me/profile', authenticate, ctrl.getMyProfile);
+
+/**
+ * @swagger
  * /users/search:
  *   get:
  *     summary: Busca usuarios por username

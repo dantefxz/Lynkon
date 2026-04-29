@@ -8,15 +8,13 @@ const {
 const steamService = require('../services/steam.service');
 const psnService   = require('../services/psn.service');
 const xboxService  = require('../services/xbox.service');
-const riotService  = require('../services/riot.service');
 
-const SERVICE_MAP = { steam: steamService, psn: psnService, xbox: xboxService, riot: riotService };
+const SERVICE_MAP = { steam: steamService, psn: psnService, xbox: xboxService };
 
 // ─── Helper: lee la credencial del usuario desde Firestore ───────────────────
 //
 // Cada usuario guarda su propia credencial por plataforma:
 //   Steam → steamId   (el server usa STEAM_API_KEY global para consultar)
-//   Riot  → puuid     (el server usa RIOT_API_KEY  global para consultar)
 //   Xbox  → xuid      (el server usa XBL_API_KEY   global para consultar)
 //   PSN   → npssoToken (el server no tiene key propia; usa el token del usuario)
 //
@@ -44,7 +42,7 @@ const getSupportedPlatforms = (_req, res) =>
 
 const getLinkedPlatforms = async (req, res, next) => {
   try {
-    const snap = await db.collection('users').doc(req.params.userId).get();
+    const snap = await db.collection('users').doc(req.user.uid).get();
     if (!snap.exists) return res.status(404).json({ error: 'User not found' });
 
     const platforms = (snap.data().platforms || []).map(serializeLinkedPlatform);
@@ -54,10 +52,11 @@ const getLinkedPlatforms = async (req, res, next) => {
 
 const linkPlatform = async (req, res, next) => {
   try {
+    const userId = req.user.uid;
     const { data, errors } = parseLinkPlatformDTO(req.body);
     if (errors.length) return res.status(400).json({ errors });
 
-    const snap = await db.collection('users').doc(req.params.userId).get();
+    const snap = await db.collection('users').doc(userId).get();
     if (!snap.exists) return res.status(404).json({ error: 'User not found' });
 
     const platforms = snap.data().platforms || [];
@@ -66,7 +65,7 @@ const linkPlatform = async (req, res, next) => {
 
     // Guardamos solo platform, platformUserId (la credencial del usuario) y linkedAt.
     // Las dev keys del servidor nunca se guardan en Firestore.
-    await db.collection('users').doc(req.params.userId).update({
+    await db.collection('users').doc(userId).update({
       platforms: [
         ...platforms,
         {
@@ -83,7 +82,8 @@ const linkPlatform = async (req, res, next) => {
 
 const unlinkPlatform = async (req, res, next) => {
   try {
-    const { userId, platform } = req.params;
+    const userId = req.user.uid;
+    const { platform } = req.params;
     const snap = await db.collection('users').doc(userId).get();
     if (!snap.exists) return res.status(404).json({ error: 'User not found' });
 
@@ -104,7 +104,8 @@ const unlinkPlatform = async (req, res, next) => {
 
 const getPlatformStats = async (req, res, next) => {
   try {
-    const { userId, platform } = req.params;
+    const userId = req.user.uid;
+    const { platform } = req.params;
     if (!SERVICE_MAP[platform]) return res.status(400).json({ error: `Unsupported platform: ${platform}` });
 
     const platformUserId = await getUserPlatformCredential(userId, platform);
@@ -115,7 +116,8 @@ const getPlatformStats = async (req, res, next) => {
 
 const getPlatformGames = async (req, res, next) => {
   try {
-    const { userId, platform } = req.params;
+    const userId = req.user.uid;
+    const { platform } = req.params;
     if (!SERVICE_MAP[platform]) return res.status(400).json({ error: `Unsupported platform: ${platform}` });
 
     const platformUserId = await getUserPlatformCredential(userId, platform);
@@ -126,7 +128,8 @@ const getPlatformGames = async (req, res, next) => {
 
 const getPlatformAchievements = async (req, res, next) => {
   try {
-    const { userId, platform } = req.params;
+    const userId = req.user.uid;
+    const { platform } = req.params;
     if (!SERVICE_MAP[platform]) return res.status(400).json({ error: `Unsupported platform: ${platform}` });
 
     const platformUserId = await getUserPlatformCredential(userId, platform);

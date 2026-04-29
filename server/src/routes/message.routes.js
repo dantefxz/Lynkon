@@ -11,18 +11,12 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
 
 /**
  * @swagger
- * /messages/{userId}:
+ * /messages/me:
  *   get:
  *     summary: Lista las conversaciones activas del usuario
  *     tags: [Messages]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: Lista de conversaciones con último mensaje y no leídos
@@ -31,12 +25,6 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
  *     tags: [Messages]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -64,12 +52,6 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
  *     tags: [Messages]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -85,24 +67,19 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
  *       200:
  *         description: Conversación eliminada
  */
-router.get('/:userId',    authenticate, authorizeOwner, ctrl.getConversations);
-router.post('/:userId',   authenticate, authorizeOwner, ctrl.sendMessage);
-router.delete('/:userId', authenticate, authorizeOwner, ctrl.deleteConversation);
+router.get('/me',    authenticate, ctrl.getConversations);
+router.post('/me',   authenticate, ctrl.sendMessage);
+router.delete('/me', authenticate, ctrl.deleteConversation);
 
 /**
  * @swagger
- * /messages/{userId}/{friendId}:
+ * /messages/me/{friendId}:
  *   get:
- *     summary: Historial de mensajes entre dos usuarios
+ *     summary: Historial de mensajes entre el usuario autenticado y un amigo
  *     tags: [Messages]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *       - in: path
  *         name: friendId
  *         required: true
@@ -122,22 +99,17 @@ router.delete('/:userId', authenticate, authorizeOwner, ctrl.deleteConversation)
  *       200:
  *         description: Lista de mensajes ordenados por fecha
  */
-router.get('/:userId/:friendId',   authenticate, authorizeOwner, ctrl.getMessages);
+router.get('/me/:friendId',   authenticate, ctrl.getMessages);
 
 /**
  * @swagger
- * /messages/{userId}/{messageId}:
+ * /messages/me/{messageId}:
  *   patch:
  *     summary: Marca un mensaje como leído
  *     tags: [Messages]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *       - in: path
  *         name: messageId
  *         required: true
@@ -158,6 +130,6 @@ router.get('/:userId/:friendId',   authenticate, authorizeOwner, ctrl.getMessage
  *       200:
  *         description: Mensaje marcado como leído
  */
-router.patch('/:userId/:messageId', authenticate, authorizeOwner, ctrl.markAsRead);
+router.patch('/me/:messageId', authenticate, ctrl.markAsRead);
 
 module.exports = router;

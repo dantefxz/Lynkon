@@ -5,8 +5,8 @@
 
 /**
  * @typedef {Object} RegisterDTO
- * @property {string} uid           - UID generado por Firebase Auth en el cliente
- * @property {string} email
+ * @property {string} email         - Email del usuario
+ * @property {string} password      - Contraseña (mín 6 caracteres)
  * @property {string} birthDate     - ISO 8601: "YYYY-MM-DD"
  * @property {string} [username]    - Opcional; se genera automáticamente si no se provee
  * @property {'email'|'google'} [authProvider]
@@ -19,10 +19,11 @@
  */
 const parseRegisterDTO = (body) => {
   const errors = [];
-  const { uid, email, birthDate, username, authProvider = 'email' } = body;
+  const { email, password, birthDate, username, authProvider = 'email' } = body;
 
-  if (!uid)       errors.push('uid is required');
   if (!email)     errors.push('email is required');
+  if (!password)  errors.push('password is required (min 6 characters)');
+  else if (password.length < 6) errors.push('password must be at least 6 characters');
   if (!birthDate) errors.push('birthDate is required (YYYY-MM-DD)');
   else if (isNaN(new Date(birthDate).getTime())) errors.push('birthDate is not a valid date');
 
@@ -32,7 +33,7 @@ const parseRegisterDTO = (body) => {
   if (errors.length) return { data: null, errors };
 
   return {
-    data: { uid, email: email.trim().toLowerCase(), birthDate, username: username?.trim(), authProvider },
+    data: { email: email.trim().toLowerCase(), password, birthDate, username: username?.trim(), authProvider },
     errors: [],
   };
 };

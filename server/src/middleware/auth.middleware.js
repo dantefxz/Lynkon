@@ -1,7 +1,10 @@
-const { auth } = require('../config/firebase');
+const jwt = require('jsonwebtoken');
+
+// Secret para validar JWTs (debe coincidir con el de auth.controller.js)
+const JWT_SECRET = process.env.JWT_SECRET || 'lynkon-dev-secret-key-2026';
 
 /**
- * Verifica el Firebase ID Token en el header Authorization: Bearer <token>
+ * Verifica el JWT en el header Authorization: Bearer <token>
  * Adjunta el usuario decodificado a req.user
  */
 const authenticate = async (req, res, next) => {
@@ -12,9 +15,10 @@ const authenticate = async (req, res, next) => {
   }
 
   try {
-    req.user = await auth.verifyIdToken(header.split(' ')[1]);
+    const token = header.split(' ')[1];
+    req.user = jwt.verify(token, JWT_SECRET);
     next();
-  } catch {
+  } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 };

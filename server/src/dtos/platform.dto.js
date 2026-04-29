@@ -6,7 +6,6 @@
  * │Plataforma│ Key del servidor (.env)       │ Credencial del usuario (Firestore)   │
  * ├──────────┼──────────────────────────────┼──────────────────────────────────────┤
  * │ Steam    │ STEAM_API_KEY  (dev key)      │ steamId     (ID público del perfil)  │
- * │ Riot     │ RIOT_API_KEY   (dev key)      │ puuid       (ID del summoner)        │
  * │ Xbox     │ XBL_API_KEY    (dev key xbl)  │ xuid        (ID de Xbox Live)        │
  * │ PSN      │ ❌ no hay                     │ npssoToken  (token personal cifrado) │
  * └──────────┴──────────────────────────────┴──────────────────────────────────────┘
@@ -15,19 +14,18 @@
  * La credencial del usuario se guarda en Firestore y se usa en cada request.
  */
 
-const SUPPORTED_PLATFORMS = ['steam', 'psn', 'xbox', 'riot'];
+const SUPPORTED_PLATFORMS = ['steam', 'psn', 'xbox'];
 
 /** Describe qué campo aporta el usuario al vincular cada plataforma */
 const PLATFORM_CREDENTIAL_FIELD = {
   steam: 'steamId',     // ej: "76561198xxxxxxxxx"
-  riot:  'puuid',       // ej: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
   xbox:  'xuid',        // ej: "2535xxxxxxxxxxxxxxx"
   psn:   'npssoToken',  // token de 64 chars obtenido desde cookies de PSN
 };
 
 /**
  * @typedef {Object} LinkPlatformDTO
- * @property {'steam'|'psn'|'xbox'|'riot'} platform
+ * @property {'steam'|'psn'|'xbox'} platform
  * @property {string} platformUserId  - Credencial del usuario para esa plataforma
  */
 const parseLinkPlatformDTO = (body) => {

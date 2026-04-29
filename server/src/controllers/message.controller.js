@@ -18,7 +18,7 @@ const getUnread = async (conversationId, uid) => {
 
 const getConversations = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.uid;
 
     const snap = await db.collection('conversations')
       .where('participants', 'array-contains', userId)
@@ -53,7 +53,8 @@ const getConversations = async (req, res, next) => {
 
 const getMessages = async (req, res, next) => {
   try {
-    const { userId, friendId } = req.params;
+    const userId = req.user.uid;
+    const { friendId } = req.params;
     const { limit = 50, before } = req.query;
 
     let query = db.collection('conversations').doc(convId(userId, friendId))
@@ -74,7 +75,7 @@ const getMessages = async (req, res, next) => {
 
 const sendMessage = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.uid;
     const { data, errors } = parseSendMessageDTO(req.body);
     if (errors.length) return res.status(400).json({ errors });
 
@@ -108,7 +109,8 @@ const sendMessage = async (req, res, next) => {
 
 const markAsRead = async (req, res, next) => {
   try {
-    const { userId, messageId } = req.params;
+    const userId = req.user.uid;
+    const { messageId } = req.params;
     const { data, errors } = parseMarkAsReadDTO(req.body);
     if (errors.length) return res.status(400).json({ errors });
 
@@ -124,7 +126,7 @@ const markAsRead = async (req, res, next) => {
 
 const deleteConversation = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.uid;
     const { data, errors } = parseDeleteConversationDTO(req.body);
     if (errors.length) return res.status(400).json({ errors });
 

@@ -7,6 +7,20 @@ const {
 
 // ─── Profile ─────────────────────────────────────────────────────────────────
 
+/**
+ * Obtiene el perfil del usuario autenticado (sin pasar ID en URL)
+ */
+const getMyProfile = async (req, res, next) => {
+  try {
+    const snap = await db.collection('users').doc(req.user.uid).get();
+    if (!snap.exists) return res.status(404).json({ error: 'User profile not found' });
+
+    return res.status(200).json({
+      profile: serializeProfile(snap.data(), true),
+    });
+  } catch (err) { next(err); }
+};
+
 const getProfile = async (req, res, next) => {
   try {
     const snap = await db.collection('users').doc(req.params.id).get();
@@ -154,7 +168,7 @@ const getRecommendations = async (req, res, next) => {
 };
 
 module.exports = {
-  getProfile, createProfile, updateProfile,
+  getMyProfile, getProfile, createProfile, updateProfile,
   getSettings, createSettings, updateSettings,
   deleteUser, searchUsers, getRecommendations,
 };

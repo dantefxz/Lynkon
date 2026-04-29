@@ -34,6 +34,25 @@ app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', project: 'Lynkon API', version: '1.0.0' })
 );
 
+// ─── Debug: test Firebase ────────────────────────────────────────────────────
+app.get('/api/debug/firebase', async (_req, res) => {
+  try {
+    const { auth } = require('./config/firebase');
+    // Intentar hacer una operación simple
+    const testUser = await auth.getUser('test-debug-only');
+    res.json({ status: 'Firebase working', user: testUser.email });
+  } catch (err) {
+    if (err.code === 'auth/user-not-found') {
+      return res.json({ status: 'Firebase working correctly', message: 'User not found (expected)' });
+    }
+    res.status(500).json({ 
+      status: 'Firebase error',
+      error: err.message,
+      code: err.code 
+    });
+  }
+});
+
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Route not found' }));
 

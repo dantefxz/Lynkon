@@ -11,40 +11,28 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
 
 /**
  * @swagger
- * /friends/{userId}:
+ * /friends/me:
  *   get:
- *     summary: Lista los amigos del usuario
+ *     summary: Lista los amigos del usuario autenticado
  *     tags: [Friends]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: Lista de amigos con perfil básico
  *       404:
  *         description: Usuario no encontrado
  */
-router.get('/:userId', authenticate, ctrl.getFriends);
+router.get('/me', authenticate, ctrl.getFriends);
 
 /**
  * @swagger
- * /friends/{userId}/requests:
+ * /friends/me/requests:
  *   get:
  *     summary: Solicitudes de amistad pendientes recibidas
  *     tags: [Friends]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: Lista de solicitudes pendientes
@@ -53,12 +41,6 @@ router.get('/:userId', authenticate, ctrl.getFriends);
  *     tags: [Friends]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -78,23 +60,18 @@ router.get('/:userId', authenticate, ctrl.getFriends);
  *       409:
  *         description: Ya son amigos o solicitud ya enviada
  */
-router.get('/:userId/requests',  authenticate, authorizeOwner, ctrl.getFriendRequests);
-router.post('/:userId/requests', authenticate, authorizeOwner, ctrl.sendFriendRequest);
+router.get('/me/requests',  authenticate, ctrl.getFriendRequests);
+router.post('/me/requests', authenticate, ctrl.sendFriendRequest);
 
 /**
  * @swagger
- * /friends/{userId}/requests/{requestId}:
+ * /friends/me/requests/{requestId}:
  *   patch:
  *     summary: Acepta o rechaza una solicitud de amistad
  *     tags: [Friends]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *       - in: path
  *         name: requestId
  *         required: true
@@ -122,22 +99,17 @@ router.post('/:userId/requests', authenticate, authorizeOwner, ctrl.sendFriendRe
  *       409:
  *         description: Solicitud ya procesada
  */
-router.patch('/:userId/requests/:requestId', authenticate, authorizeOwner, ctrl.respondToRequest);
+router.patch('/me/requests/:requestId', authenticate, ctrl.respondToRequest);
 
 /**
  * @swagger
- * /friends/{userId}/{friendId}:
+ * /friends/me/{friendId}:
  *   delete:
  *     summary: Elimina un amigo de la lista
  *     tags: [Friends]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *       - in: path
  *         name: friendId
  *         required: true
@@ -147,6 +119,6 @@ router.patch('/:userId/requests/:requestId', authenticate, authorizeOwner, ctrl.
  *       200:
  *         description: Amigo eliminado
  */
-router.delete('/:userId/:friendId', authenticate, authorizeOwner, ctrl.removeFriend);
+router.delete('/me/:friendId', authenticate, ctrl.removeFriend);
 
 module.exports = router;

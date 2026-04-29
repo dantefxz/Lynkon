@@ -37,7 +37,6 @@ lynkon-backend/
 │   │   └── message.controller.js
 │   ├── services/                     # Integraciones con APIs externas
 │   │   ├── steam.service.js          # ✅ Steam Web API
-│   │   ├── riot.service.js           # ✅ Riot Games API (LoL, LA1)
 │   │   ├── xbox.service.js           # ✅ xbl.io
 │   │   └── psn.service.js            # 🔧 Stub listo (requiere psn-api)
 │   └── utils/
@@ -72,8 +71,6 @@ npm run dev
 | `FIREBASE_DATABASE_URL` | URL de Firebase Realtime Database |
 | `STEAM_API_KEY` | Clave de Steam Web API (steamcommunity.com/dev) |
 | `XBL_API_KEY` | Clave de xbl.io (gratuita) |
-| `RIOT_API_KEY` | Clave del Riot Developer Portal |
-| `RIOT_REGION` | Región de Riot API (default: `la1`) |
 
 ---
 

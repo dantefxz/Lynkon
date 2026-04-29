@@ -14,7 +14,7 @@ const getProfile = async (uid) => {
 
 const getFriends = async (req, res, next) => {
   try {
-    const snap = await db.collection('users').doc(req.params.userId).get();
+    const snap = await db.collection('users').doc(req.user.uid).get();
     if (!snap.exists) return res.status(404).json({ error: 'User not found' });
 
     const friendIds = snap.data().friends || [];
@@ -31,7 +31,7 @@ const getFriends = async (req, res, next) => {
 const getFriendRequests = async (req, res, next) => {
   try {
     const snap = await db.collection('friendRequests')
-      .where('toUserId', '==', req.params.userId)
+      .where('toUserId', '==', req.user.uid)
       .where('status', '==', 'pending')
       .get();
 
@@ -53,7 +53,7 @@ const getFriendRequests = async (req, res, next) => {
 
 const sendFriendRequest = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.uid;
     const { data, errors } = parseSendFriendRequestDTO(req.body, userId);
     if (errors.length) return res.status(400).json({ errors });
 
@@ -86,7 +86,8 @@ const sendFriendRequest = async (req, res, next) => {
 
 const respondToRequest = async (req, res, next) => {
   try {
-    const { userId, requestId } = req.params;
+    const userId = req.user.uid;
+    const { requestId } = req.params;
     const { data, errors } = parseRespondFriendRequestDTO(req.body);
     if (errors.length) return res.status(400).json({ errors });
 
@@ -125,7 +126,8 @@ const respondToRequest = async (req, res, next) => {
 
 const removeFriend = async (req, res, next) => {
   try {
-    const { userId, friendId } = req.params;
+    const userId = req.user.uid;
+    const { friendId } = req.params;
     const [userSnap, friendSnap] = await Promise.all([
       db.collection('users').doc(userId).get(),
       db.collection('users').doc(friendId).get(),
