@@ -13,12 +13,18 @@ const messageRoutes  = require('./routes/message.routes');
 const { auth } = require('./config/firebase'); 
 const app = express();
 
-// ─── Middlewares globales ────────────────────────────────────────────────────
-app.use(helmet());
-app.use(cors());
+
+// ─── Middlewares globales ─────────────────────────────────────────────────────────────────
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(cors()); 
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // asegurar que Swagger cargue
+  })
+);
+
 app.use(morgan('dev'));
 app.use(express.json());
-
 // ─── Swagger ─────────────────────────────────────────────────────────────────
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
