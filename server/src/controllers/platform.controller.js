@@ -67,9 +67,6 @@ const linkPlatform = async (req, res, next) => {
     if (data.platform === 'steam') {
       platformUserId = await steamService.resolveId(data.platformUserId);
     }
-    if (data.platform === 'xbox') {
-      platformUserId = await xboxService.resolveXuid(data.platformUserId);
-    }
 
     await db.collection('users').doc(userId).update({
       platforms: [

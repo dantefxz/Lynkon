@@ -1,31 +1,19 @@
 const axios = require('axios');
-const BASE    = 'https://xbl.io/api/v2';
+const BASE    = 'https://api.xbl.io/v2';
 const headers = () => ({ 'X-Authorization': process.env.XBL_API_KEY, Accept: 'application/json' });
 
-const resolveXuid = async (input) => {
+const validateXuid = (input) => {
   if (/^\d+$/.test(input)) return input;
-
-  const fromUrl = input.match(/user\/([^/?]+)/i);
-  const gamertag = fromUrl ? fromUrl[1] : input;
-
-  console.log('[Xbox] Gamertag a resolver:', gamertag);
-  console.log('[Xbox] API Key presente:', !!process.env.XBL_API_KEY);
-
-  try {
-    const res = await axios.get(`${BASE}/profile/gamertag/${encodeURIComponent(gamertag)}`, { headers: headers() });
-    console.log('[Xbox] Response status:', res.status);
-    console.log('[Xbox] Response data:', JSON.stringify(res.data));
-  } catch (err) {
-    console.error('[Xbox] Status:', err.response?.status);
-    console.error('[Xbox] Error data:', JSON.stringify(err.response?.data));
-    throw err;
-  }
+  throw Object.assign(
+    new Error('Xbox requiere el XUID numérico. Obtené el tuyo en xuidgenerator.com'),
+    { status: 400 }
+  );
 };
 
 const getStats = async (xuid) => {
-  const resolvedId = await resolveXuid(xuid);
+  const resolvedId = validateXuid(xuid);
   const res     = await axios.get(`${BASE}/account/${resolvedId}`, { headers: headers() });
-  const profile = res.data.profileUsers?.[0];
+  const profile = res.data.content?.profileUsers?.[0];
   const get     = (id) => profile?.settings?.find((s) => s.id === id)?.value;
   return {
     platform:    'xbox',
@@ -33,13 +21,14 @@ const getStats = async (xuid) => {
     gamertag:    get('Gamertag'),
     gamerscore:  get('Gamerscore'),
     accountTier: get('AccountTier'),
+    avatar:      get('GameDisplayPicRaw'),
   };
 };
 
 const getGames = async (xuid) => {
-  const resolvedId = await resolveXuid(xuid);
+  const resolvedId = validateXuid(xuid);
   const res = await axios.get(`${BASE}/achievements/player/${resolvedId}`, { headers: headers() });
-  return (res.data.titles || []).map((t) => ({
+  return (res.data.content?.titles || []).map((t) => ({
     gameId:               String(t.titleId),
     name:                 t.name,
     platform:             'xbox',
@@ -51,9 +40,9 @@ const getGames = async (xuid) => {
 };
 
 const getAchievements = async (xuid) => {
-  const resolvedId = await resolveXuid(xuid);
+  const resolvedId = validateXuid(xuid);
   const res = await axios.get(`${BASE}/achievements/player/${resolvedId}`, { headers: headers() });
-  return (res.data.titles || []).slice(0, 10).map((t) => ({
+  return (res.data.content?.titles || []).slice(0, 10).map((t) => ({
     gameId:               String(t.titleId),
     gameName:             t.name,
     achievementsUnlocked: t.achievement?.currentAchievements,
@@ -62,4 +51,4 @@ const getAchievements = async (xuid) => {
   }));
 };
 
-module.exports = { getStats, getGames, getAchievements, resolveXuid };
+module.exports = { getStats, getGames, getAchievements };
