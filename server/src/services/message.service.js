@@ -11,8 +11,7 @@ const getUnread = async (conversationId, uid) => {
 const getConversations = async (userId) => {
   const snap = await db.collection('conversations')
     .where('participants', 'array-contains', userId)
-    .orderBy('lastMessageAt', 'desc')
-    .limit(50).get();
+    .get();
 
   const conversations = await Promise.all(snap.docs.map(async (doc) => {
     const d        = doc.data();
@@ -31,7 +30,10 @@ const getConversations = async (userId) => {
     };
   }));
 
-  return conversations.filter((c) => c && c.with);
+  return conversations
+    .filter((c) => c && c.with)
+    .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
+    .slice(0, 50);
 };
 
 const getMessages = async (userId, friendId, limit = 50, before = null) => {
