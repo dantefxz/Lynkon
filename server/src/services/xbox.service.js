@@ -8,17 +8,18 @@ const resolveXuid = async (input) => {
   const fromUrl = input.match(/user\/([^/?]+)/i);
   const gamertag = fromUrl ? fromUrl[1] : input;
 
-  console.log('[Xbox] Resolviendo gamertag:', gamertag);
+  console.log('[Xbox] Gamertag a resolver:', gamertag);
+  console.log('[Xbox] API Key presente:', !!process.env.XBL_API_KEY);
 
-  const res = await axios.get(`${BASE}/profile/gamertag/${encodeURIComponent(gamertag)}`, { headers: headers() });
-  console.log('[Xbox] Response:', JSON.stringify(res.data));
-
-  const xuid = res.data.profileUsers?.[0]?.id
-            || res.data.xuid
-            || res.data.id;
-
-  if (!xuid) throw Object.assign(new Error('Xbox gamertag not found'), { status: 404 });
-  return xuid;
+  try {
+    const res = await axios.get(`${BASE}/profile/gamertag/${encodeURIComponent(gamertag)}`, { headers: headers() });
+    console.log('[Xbox] Response status:', res.status);
+    console.log('[Xbox] Response data:', JSON.stringify(res.data));
+  } catch (err) {
+    console.error('[Xbox] Status:', err.response?.status);
+    console.error('[Xbox] Error data:', JSON.stringify(err.response?.data));
+    throw err;
+  }
 };
 
 const getStats = async (xuid) => {
