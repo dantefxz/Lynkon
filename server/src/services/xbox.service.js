@@ -3,15 +3,22 @@ const BASE    = 'https://xbl.io/api/v2';
 const headers = () => ({ 'X-Authorization': process.env.XBL_API_KEY, Accept: 'application/json' });
 
 const resolveXuid = async (input) => {
-  // Si ya es numérico, lo usamos directo
   if (/^\d+$/.test(input)) return input;
-  const fromUrl = input.match(/user\/([^/?]+)/i) || input.match(/gamertag=([^&]+)/i);
+
+  const fromUrl = input.match(/user\/([^/?]+)/i);
   const gamertag = fromUrl ? fromUrl[1] : input;
 
-  const res = await axios.get(`${BASE}/friends/search?gt=${encodeURIComponent(gamertag)}`, { headers: headers() });
-  const profile = res.data.profileUsers?.[0];
-  if (!profile) throw Object.assign(new Error('Xbox gamertag not found'), { status: 404 });
-  return profile.id;
+  console.log('[Xbox] Resolviendo gamertag:', gamertag);
+
+  const res = await axios.get(`${BASE}/profile/gamertag/${encodeURIComponent(gamertag)}`, { headers: headers() });
+  console.log('[Xbox] Response:', JSON.stringify(res.data));
+
+  const xuid = res.data.profileUsers?.[0]?.id
+            || res.data.xuid
+            || res.data.id;
+
+  if (!xuid) throw Object.assign(new Error('Xbox gamertag not found'), { status: 404 });
+  return xuid;
 };
 
 const getStats = async (xuid) => {
