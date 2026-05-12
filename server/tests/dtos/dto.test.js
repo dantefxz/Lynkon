@@ -6,18 +6,38 @@ const { parseSendMessageDTO }                       = require('../../src/dtos/me
 // ─── Auth DTOs ────────────────────────────────────────────────────────────────
 
 describe('parseRegisterDTO', () => {
-  it('falla si falta uid', () => {
-    const { errors } = parseRegisterDTO({ email: 'a@a.com', birthDate: '2000-01-01' });
-    expect(errors).toContain('uid is required');
+  it('falla si falta email', () => {
+    const { errors } = parseRegisterDTO({ password: 'Pass123456', birthDate: '2000-01-01' });
+    expect(errors).toContain('email is required');
   });
 
-  it('falla si birthDate es inválida', () => {
-    const { errors } = parseRegisterDTO({ uid: 'u1', email: 'a@a.com', birthDate: 'bad-date' });
+  it('falla si falta password', () => {
+    const { errors } = parseRegisterDTO({ email: 'a@a.com', birthDate: '2000-01-01' });
+    expect(errors.some((e) => e.includes('password'))).toBe(true);
+  });
+
+  it('falla si password tiene menos de 6 letras', () => {
+    const { errors } = parseRegisterDTO({ email: 'a@a.com', password: 'Pass12', birthDate: '2000-01-01' });
+    expect(errors.some((e) => e.includes('6 letters'))).toBe(true);
+  });
+
+  it('falla si password tiene menos de 2 numeros', () => {
+    const { errors } = parseRegisterDTO({ email: 'a@a.com', password: 'Password1', birthDate: '2000-01-01' });
+    expect(errors.some((e) => e.includes('2 numbers'))).toBe(true);
+  });
+
+  it('falla si password tiene menos de 8 caracteres', () => {
+    const { errors } = parseRegisterDTO({ email: 'a@a.com', password: 'Pass12', birthDate: '2000-01-01' });
+    expect(errors.some((e) => e.includes('8 characters'))).toBe(true);
+  });
+
+  it('falla si birthDate es invalida', () => {
+    const { errors } = parseRegisterDTO({ email: 'a@a.com', password: 'Pass123456', birthDate: 'bad-date' });
     expect(errors.some((e) => e.includes('valid date'))).toBe(true);
   });
 
-  it('pasa con datos válidos', () => {
-    const { data, errors } = parseRegisterDTO({ uid: 'u1', email: 'A@A.COM', birthDate: '2000-01-01' });
+  it('pasa con datos validos', () => {
+    const { data, errors } = parseRegisterDTO({ email: 'A@A.COM', password: 'SecurePass123', birthDate: '2000-01-01' });
     expect(errors).toHaveLength(0);
     expect(data.email).toBe('a@a.com'); // normalizado a lowercase
   });

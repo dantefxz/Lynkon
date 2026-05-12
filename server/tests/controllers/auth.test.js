@@ -29,29 +29,40 @@ describe('POST /api/auth/register', () => {
     expect(res.body).toHaveProperty('errors');
   });
 
+  it('400 si password tiene menos de 6 letras', async () => {
+    const res = await request(app).post('/api/auth/register').send({ email: 'a@a.com', password: 'Pass12', birthDate: '2000-01-01' });
+    expect(res.status).toBe(400);
+  });
+
+  it('400 si password tiene menos de 2 numeros', async () => {
+    const res = await request(app).post('/api/auth/register').send({ email: 'a@a.com', password: 'Password1', birthDate: '2000-01-01' });
+    expect(res.status).toBe(400);
+  });
+
   it('400 si birthDate es inválida', async () => {
-    const res = await request(app).post('/api/auth/register').send({ uid: 'u1', email: 'a@a.com', birthDate: 'not-a-date' });
+    const res = await request(app).post('/api/auth/register').send({ email: 'a@a.com', password: 'SecurePass123', birthDate: 'not-a-date' });
     expect(res.status).toBe(400);
   });
 
   it('201 con datos válidos', async () => {
     const res = await request(app).post('/api/auth/register').send({
-      uid: 'user123', email: 'test@test.com', birthDate: '2000-06-15', username: 'TestGamer',
+      email: 'test@test.com', password: 'SecurePass123', birthDate: '2000-06-15', username: 'TestGamer',
     });
     expect(res.status).toBe(201);
-    expect(res.body.user).toHaveProperty('uid', 'user123');
+    expect(res.body).toHaveProperty('message');
   });
 });
 
 describe('POST /api/auth/login', () => {
-  it('400 si falta idToken', async () => {
-    const res = await request(app).post('/api/auth/login').send({});
+  it('400 si faltan email o password', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'test@test.com' });
     expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('errors');
   });
 
-  it('200 con idToken válido', async () => {
-    const res = await request(app).post('/api/auth/login').send({ idToken: 'valid-token' });
+  it('200 con credenciales válidas', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'test@test.com', password: 'SecurePass123' });
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('user');
+    expect(res.body).toHaveProperty('message');
   });
 });

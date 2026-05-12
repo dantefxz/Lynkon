@@ -6,7 +6,7 @@
 /**
  * @typedef {Object} RegisterDTO
  * @property {string} email         - Email del usuario
- * @property {string} password      - Contraseña (mín 6 caracteres)
+ * @property {string} password      - Contraseña (mín 6 letras, mín 2 números, 8 caracteres totales)
  * @property {string} birthDate     - ISO 8601: "YYYY-MM-DD"
  * @property {string} [username]    - Opcional; se genera automáticamente si no se provee
  * @property {'email'|'google'} [authProvider]
@@ -22,8 +22,15 @@ const parseRegisterDTO = (body) => {
   const { email, password, birthDate, username, authProvider = 'email' } = body;
 
   if (!email)     errors.push('email is required');
-  if (!password)  errors.push('password is required (min 6 characters)');
-  else if (password.length < 6) errors.push('password must be at least 6 characters');
+  if (!password)  errors.push('password is required (min 6 letters, min 2 numbers, 8 characters total)');
+  else {
+    const letterCount = (password.match(/[a-zA-Z]/g) || []).length;
+    const numberCount = (password.match(/[0-9]/g) || []).length;
+    
+    if (letterCount < 6) errors.push('password must contain at least 6 letters');
+    if (numberCount < 2) errors.push('password must contain at least 2 numbers');
+    if (password.length < 8) errors.push('password must be at least 8 characters');
+  }
   if (!birthDate) errors.push('birthDate is required (YYYY-MM-DD)');
   else if (isNaN(new Date(birthDate).getTime())) errors.push('birthDate is not a valid date');
 
