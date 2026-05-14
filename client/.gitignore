@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Android build
+android/app/build/
+android/.gradle/
+android/app/.cxx/
+
+# iOS
+ios/build/
+ios/Pods/
+
+# Metro
+.metro-health-check*
+
+# Misc
+.DS_Store
+*.env
+coverage/
