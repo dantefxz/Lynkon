@@ -1,4 +1,40 @@
 {
-  "name": "LynkonApp",
-  "displayName": "Lynkon"
+  "expo": {
+    "name": "Lynkon",
+    "slug": "lynkon-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/Logo.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "lynkon",
+    "splash": {
+      "image": "./assets/Logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lynkon.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Logo.png",
+        "backgroundColor": "#0A0A0F"
+      },
+      "package": "com.lynkon.app"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "root": "./src/app"
+        }
+      ],
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
 }

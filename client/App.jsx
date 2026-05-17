@@ -1,18 +1,3 @@
-// App.jsx
-import React from 'react';
-import { StatusBar } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider } from './src/context/AuthContext';
-import { AppNavigator } from './src/navigation/AppNavigator';
-import { colors } from './src/theme/colors';
-
-export default function App() {
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
-    </SafeAreaProvider>
-  );
-}
+// Entry shell — Expo Router handles navigation via src/app/
+// This file exists for tooling compatibility.
+export { default } from './src/app/_layout';
