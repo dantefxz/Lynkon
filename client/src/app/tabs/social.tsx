@@ -4,7 +4,7 @@ import {
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { TouchableOpacity } from 'react-native';
 import { friendApi, messageApi, userApi } from '@/services/api';
 import { getProfileAvatar } from '@/services/mockData';
@@ -113,7 +113,7 @@ export default function SocialScreen() {
           {/* Header chat */}
           <View style={[styles.chatHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setSelectedUser(null)} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={rw(24)} color={colors.purple} />
+              <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
             </TouchableOpacity>
             {/* Reutilizamos ChatRow en modo "header" */}
             <View style={styles.chatUserInfo}>
@@ -155,7 +155,7 @@ export default function SocialScreen() {
               style={[styles.sendBtn, { backgroundColor: colors.purple }]}
               onPress={handleSend}
             >
-              <Ionicons name="send" size={rw(18)} color="#fff" />
+              <MaterialIcons name="send" size={rw(18)} color="#fff" />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

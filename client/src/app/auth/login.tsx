@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext'; // FIX: usar useTheme en vez de import directo
 import { rw, rh, rf, rs } from '@/utils/responsive';
@@ -33,7 +33,7 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={rw(24)} color={colors.text} />
+              <MaterialIcons name="arrow-back" size={rw(24)} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text }]}>Iniciar sesión</Text>
           </View>
@@ -42,7 +42,7 @@ export default function LoginScreen() {
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.purple }]}>Email</Text>
               <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <Ionicons name="mail-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
+                <MaterialIcons name="mail-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
                 <TextInput style={[styles.input, { color: colors.text }]} placeholder="tu@email.com" placeholderTextColor={colors.textMuted}
                   value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
               </View>
@@ -51,11 +51,11 @@ export default function LoginScreen() {
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.purple }]}>Contraseña</Text>
               <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <Ionicons name="lock-closed-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
+                <MaterialIcons name="lock-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
                 <TextInput style={[styles.input, { color: colors.text }]} placeholder="••••••••" placeholderTextColor={colors.textMuted}
                   value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={rw(20)} color={colors.textMuted} />
+                  <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={rw(20)} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
             </View>

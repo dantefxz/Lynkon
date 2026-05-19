@@ -6,7 +6,7 @@
  */
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 
@@ -29,7 +29,7 @@ export function SearchBar({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Ionicons name="search-outline" size={rw(18)} color={colors.textMuted} style={styles.icon} />
+      <MaterialIcons name="search" size={rw(18)} color={colors.textMuted} style={styles.icon} />
 
       <TextInput
         style={styles.input}
@@ -45,7 +45,7 @@ export function SearchBar({
 
       {value.length > 0 && (
         <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="close-circle" size={rw(18)} color={colors.textMuted} />
+          <MaterialIcons name="cancel" size={rw(18)} color={colors.textMuted} />
         </TouchableOpacity>
       )}
     </View>

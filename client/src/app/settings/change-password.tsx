@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { userApi } from '@/services/api';
@@ -57,7 +57,7 @@ export default function ChangePasswordScreen() {
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={[styles.header, { backgroundColor: colors.backgroundGrad, borderBottomColor: colors.cardBorder }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={rw(24)} color={colors.purple} />
+            <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>Cambiar Contraseña</Text>
         </View>
@@ -67,7 +67,7 @@ export default function ChangePasswordScreen() {
             <View key={label} style={styles.field}>
               <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>{label}</Text>
               <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <Ionicons name="lock-closed-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
+                <MaterialIcons name="lock-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
                   value={value}
@@ -77,7 +77,7 @@ export default function ChangePasswordScreen() {
                   placeholderTextColor={colors.textMuted}
                 />
                 <TouchableOpacity onPress={toggle} style={styles.eyeBtn}>
-                  <Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={rw(20)} color={colors.textMuted} />
+                  <MaterialIcons name={show ? 'visibility-off' : 'visibility'} size={rw(20)} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -89,14 +89,14 @@ export default function ChangePasswordScreen() {
                 const ok = req.test(newPass);
                 return (
                   <View key={req.label} style={styles.reqRow}>
-                    <Ionicons name={ok ? 'checkmark-circle' : 'close-circle'} size={rw(16)} color={ok ? '#22C55E' : colors.textMuted} />
+                    <MaterialIcons name={ok ? 'check-circle-outline' : 'cancel'} size={rw(16)} color={ok ? '#22C55E' : colors.textMuted} />
                     <Text style={[{ fontSize: rf(13) }, { color: ok ? '#22C55E' : colors.textMuted }]}>{req.label}</Text>
                   </View>
                 );
               })}
               {confirm.length > 0 && (
                 <View style={styles.reqRow}>
-                  <Ionicons name={match ? 'checkmark-circle' : 'close-circle'} size={rw(16)} color={match ? '#22C55E' : '#EF4444'} />
+                  <MaterialIcons name={match ? 'check-circle-outline' : 'cancel'} size={rw(16)} color={match ? '#22C55E' : '#EF4444'} />
                   <Text style={[{ fontSize: rf(13) }, { color: match ? '#22C55E' : '#EF4444' }]}>Las contraseñas coinciden</Text>
                 </View>
               )}

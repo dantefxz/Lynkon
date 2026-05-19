@@ -1,19 +1,77 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { colors } from '@/theme/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
 
-// For now the app is always dark — the toggle is wired but both point to
-// the same palette. Swap lightColors for a real light palette when needed.
+export const darkColors = {
+  background:    '#0A0A0F',
+  backgroundGrad: '#12122A',
+  card:          '#16162A',
+  cardAlt:       '#1A1A2E',
+  purple:        '#7C3AED',
+  purpleLight:   '#A855F7',
+  purpleMuted:   'rgba(124, 58, 237, 0.2)',
+  purpleDim:     'rgba(124, 58, 237, 0.15)',
+  purpleBorder:  'rgba(124, 58, 237, 0.3)',
+  text:          '#FFFFFF',
+  textMuted:     '#9CA3AF',
+  textSecondary: '#C4B5FD',
+  online:        '#22C55E',
+  error:         '#EF4444',
+  warning:       '#EAB308',
+  border:        'rgba(124, 58, 237, 0.2)',
+  cardBorder:    'rgba(124, 58, 237, 0.25)',
+} as const;
+
+export const lightColors = {
+  background:    '#F4F4F8',
+  backgroundGrad: '#EAEAF5',
+  card:          '#FFFFFF',
+  cardAlt:       '#F0F0FA',
+  purple:        '#7C3AED',
+  purpleLight:   '#A855F7',
+  purpleMuted:   'rgba(124, 58, 237, 0.1)',
+  purpleDim:     'rgba(124, 58, 237, 0.08)',
+  purpleBorder:  'rgba(124, 58, 237, 0.25)',
+  text:          '#0F0F1A',
+  textMuted:     '#6B7280',
+  textSecondary: '#5B21B6',
+  online:        '#16A34A',
+  error:         '#DC2626',
+  warning:       '#D97706',
+  border:        'rgba(124, 58, 237, 0.15)',
+  cardBorder:    'rgba(124, 58, 237, 0.2)',
+} as const;
+
+export type AppColors = typeof darkColors;
+
+const THEME_STORAGE_KEY = 'app_theme';
+
 interface ThemeContextType {
   theme: 'dark' | 'light';
   toggleTheme: () => void;
-  colors: typeof colors;
+  colors: AppColors;
 }
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_STORAGE_KEY).then((stored) => {
+      if (stored === 'light' || stored === 'dark') setTheme(stored);
+    }).catch(() => {});
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme((t) => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      AsyncStorage.setItem(THEME_STORAGE_KEY, next).catch(() => {});
+      return next;
+    });
+  };
+
+  const colors = theme === 'dark' ? darkColors : lightColors;
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, colors }}>

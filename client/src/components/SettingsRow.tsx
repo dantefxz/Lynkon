@@ -1,18 +1,16 @@
 /**
  * SettingsRow
  * -----------
- * Fila de configuración: ícono/emoji en caja, label, valor opcional y flecha/switch.
- * Usado en: settings screen, platform detail.
+ * Fila de configuración con ícono Material outlined, label, valor y flecha/switch.
  */
 import React from 'react';
 import { View, Text, TouchableOpacity, Switch, StyleSheet, Image, ImageSourcePropType } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 
 export interface SettingsRowProps {
-  icon?: keyof typeof Ionicons.glyphMap;
-  /** Emoji como alternativa al icon de Ionicons */
+  icon?: string; // MaterialIcons name
   emoji?: string;
   iconImage?: ImageSourcePropType;
   iconBg?: string;
@@ -38,7 +36,7 @@ export function SettingsRow({
           ) : emoji ? (
             <Text style={{ fontSize: rw(18) }}>{emoji}</Text>
           ) : icon ? (
-            <Ionicons name={icon} size={rw(19)} color={iconColor} />
+            <MaterialIcons name={icon as any} size={rw(19)} color={iconColor} />
           ) : null}
         </View>
         <View style={styles.textBlock}>
@@ -49,7 +47,7 @@ export function SettingsRow({
             </Text>
           ) : null}
         </View>
-        <Ionicons name="chevron-forward" size={rw(17)} color={colors.textMuted} />
+        <MaterialIcons name="chevron-right" size={rw(17)} color={colors.textMuted} />
       </TouchableOpacity>
       {showDivider && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
     </>
@@ -57,7 +55,7 @@ export function SettingsRow({
 }
 
 export interface SettingsSwitchRowProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: string; // MaterialIcons name
   iconBg?: string;
   iconColor?: string;
   label: string;
@@ -76,7 +74,7 @@ export function SettingsSwitchRow({
     <>
       <View style={styles.row}>
         <View style={[styles.iconBox, { backgroundColor: bg }]}>
-          <Ionicons name={icon} size={rw(19)} color={iconColor} />
+          <MaterialIcons name={icon as any} size={rw(19)} color={iconColor} />
         </View>
         <Text style={[styles.label, { flex: 1 }]}>{label}</Text>
         <Switch
@@ -92,23 +90,9 @@ export function SettingsSwitchRow({
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: rw(14),
-    gap: rw(12),
-  },
-  iconBox: {
-    width: rw(36),
-    height: rw(36),
-    borderRadius: rw(10),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconImage: {
-    width: rw(22),
-    height: rw(22),
-  },
+  row: { flexDirection: 'row', alignItems: 'center', padding: rw(14), gap: rw(12) },
+  iconBox: { width: rw(36), height: rw(36), borderRadius: rw(10), alignItems: 'center', justifyContent: 'center' },
+  iconImage: { width: rw(22), height: rw(22) },
   textBlock: { flex: 1, gap: rh(2) },
   label: { color: colors.text, fontSize: rf(15), fontWeight: '500' },
   value: { color: colors.textMuted, fontSize: rf(12) },

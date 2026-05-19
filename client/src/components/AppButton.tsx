@@ -10,7 +10,7 @@ import {
   TouchableOpacity, Text, ActivityIndicator,
   StyleSheet, ViewStyle, TextStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 
@@ -22,7 +22,7 @@ export interface AppButtonProps {
   variant?: ButtonVariant;
   loading?: boolean;
   disabled?: boolean;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: string;
   fullWidth?: boolean;
   style?: ViewStyle;
 }
@@ -59,7 +59,7 @@ export function AppButton({
       ) : (
         <>
           {icon && (
-            <Ionicons name={icon} size={rw(18)} color={v.text} style={styles.icon} />
+            <MaterialIcons name={icon as any} size={rw(18)} color={v.text} style={styles.icon} />
           )}
           <Text style={[styles.label, { color: v.text }]}>{label}</Text>
         </>

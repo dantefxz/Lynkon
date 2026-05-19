@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { TouchableOpacity } from 'react-native';
 import { platformApi } from '@/services/api';
 import { rw, rh, rf, rs, SCREEN_WIDTH } from '@/utils/responsive';
@@ -98,7 +98,7 @@ export default function GameDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { top: rh(16), left: rw(16) }]}>
-          <Ionicons name="arrow-back" size={rw(24)} color={colors.text} />
+          <MaterialIcons name="arrow-back" size={rw(24)} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.notFound}>
           <Text style={{ color: colors.textMuted, fontSize: rf(16) }}>Juego no encontrado</Text>
@@ -120,7 +120,7 @@ export default function GameDetailScreen() {
           <Image source={{ uri: game.cover }} style={styles.cover} resizeMode="cover" />
           <View style={styles.coverOverlay} />
           <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { top: rh(16), left: rw(16), width: rw(40), height: rw(40), borderRadius: rw(20) }]}>
-            <Ionicons name="arrow-back" size={rw(22)} color="#fff" />
+            <MaterialIcons name="arrow-back" size={rw(22)} color="#fff" />
           </TouchableOpacity>
           <View style={[styles.rankBadge, { top: rh(16), right: rw(16), backgroundColor: colors.purple }]}>
             <Text style={styles.rankText}>#{game.rank}</Text>

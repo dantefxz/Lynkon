@@ -1,29 +1,107 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 
+// ─── Validación de contraseña (misma lógica que el back) ─────────────────────
+interface PasswordRule {
+  key: string;
+  label: string;
+  check: (p: string) => boolean;
+}
+
+const PASSWORD_RULES: PasswordRule[] = [
+  {
+    key: 'minLength',
+    label: 'Al menos 8 caracteres',
+    check: (p) => p.length >= 8,
+  },
+  {
+    key: 'minLetters',
+    label: 'Al menos 6 letras',
+    check: (p) => (p.match(/[a-zA-Z]/g) || []).length >= 6,
+  },
+  {
+    key: 'minNumbers',
+    label: 'Al menos 2 números',
+    check: (p) => (p.match(/[0-9]/g) || []).length >= 2,
+  },
+];
+
+function usePasswordValidation(password: string) {
+  return useMemo(() => {
+    const results = PASSWORD_RULES.map((rule) => ({
+      ...rule,
+      passed: rule.check(password),
+    }));
+    const allPassed = results.every((r) => r.passed);
+    return { results, allPassed };
+  }, [password]);
+}
+
+// ─── Componente de regla individual ──────────────────────────────────────────
+function RuleRow({ label, passed, touched }: { label: string; passed: boolean; touched: boolean }) {
+  const { colors } = useTheme();
+
+  const color = !touched
+    ? colors.textMuted
+    : passed
+    ? '#22C55E'
+    : '#EF4444';
+
+  const icon = !touched
+    ? 'radio-button-unchecked'
+    : passed
+    ? 'check-circle'
+    : 'cancel';
+
+  return (
+    <View style={ruleStyles.row}>
+      <MaterialIcons name={icon as any} size={rw(15)} color={color} />
+      <Text style={[ruleStyles.label, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
+const ruleStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: rw(7) },
+  label: { fontSize: rf(12) },
+});
+
+// ─── Pantalla principal ───────────────────────────────────────────────────────
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
   const { colors } = useTheme();
+
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const { results: passwordRules, allPassed: passwordOk } = usePasswordValidation(password);
+
+  const allFieldsFilled =
+    username.trim() && email.trim() && birthDate.trim() && passwordOk;
 
   const handleRegister = async () => {
     if (!username.trim() || !email.trim() || !password.trim() || !birthDate.trim()) {
       Alert.alert('Error', 'Por favor completá todos los campos');
+      return;
+    }
+    if (!passwordOk) {
+      setPasswordTouched(true);
+      Alert.alert('Contraseña inválida', 'La contraseña no cumple todos los requisitos');
       return;
     }
     setLoading(true);
@@ -38,28 +116,81 @@ export default function RegisterScreen() {
   };
 
   const fields = [
-    { label: 'Usuario', value: username, setter: setUsername, icon: 'person-outline', placeholder: 'tu_usuario', type: 'default' },
-    { label: 'Email', value: email, setter: setEmail, icon: 'mail-outline', placeholder: 'tu@email.com', type: 'email-address' },
-    { label: 'Fecha de nacimiento', value: birthDate, setter: setBirthDate, icon: 'calendar-outline', placeholder: 'YYYY-MM-DD', type: 'default' },
+    {
+      label: 'Usuario',
+      value: username,
+      setter: setUsername,
+      icon: 'person-outline',
+      placeholder: 'tu_usuario',
+      type: 'default',
+    },
+    {
+      label: 'Email',
+      value: email,
+      setter: setEmail,
+      icon: 'mail-outline',
+      placeholder: 'tu@email.com',
+      type: 'email-address',
+    },
+    {
+      label: 'Fecha de nacimiento',
+      value: birthDate,
+      setter: setBirthDate,
+      icon: 'calendar-today',
+      placeholder: 'YYYY-MM-DD',
+      type: 'default',
+    },
   ];
+
+  // Color del borde del input de contraseña
+  const passwordBorderColor = !passwordTouched
+    ? colors.cardBorder
+    : passwordOk
+    ? '#22C55E'
+    : '#EF4444';
+
+  // Progreso visual (0–3 reglas cumplidas)
+  const passedCount = passwordRules.filter((r) => r.passed).length;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={rw(24)} color={colors.text} />
+              <MaterialIcons name="arrow-back" size={rw(24)} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>Registrarse</Text>
+            <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>
+              Registrarse
+            </Text>
           </View>
 
           <View style={styles.form}>
+            {/* Campos estándar */}
             {fields.map(({ label, value, setter, icon, placeholder, type }) => (
               <View key={label} style={styles.field}>
-                <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>{label}</Text>
-                <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                  <Ionicons name={icon as any} size={rw(20)} color={colors.purple} style={styles.inputIcon} />
+                <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
+                  {label}
+                </Text>
+                <View
+                  style={[
+                    styles.inputRow,
+                    { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                  ]}
+                >
+                  <MaterialIcons
+                    name={icon as any}
+                    size={rw(20)}
+                    color={colors.purple}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
                     placeholder={placeholder}
@@ -74,40 +205,126 @@ export default function RegisterScreen() {
               </View>
             ))}
 
+            {/* Campo contraseña */}
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>Contraseña</Text>
-              <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <Ionicons name="lock-closed-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
+              <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
+                Contraseña
+              </Text>
+              <View
+                style={[
+                  styles.inputRow,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: passwordBorderColor,
+                    borderWidth: passwordTouched ? 1.5 : 1,
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name="lock-outline"
+                  size={rw(20)}
+                  color={passwordTouched ? passwordBorderColor : colors.purple}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
                   placeholder="••••••••"
                   placeholderTextColor={colors.textMuted}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(v) => {
+                    setPassword(v);
+                    if (!passwordTouched && v.length > 0) setPasswordTouched(true);
+                  }}
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={rw(20)} color={colors.textMuted} />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                >
+                  <MaterialIcons
+                    name={showPassword ? 'visibility-off' : 'visibility'}
+                    size={rw(20)}
+                    color={colors.textMuted}
+                  />
                 </TouchableOpacity>
               </View>
+
+              {/* Reglas de contraseña — aparecen al empezar a escribir */}
+              {passwordTouched && (
+                <View
+                  style={[
+                    styles.rulesCard,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: passwordOk ? '#22C55E33' : colors.cardBorder,
+                    },
+                  ]}
+                >
+                  {/* Barra de progreso */}
+                  <View style={[styles.progressTrack, { backgroundColor: colors.purpleMuted }]}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${(passedCount / PASSWORD_RULES.length) * 100}%`,
+                          backgroundColor:
+                            passedCount === PASSWORD_RULES.length
+                              ? '#22C55E'
+                              : passedCount >= 2
+                              ? '#EAB308'
+                              : '#EF4444',
+                        },
+                      ]}
+                    />
+                  </View>
+
+                  {/* Lista de reglas */}
+                  <View style={styles.rulesList}>
+                    {passwordRules.map((rule) => (
+                      <RuleRow
+                        key={rule.key}
+                        label={rule.label}
+                        passed={rule.passed}
+                        touched={passwordTouched}
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
 
+            {/* Botón registrarse */}
             <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: colors.purple, opacity: loading ? 0.7 : 1 }]}
+              style={[
+                styles.submitButton,
+                {
+                  backgroundColor: allFieldsFilled ? colors.purple : colors.purpleMuted,
+                  borderWidth: 1,
+                  borderColor: allFieldsFilled ? colors.purple : colors.purpleBorder,
+                  opacity: loading ? 0.7 : 1,
+                },
+              ]}
               onPress={handleRegister}
               disabled={loading}
               activeOpacity={0.8}
             >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={[styles.submitText, { fontSize: rf(16) }]}>Crear cuenta</Text>
-              }
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={[styles.submitText, { fontSize: rf(16) }]}>Crear cuenta</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.loginRow}>
-              <Text style={{ color: colors.textMuted, fontSize: rf(14) }}>¿Ya tenés cuenta? </Text>
+              <Text style={{ color: colors.textMuted, fontSize: rf(14) }}>
+                ¿Ya tenés cuenta?{' '}
+              </Text>
               <TouchableOpacity onPress={() => router.push('/auth/login')}>
-                <Text style={{ color: colors.purple, fontSize: rf(14), fontWeight: '600' }}>Iniciá sesión</Text>
+                <Text style={{ color: colors.purple, fontSize: rf(14), fontWeight: '600' }}>
+                  Iniciá sesión
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -119,20 +336,56 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: rs.md, paddingVertical: rh(14), borderBottomWidth: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: rs.md,
+    paddingVertical: rh(14),
+    borderBottomWidth: 1,
+  },
   backButton: { padding: rs.sm, marginRight: rs.sm },
   headerTitle: { fontWeight: '600' },
   form: { padding: rs.xl, gap: rh(18) },
   field: { gap: rh(8) },
   label: { fontWeight: '500' },
   inputRow: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: rw(12),
-    borderWidth: 1, paddingHorizontal: rs.md, paddingVertical: rh(4),
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: rw(12),
+    borderWidth: 1,
+    paddingHorizontal: rs.md,
+    paddingVertical: rh(4),
   },
   inputIcon: { marginRight: rs.md },
   input: { flex: 1, paddingVertical: rh(12) },
   eyeButton: { padding: rs.sm },
-  submitButton: { paddingVertical: rh(16), borderRadius: rw(12), alignItems: 'center', marginTop: rh(8) },
+
+  // Tarjeta de reglas
+  rulesCard: {
+    borderRadius: rw(12),
+    borderWidth: 1,
+    padding: rw(14),
+    gap: rh(10),
+    marginTop: rh(2),
+  },
+  progressTrack: {
+    height: rh(4),
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+    // transición suave (RN no tiene transition, pero el rerender es suficientemente rápido)
+  },
+  rulesList: { gap: rh(7) },
+
+  submitButton: {
+    paddingVertical: rh(16),
+    borderRadius: rw(12),
+    alignItems: 'center',
+    marginTop: rh(8),
+  },
   submitText: { color: '#fff', fontWeight: '600' },
   loginRow: { flexDirection: 'row', justifyContent: 'center' },
 });

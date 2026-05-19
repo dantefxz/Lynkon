@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { userApi } from '@/services/api';
@@ -52,7 +52,7 @@ export default function EditProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { backgroundColor: colors.backgroundGrad, borderBottomColor: colors.cardBorder }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={rw(24)} color={colors.purple} />
+            <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>Editar Perfil</Text>
         </View>
@@ -63,7 +63,7 @@ export default function EditProfileScreen() {
               <Image source={{ uri: selectedAvatar }} style={styles.avatar} />
             </View>
             <TouchableOpacity style={[styles.changeAvatarBtn, { backgroundColor: colors.purple }]} onPress={() => setShowPicker(!showPicker)}>
-              <Ionicons name="camera-outline" size={rw(16)} color="#fff" />
+              <MaterialIcons name="photo-camera" size={rw(16)} color="#fff" />
               <Text style={[styles.changeAvatarText, { fontSize: rf(14) }]}>Cambiar foto</Text>
             </TouchableOpacity>
           </View>
@@ -89,7 +89,7 @@ export default function EditProfileScreen() {
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>Nombre de usuario</Text>
             <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              <Ionicons name="person-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
+              <MaterialIcons name="person-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
                 value={name}

@@ -6,7 +6,7 @@
  */
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 import { AppButton } from './AppButton';
@@ -48,7 +48,7 @@ export function PlayerCard({
             styles.avatarFallback,
             { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, backgroundColor: colors.purpleMuted },
           ]}>
-            <Ionicons name="person" size={rw(22)} color={colors.purple} />
+            <MaterialIcons name="person-outline" size={rw(22)} color={colors.purple} />
           </View>
         )}
         {/* Indicador online */}

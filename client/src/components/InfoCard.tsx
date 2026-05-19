@@ -6,13 +6,13 @@
  */
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 
 export interface InfoCardProps {
-  /** Ícono de Ionicons o emoji string */
-  icon?: keyof typeof Ionicons.glyphMap;
+  /** Ícono de MaterialIcons o emoji string */
+  icon?: string;
   emoji?: string;
   iconBg?: string;
   iconColor?: string;
@@ -40,7 +40,7 @@ export function InfoCard({
       {emoji ? (
         <Text style={{ fontSize: rw(20) }}>{emoji}</Text>
       ) : icon ? (
-        <Ionicons name={icon} size={rw(20)} color={iconColor} />
+        <MaterialIcons name={icon as any} size={rw(20)} color={iconColor} />
       ) : null}
     </View>
   );

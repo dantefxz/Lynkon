@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 
@@ -24,13 +24,13 @@ export default function ForgotPasswordScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
           <TouchableOpacity onPress={() => router.push('/auth/login')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={rw(24)} color={colors.text} />
+            <MaterialIcons name="arrow-back" size={rw(24)} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>Recuperar contraseña</Text>
         </View>
         <View style={styles.successContainer}>
           <View style={[styles.successIcon, { backgroundColor: colors.purpleDim }]}>
-            <Ionicons name="checkmark-circle" size={rw(48)} color={colors.purple} />
+            <MaterialIcons name="check-circle-outline" size={rw(48)} color={colors.purple} />
           </View>
           <Text style={[styles.successTitle, { color: colors.text, fontSize: rf(22) }]}>¡Correo enviado!</Text>
           <Text style={[styles.successMsg, { color: colors.textMuted, fontSize: rf(14) }]}>
@@ -48,7 +48,7 @@ export default function ForgotPasswordScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={rw(24)} color={colors.text} />
+          <MaterialIcons name="arrow-back" size={rw(24)} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>Recuperar contraseña</Text>
       </View>
@@ -59,7 +59,7 @@ export default function ForgotPasswordScreen() {
         <View style={styles.field}>
           <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>Email</Text>
           <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            <Ionicons name="mail-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
+            <MaterialIcons name="mail-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
             <TextInput
               style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
               placeholder="tu@email.com"

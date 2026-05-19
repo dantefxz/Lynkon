@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View, Image, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
@@ -18,7 +18,7 @@ function AvatarTabIcon({ focused, avatar, colors }: { focused: boolean; avatar: 
         <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.purpleDim }}>
-          <Ionicons name="person" size={rw(20)} color={colors.purple} />
+          <MaterialIcons name="person-outline" size={rw(20)} color={colors.purple} />
         </View>
       )}
     </View>
@@ -51,9 +51,18 @@ export default function TabsLayout() {
         options={{
           title: 'Social',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={rw(24)} color={color} />
+            <MaterialIcons name={focused ? 'forum' : 'chat-bubble-outline'} size={rw(24)} color={color} />
           ),
         }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => {
+            const state = navigation.getState();
+            const currentRoute = state?.routes?.[state.index];
+            if (currentRoute?.name === route.name) {
+              e.preventDefault();
+            }
+          },
+        })}
       />
       <Tabs.Screen
         name="profile"
@@ -69,7 +78,7 @@ export default function TabsLayout() {
         options={{
           title: 'Ajustes',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={rw(24)} color={color} />
+            <MaterialIcons name={focused ? 'settings' : 'settings'} size={rw(24)} color={color} />
           ),
         }}
       />
