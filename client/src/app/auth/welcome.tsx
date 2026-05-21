@@ -13,9 +13,8 @@ export default function WelcomeScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         <View style={styles.logoSection}>
-          <View style={[styles.logoBox, { backgroundColor: colors.purple, shadowColor: colors.purple }]}>
-            <Image source={require('../../../assets/Logo.png')} style={styles.logoImage} resizeMode="contain" />
-          </View>
+        
+          <Image source={require('../../../assets/Logo.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={[styles.title, { color: colors.text, fontSize: rf(36) }]}>Lynkon</Text>
           <Text style={[styles.subtitle, { color: colors.purple, fontSize: rf(16) }]}>
             Tu plataforma de gaming unificada
