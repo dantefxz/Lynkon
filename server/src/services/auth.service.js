@@ -43,7 +43,7 @@ const register = async (data) => {
   await db.collection('users').doc(uid).set(userDoc);
 
   const idToken = jwt.sign(
-    { uid, email: data.email, username: userDoc.username },
+    { uid, email: data.email, username: userDoc.username, isUnder16: userDoc.isUnder16 },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -79,7 +79,7 @@ const login = async (email, password) => {
 
   const u = userSnap.data();
   const idToken = jwt.sign(
-    { uid: u.uid, email: u.email, username: u.username },
+    { uid: u.uid, email: u.email, username: u.username, isUnder16: u.isUnder16 },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -91,3 +91,67 @@ const login = async (email, password) => {
 };
 
 module.exports = { register, login };
+
+const forgotPassword = async (email) => {
+  if (!email || typeof email !== 'string' || !email.includes('@'))
+    throw Object.assign(new Error('A valid email is required'), { status: 400 });
+
+  const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+  if (!FIREBASE_API_KEY)
+    throw Object.assign(new Error('Server misconfiguration: missing FIREBASE_API_KEY'), { status: 500 });
+
+  // Verificamos que el email exista en nuestra DB antes de llamar a Firebase
+  const snap = await db.collection('users').where('email', '==', email.trim().toLowerCase()).limit(1).get();
+  if (snap.empty)
+    // Por seguridad respondemos igual si el email no existe (evitar user enumeration)
+    return { message: 'If that email exists, a reset link has been sent.' };
+
+  try {
+    await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
+      { requestType: 'PASSWORD_RESET', email: email.trim().toLowerCase() }
+    );
+  } catch (err) {
+    const code = err.response?.data?.error?.message;
+    if (code === 'EMAIL_NOT_FOUND') {
+      // Silencioso por seguridad
+      return { message: 'If that email exists, a reset link has been sent.' };
+    }
+    throw err;
+  }
+
+  return { message: 'If that email exists, a reset link has been sent.' };
+};
+
+const resetPassword = async (oobCode, newPassword) => {
+  if (!oobCode)      throw Object.assign(new Error('oobCode is required'), { status: 400 });
+  if (!newPassword)  throw Object.assign(new Error('newPassword is required'), { status: 400 });
+
+  const letterCount = (newPassword.match(/[a-zA-Z]/g) || []).length;
+  const numberCount = (newPassword.match(/[0-9]/g) || []).length;
+  const errors = [];
+  if (letterCount < 6) errors.push('password must contain at least 6 letters');
+  if (numberCount < 2) errors.push('password must contain at least 2 numbers');
+  if (newPassword.length < 8) errors.push('password must be at least 8 characters');
+  if (errors.length) throw Object.assign(new Error(errors.join(', ')), { status: 400 });
+
+  const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+  if (!FIREBASE_API_KEY)
+    throw Object.assign(new Error('Server misconfiguration: missing FIREBASE_API_KEY'), { status: 500 });
+
+  try {
+    await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${FIREBASE_API_KEY}`,
+      { oobCode, newPassword }
+    );
+  } catch (err) {
+    const code = err.response?.data?.error?.message;
+    if (['EXPIRED_OOB_CODE', 'INVALID_OOB_CODE'].includes(code))
+      throw Object.assign(new Error('Reset code is invalid or has expired'), { status: 400 });
+    throw err;
+  }
+
+  return { message: 'Password updated successfully' };
+};
+
+module.exports = { register, login, forgotPassword, resetPassword };

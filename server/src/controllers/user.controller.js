@@ -104,8 +104,53 @@ const getRecommendations = async (req, res, next) => {
   }
 };
 
+
+// ─── Favoritos ────────────────────────────────────────────────────────────────
+
+const getFavorites = async (req, res, next) => {
+  try {
+    const games = await userService.getFavoriteGames(req.params.id);
+    return res.status(200).json({ favoriteGames: games });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+const addFavorite = async (req, res, next) => {
+  try {
+    const { gameId, name, platform } = req.body;
+    const errors = [];
+    if (!gameId)   errors.push('gameId is required');
+    if (!name)     errors.push('name is required');
+    if (!platform) errors.push('platform is required');
+    if (!['steam', 'psn', 'xbox'].includes(platform))
+      errors.push("platform must be 'steam', 'psn' or 'xbox'");
+    if (errors.length) return res.status(400).json({ errors });
+
+    const entry = await userService.addFavoriteGame(req.params.id, { gameId, name, platform });
+    return res.status(201).json({ message: 'Game added to favorites', game: entry });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+const removeFavorite = async (req, res, next) => {
+  try {
+    const { gameId } = req.params;
+    const { platform } = req.query; // opcional: filtra por plataforma si hay mismo gameId en varias
+    const result = await userService.removeFavoriteGame(req.params.id, gameId, platform);
+    return res.status(200).json({ message: 'Game removed from favorites', ...result });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
 module.exports = {
   getMyProfile, getProfile, createProfile, updateProfile,
   getSettings, createSettings, updateSettings,
   deleteUser, searchUsers, getRecommendations,
+  getFavorites, addFavorite, removeFavorite,
 };

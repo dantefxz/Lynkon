@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const ctrl   = require('../controllers/friend.controller');
-const { authenticate, authorizeOwner } = require('../middleware/auth.middleware');
+const { authenticate, authorizeOwner, blockUnder16 } = require('../middleware/auth.middleware');
 
 /**
  * @swagger
@@ -23,7 +23,7 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
  *       404:
  *         description: Usuario no encontrado
  */
-router.get('/me', authenticate, ctrl.getFriends);
+router.get('/me', authenticate, blockUnder16, ctrl.getFriends);
 
 /**
  * @swagger
@@ -60,8 +60,8 @@ router.get('/me', authenticate, ctrl.getFriends);
  *       409:
  *         description: Ya son amigos o solicitud ya enviada
  */
-router.get('/me/requests',  authenticate, ctrl.getFriendRequests);
-router.post('/me/requests', authenticate, ctrl.sendFriendRequest);
+router.get('/me/requests',  authenticate, blockUnder16, ctrl.getFriendRequests);
+router.post('/me/requests', authenticate, blockUnder16, ctrl.sendFriendRequest);
 
 /**
  * @swagger
@@ -100,7 +100,7 @@ router.post('/me/requests', authenticate, ctrl.sendFriendRequest);
  *         description: Solicitud ya procesada
  */
 
-router.patch('/me/requests/:requestId', authenticate, ctrl.respondToRequest);
+router.patch('/me/requests/:requestId', authenticate, blockUnder16, ctrl.respondToRequest);
 
 /**
  * @swagger
@@ -120,6 +120,6 @@ router.patch('/me/requests/:requestId', authenticate, ctrl.respondToRequest);
  *       200:
  *         description: Amigo eliminado
  */
-router.delete('/me/:friendId', authenticate, ctrl.removeFriend);
+router.delete('/me/:friendId', authenticate, blockUnder16, ctrl.removeFriend);
 
 module.exports = router;

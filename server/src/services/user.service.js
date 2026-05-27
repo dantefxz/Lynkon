@@ -94,8 +94,62 @@ const getRecommendations = async (userId) => {
     .sort((a, b) => b.commonGamesCount - a.commonGamesCount);
 };
 
+
+// ─── Favoritos ────────────────────────────────────────────────────────────────
+// Se persiste en: users/{uid}.favoriteGames = [{ gameId, name, platform, addedAt }]
+// Límite: 20 juegos favoritos por usuario.
+
+const addFavoriteGame = async (userId, game) => {
+  const snap = await db.collection('users').doc(userId).get();
+  if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
+
+  const favorites = snap.data().favoriteGames || [];
+
+  if (favorites.find((g) => g.gameId === game.gameId && g.platform === game.platform))
+    throw Object.assign(new Error('Game is already in favorites'), { status: 409 });
+
+  if (favorites.length >= 20)
+    throw Object.assign(new Error('Favorites limit reached (max 20 games)'), { status: 422 });
+
+  const newEntry = {
+    gameId:   game.gameId,
+    name:     game.name,
+    platform: game.platform,
+    addedAt:  new Date().toISOString(),
+  };
+
+  await db.collection('users').doc(userId).update({
+    favoriteGames: [...favorites, newEntry],
+  });
+
+  return newEntry;
+};
+
+const removeFavoriteGame = async (userId, gameId, platform) => {
+  const snap = await db.collection('users').doc(userId).get();
+  if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
+
+  const favorites = snap.data().favoriteGames || [];
+  const updated   = favorites.filter(
+    (g) => !(g.gameId === gameId && (platform ? g.platform === platform : true))
+  );
+
+  if (updated.length === favorites.length)
+    throw Object.assign(new Error('Game not found in favorites'), { status: 404 });
+
+  await db.collection('users').doc(userId).update({ favoriteGames: updated });
+  return { removed: favorites.length - updated.length };
+};
+
+const getFavoriteGames = async (userId) => {
+  const snap = await db.collection('users').doc(userId).get();
+  if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
+  return snap.data().favoriteGames || [];
+};
+
 module.exports = {
   getMyProfile, getProfile, createProfile, updateProfile,
   getSettings, createSettings, updateSettings,
   deleteUser, searchUsers, getRecommendations,
+  addFavoriteGame, removeFavoriteGame, getFavoriteGames,
 };

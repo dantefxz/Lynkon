@@ -141,7 +141,68 @@ const getPlatformAchievements = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+
+// ─── Toggle visibilidad de un juego ─────────────────────────────────────────
+// Persiste en: users/{uid}/gameVisibility/{platform}_{gameId} = { hidden: bool }
+// El campo "hidden" indica si el juego NO debe mostrarse en el perfil público.
+
+const toggleGameVisibility = async (req, res, next) => {
+  try {
+    const userId   = req.user.uid;
+    const { platform, gameId } = req.params;
+
+    if (!SERVICE_MAP[platform])
+      return res.status(400).json({ error: `Unsupported platform: ${platform}` });
+
+    if (!gameId || !gameId.trim())
+      return res.status(400).json({ error: 'gameId is required' });
+
+    // Leemos el estado actual de visibilidad (si existe)
+    const visRef = db
+      .collection('users').doc(userId)
+      .collection('gameVisibility').doc(`${platform}_${gameId}`);
+
+    const snap = await visRef.get();
+    const currentlyHidden = snap.exists ? snap.data().hidden : false;
+    const newHidden = !currentlyHidden;
+
+    await visRef.set({
+      platform,
+      gameId,
+      hidden:    newHidden,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return res.status(200).json({
+      message:  `Game visibility updated`,
+      platform,
+      gameId,
+      hidden:   newHidden,
+    });
+  } catch (err) { next(err); }
+};
+
+// ─── Obtener mapa de visibilidades del usuario ───────────────────────────────
+const getGameVisibility = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+
+    const snap = await db
+      .collection('users').doc(userId)
+      .collection('gameVisibility').get();
+
+    const visibility = {};
+    snap.docs.forEach((d) => {
+      const { platform, gameId, hidden } = d.data();
+      visibility[`${platform}_${gameId}`] = { platform, gameId, hidden };
+    });
+
+    return res.status(200).json({ visibility });
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   getSupportedPlatforms, getLinkedPlatforms, linkPlatform, unlinkPlatform,
   getPlatformStats, getPlatformGames, getPlatformAchievements,
+  toggleGameVisibility, getGameVisibility,
 };

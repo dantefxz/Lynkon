@@ -35,4 +35,18 @@ const authorizeOwner = (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, authorizeOwner };
+
+/**
+ * Bloquea el acceso a rutas sociales para usuarios menores de 16 años.
+ * Usar después de `authenticate`.
+ */
+const blockUnder16 = (req, res, next) => {
+  if (req.user?.isUnder16) {
+    return res.status(403).json({
+      error: 'Social features are not available for users under 16 years old',
+    });
+  }
+  next();
+};
+
+module.exports = { authenticate, authorizeOwner, blockUnder16 };

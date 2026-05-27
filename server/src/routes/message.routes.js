@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const ctrl   = require('../controllers/message.controller');
-const { authenticate, authorizeOwner } = require('../middleware/auth.middleware');
+const { authenticate, authorizeOwner, blockUnder16 } = require('../middleware/auth.middleware');
 
 /**
  * @swagger
@@ -67,9 +67,9 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
  *       200:
  *         description: Conversación eliminada
  */
-router.get('/me',    authenticate, ctrl.getConversations);
-router.post('/me',   authenticate, ctrl.sendMessage);
-router.delete('/me', authenticate, ctrl.deleteConversation);
+router.get('/me',    authenticate, blockUnder16, ctrl.getConversations);
+router.post('/me',   authenticate, blockUnder16, ctrl.sendMessage);
+router.delete('/me', authenticate, blockUnder16, ctrl.deleteConversation);
 
 /**
  * @swagger
@@ -99,7 +99,7 @@ router.delete('/me', authenticate, ctrl.deleteConversation);
  *       200:
  *         description: Lista de mensajes ordenados por fecha
  */
-router.get('/me/:friendId',   authenticate, ctrl.getMessages);
+router.get('/me/:friendId',   authenticate, blockUnder16, ctrl.getMessages);
 
 /**
  * @swagger
@@ -130,6 +130,6 @@ router.get('/me/:friendId',   authenticate, ctrl.getMessages);
  *       200:
  *         description: Mensaje marcado como leído
  */
-router.patch('/me/:messageId', authenticate, ctrl.markAsRead);
+router.patch('/me/:messageId', authenticate, blockUnder16, ctrl.markAsRead);
 
 module.exports = router;

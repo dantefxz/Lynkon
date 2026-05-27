@@ -78,4 +78,59 @@ router.post('/register', ctrl.register);
  */
 router.post('/login', ctrl.login);
 
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Solicita un email de recuperación de contraseña
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: Email enviado (respuesta genérica por seguridad)
+ *       400:
+ *         description: Email inválido o faltante
+ */
+router.post('/forgot-password', ctrl.forgotPassword);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Restablece la contraseña usando el código del email
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [oobCode, newPassword]
+ *             properties:
+ *               oobCode:
+ *                 type: string
+ *                 description: Código recibido en el email de recuperación
+ *                 example: "ABC123xyz..."
+ *               newPassword:
+ *                 type: string
+ *                 description: Nueva contraseña (mín 6 letras, mín 2 números, 8 chars)
+ *                 example: "NewPass99"
+ *     responses:
+ *       200:
+ *         description: Contraseña actualizada exitosamente
+ *       400:
+ *         description: Código inválido/expirado o contraseña no cumple requisitos
+ */
+router.post('/reset-password', ctrl.resetPassword);
+
 module.exports = router;

@@ -165,4 +165,48 @@ router.get('/me/:platform/games', authenticate, ctrl.getPlatformGames);
  */
 router.get('/me/:platform/achievements', authenticate, ctrl.getPlatformAchievements);
 
+
+/**
+ * @swagger
+ * /platforms/me/visibility:
+ *   get:
+ *     summary: Obtiene el mapa de visibilidad de todos los juegos del usuario
+ *     tags: [Platforms]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: "Mapa de visibilidades — ej. steam_730: { platform, gameId, hidden }"
+ */
+router.get('/me/visibility', authenticate, ctrl.getGameVisibility);
+
+/**
+ * @swagger
+ * /platforms/me/{platform}/games/{gameId}/visibility:
+ *   patch:
+ *     summary: Alterna la visibilidad de un juego en el perfil público
+ *     tags: [Platforms]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: platform
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [steam, psn, xbox]
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID del juego en la plataforma (ej. "730" para CS2 en Steam)
+ *     responses:
+ *       200:
+ *         description: Visibilidad actualizada. Devuelve el nuevo estado { hidden }
+ *       400:
+ *         description: Plataforma no soportada o gameId faltante
+ */
+router.patch('/me/:platform/games/:gameId/visibility', authenticate, ctrl.toggleGameVisibility);
+
 module.exports = router;

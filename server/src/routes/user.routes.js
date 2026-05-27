@@ -264,4 +264,100 @@ router.get('/:id/recommendations', authenticate, authorizeOwner, ctrl.getRecomme
  */
 router.delete('/:id', authenticate, authorizeOwner, ctrl.deleteUser);
 
+/**
+ * @swagger
+ * /users/{id}/favorites:
+ *   get:
+ *     summary: Obtiene los juegos favoritos del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lista de juegos favoritos
+ *       404:
+ *         description: Usuario no encontrado
+ *   post:
+ *     summary: Agrega un juego a favoritos (máx. 20)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [gameId, name, platform]
+ *             properties:
+ *               gameId:
+ *                 type: string
+ *                 example: "730"
+ *               name:
+ *                 type: string
+ *                 example: "Counter-Strike 2"
+ *               platform:
+ *                 type: string
+ *                 enum: [steam, psn, xbox]
+ *                 example: "steam"
+ *     responses:
+ *       201:
+ *         description: Juego agregado a favoritos
+ *       400:
+ *         description: Campos inválidos
+ *       409:
+ *         description: El juego ya está en favoritos
+ *       422:
+ *         description: Límite de 20 favoritos alcanzado
+ */
+router.get('/:id/favorites',  authenticate,                 ctrl.getFavorites);
+router.post('/:id/favorites', authenticate, authorizeOwner, ctrl.addFavorite);
+
+/**
+ * @swagger
+ * /users/{id}/favorites/{gameId}:
+ *   delete:
+ *     summary: Elimina un juego de favoritos
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "730"
+ *       - in: query
+ *         name: platform
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [steam, psn, xbox]
+ *         description: Filtra por plataforma si el mismo gameId aparece en varias
+ *     responses:
+ *       200:
+ *         description: Juego eliminado de favoritos
+ *       404:
+ *         description: Juego no encontrado en favoritos
+ */
+router.delete('/:id/favorites/:gameId', authenticate, authorizeOwner, ctrl.removeFavorite);
+
 module.exports = router;
