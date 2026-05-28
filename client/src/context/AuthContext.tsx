@@ -7,6 +7,7 @@ interface UserProfile {
   name: string;
   avatar: string;
   email: string;
+  isUnder16: boolean;
 }
 
 interface AuthContextType {
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: profile.username || profile.name || 'Usuario',
             avatar: profile.avatar || '',
             email: profile.email || '',
+            isUnder16: profile.isUnder16 || false,
           });
           setIsAuthenticated(true);
         }
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: serverUser.username || serverUser.name || 'Usuario',
       avatar: serverUser.avatar || '',
       email: serverUser.email || email,
+      isUnder16: serverUser.isUnder16 || false,
     });
     setIsAuthenticated(true);
   };
@@ -80,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: serverUser.username || username,
       avatar: serverUser.avatar || '',
       email: email,
+      isUnder16: serverUser.isUnder16 || false,
     });
     setIsAuthenticated(true);
   };

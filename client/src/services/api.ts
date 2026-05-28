@@ -9,17 +9,13 @@ export const API_BASE_URL = 'http://10.0.2.2:3000/api';
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
 // Inject token on every request
 api.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -30,6 +26,12 @@ export const authApi = {
 
   register: (email: string, password: string, username: string, birthDate: string) =>
     api.post('/auth/register', { email, password, username, birthDate }),
+
+  forgotPassword: (email: string) =>
+    api.post('/auth/forgot-password', { email }),
+
+  resetPassword: (oobCode: string, newPassword: string) =>
+    api.post('/auth/reset-password', { oobCode, newPassword }),
 };
 
 // ─── Users ─────────────────────────────────────────────
@@ -43,6 +45,16 @@ export const userApi = {
 
   changePassword: (userId: string, currentPassword: string, newPassword: string) =>
     api.put(`/users/${userId}/password`, { currentPassword, newPassword }),
+
+  // ── Favoritos ──────────────────────────────────────
+  getFavorites: (userId: string) =>
+    api.get(`/users/${userId}/favorites`),
+
+  addFavorite: (userId: string, gameId: string, name: string, platform: string) =>
+    api.post(`/users/${userId}/favorites`, { gameId, name, platform }),
+
+  removeFavorite: (userId: string, gameId: string, platform?: string) =>
+    api.delete(`/users/${userId}/favorites/${gameId}`, { params: platform ? { platform } : {} }),
 };
 
 // ─── Platforms ─────────────────────────────────────────
@@ -62,25 +74,41 @@ export const platformApi = {
 
   getPlatformAchievements: (platform: string) =>
     api.get(`/platforms/me/${platform}/achievements`),
+
+  // ── Visibilidad de juegos ──────────────────────────
+  getGameVisibility: () => api.get('/platforms/me/visibility'),
+
+  toggleGameVisibility: (platform: string, gameId: string) =>
+    api.patch(`/platforms/me/${platform}/games/${gameId}/visibility`),
 };
 
 // ─── Friends ───────────────────────────────────────────
 export const friendApi = {
-  getFriends: () => api.get('/friends'),
+  getFriends: () => api.get('/friends/me'),
+
+  getFriendRequests: () => api.get('/friends/me/requests'),
 
   sendFriendRequest: (targetUserId: string) =>
-    api.post('/friends/request', { targetUserId }),
+    api.post('/friends/me/requests', { targetUserId }),
 
-  acceptFriendRequest: (requestId: string) =>
-    api.put(`/friends/request/${requestId}/accept`),
+  respondToRequest: (requestId: string, action: boolean) =>
+    api.patch(`/friends/me/requests/${requestId}`, { action }),
+
+  removeFriend: (friendId: string) => api.delete(`/friends/me/${friendId}`),
 };
 
 // ─── Messages ──────────────────────────────────────────
 export const messageApi = {
-  getConversation: (userId: string) => api.get(`/messages/${userId}`),
+  getConversations: () => api.get('/messages/me'),
+
+  getMessages: (friendId: string) => api.get(`/messages/me/${friendId}`),
 
   sendMessage: (toUserId: string, message: string) =>
-    api.post('/messages', { toUserId, message }),
+    api.post('/messages/me', { toUserId, message }),
+
+  deleteConversation: (friendId: string) => api.delete('/messages/me'),
+
+  markAsRead: (messageId: string) => api.patch(`/messages/me/${messageId}`),
 };
 
 export default api;
