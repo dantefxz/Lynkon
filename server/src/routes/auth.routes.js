@@ -40,7 +40,7 @@ const ctrl   = require('../controllers/auth.controller');
  *                 example: "email"
  *     responses:
  *       201:
- *         description: Usuario registrado exitosamente. Devuelve idToken para uso inmediato
+ *         description: Usuario registrado exitosamente
  *       400:
  *         description: Campos inválidos o faltantes
  *       409:
@@ -64,17 +64,13 @@ router.post('/register', ctrl.register);
  *             properties:
  *               email:
  *                 type: string
- *                 example: "user@example.com"
  *               password:
  *                 type: string
- *                 example: "SecurePass123"
  *     responses:
  *       200:
- *         description: Login exitoso. Devuelve idToken y datos del usuario
+ *         description: Login exitoso
  *       401:
  *         description: Credenciales inválidas
- *       404:
- *         description: Usuario no encontrado
  */
 router.post('/login', ctrl.login);
 
@@ -82,7 +78,7 @@ router.post('/login', ctrl.login);
  * @swagger
  * /auth/forgot-password:
  *   post:
- *     summary: Solicita un email de recuperación de contraseña
+ *     summary: Envía un código numérico de 6 dígitos al email del usuario
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -97,7 +93,7 @@ router.post('/login', ctrl.login);
  *                 example: "user@example.com"
  *     responses:
  *       200:
- *         description: Email enviado (respuesta genérica por seguridad)
+ *         description: Código enviado (respuesta genérica por seguridad)
  *       400:
  *         description: Email inválido o faltante
  */
@@ -105,9 +101,9 @@ router.post('/forgot-password', ctrl.forgotPassword);
 
 /**
  * @swagger
- * /auth/reset-password:
+ * /auth/verify-reset-code:
  *   post:
- *     summary: Restablece la contraseña usando el código del email
+ *     summary: Verifica que el código de 6 dígitos sea válido y no haya expirado
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -115,15 +111,44 @@ router.post('/forgot-password', ctrl.forgotPassword);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [oobCode, newPassword]
+ *             required: [email, code]
  *             properties:
- *               oobCode:
+ *               email:
  *                 type: string
- *                 description: Código recibido en el email de recuperación
- *                 example: "ABC123xyz..."
+ *                 example: "user@example.com"
+ *               code:
+ *                 type: string
+ *                 example: "482910"
+ *     responses:
+ *       200:
+ *         description: Código válido
+ *       400:
+ *         description: Código inválido o expirado
+ */
+router.post('/verify-reset-code', ctrl.verifyResetCode);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Restablece la contraseña usando el código numérico recibido por email
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, code, newPassword]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "user@example.com"
+ *               code:
+ *                 type: string
+ *                 example: "482910"
  *               newPassword:
  *                 type: string
- *                 description: Nueva contraseña (mín 6 letras, mín 2 números, 8 chars)
  *                 example: "NewPass99"
  *     responses:
  *       200:

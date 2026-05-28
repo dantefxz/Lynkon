@@ -9,7 +9,7 @@ import { rw, rh, rf, rs, SCREEN_WIDTH } from '@/utils/responsive';
 import { colors } from '@/theme/colors';
 import { InfoCard, AppButton } from '@/components';
 
-const PLATFORM_ICONS: Record<string, string> = { steam: '🎮', playstation: '🎯', nintendo: '🕹️', xbox: '🟢' };
+const PLATFORM_ICONS: Record<string, string> = { steam: '🎮', playstation: '🎯', xbox: '🟢' };
 
 interface GameDetail {
   id: string;

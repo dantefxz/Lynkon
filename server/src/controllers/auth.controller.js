@@ -28,7 +28,6 @@ const login = async (req, res, next) => {
   }
 };
 
-
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -42,10 +41,13 @@ const forgotPassword = async (req, res, next) => {
   }
 };
 
-const resetPassword = async (req, res, next) => {
+const verifyResetCode = async (req, res, next) => {
   try {
-    const { oobCode, newPassword } = req.body;
-    const result = await authService.resetPassword(oobCode, newPassword);
+    const { email, code } = req.body;
+    if (!email || !code)
+      return res.status(400).json({ errors: ['email and code are required'] });
+
+    const result = await authService.verifyResetCode(email, code);
     return res.status(200).json(result);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -53,4 +55,15 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, forgotPassword, resetPassword };
+const resetPassword = async (req, res, next) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    const result = await authService.resetPassword(email, code, newPassword);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+module.exports = { register, login, forgotPassword, verifyResetCode, resetPassword };

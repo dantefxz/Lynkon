@@ -2,7 +2,7 @@
  * AddGameModal
  * -----------
  * Modal de dos pasos:
- *  1. Seleccionar plataforma (Steam / PSN / Nintendo Switch)
+ *  1. Seleccionar plataforma (Steam / PSN / Xbox)
  *  2. Ver los juegos de esa plataforma y togglear visibilidad
  *
  * Props:

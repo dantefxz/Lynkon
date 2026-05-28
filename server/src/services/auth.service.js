@@ -2,9 +2,12 @@ const { db, auth } = require('../config/firebase');
 const { generateUsername } = require('../utils/username.utils');
 const jwt  = require('jsonwebtoken');
 const axios = require('axios');
+const { Resend } = require('resend');
+const crypto = require('crypto');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'lynkon-dev-secret-key-2026';
 
+// ─── Register ─────────────────────────────────────────────────────────────────
 const register = async (data) => {
   let userRecord;
   try {
@@ -54,6 +57,7 @@ const register = async (data) => {
   };
 };
 
+// ─── Login ────────────────────────────────────────────────────────────────────
 const login = async (email, password) => {
   const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
   if (!FIREBASE_API_KEY)
@@ -90,42 +94,103 @@ const login = async (email, password) => {
   };
 };
 
-module.exports = { register, login };
-
+// ─── Forgot Password — genera código numérico y manda email con Resend ─────────
 const forgotPassword = async (email) => {
   if (!email || typeof email !== 'string' || !email.includes('@'))
     throw Object.assign(new Error('A valid email is required'), { status: 400 });
 
-  const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
-  if (!FIREBASE_API_KEY)
-    throw Object.assign(new Error('Server misconfiguration: missing FIREBASE_API_KEY'), { status: 500 });
+  const normalizedEmail = email.trim().toLowerCase();
 
-  // Verificamos que el email exista en nuestra DB antes de llamar a Firebase
-  const snap = await db.collection('users').where('email', '==', email.trim().toLowerCase()).limit(1).get();
+  const snap = await db.collection('users').where('email', '==', normalizedEmail).limit(1).get();
+
+  // Por seguridad respondemos igual aunque no exista (evitar user enumeration)
   if (snap.empty)
-    // Por seguridad respondemos igual si el email no existe (evitar user enumeration)
-    return { message: 'If that email exists, a reset link has been sent.' };
+    return { message: 'If that email exists, a reset code has been sent.' };
+
+  // Generar código numérico de 6 dígitos
+  const code = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
+
+  await db.collection('passwordResetCodes').doc(normalizedEmail).set({
+    code,
+    expiresAt,
+    used: false,
+    createdAt: new Date().toISOString(),
+  });
 
   try {
-    await axios.post(
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
-      { requestType: 'PASSWORD_RESET', email: email.trim().toLowerCase() }
-    );
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from: 'Lynkon <onboarding@resend.dev>',
+      to: normalizedEmail,
+      subject: 'Tu código para restablecer contraseña — Lynkon',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #0f0f0f; color: #ffffff; border-radius: 12px; overflow: hidden;">
+          <div style="background: #7c3aed; padding: 32px; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px; letter-spacing: 2px;">LYNKON</h1>
+          </div>
+          <div style="padding: 32px;">
+            <h2 style="color: #a78bfa; margin-top: 0;">Restablecer contraseña</h2>
+            <p style="color: #9ca3af; line-height: 1.6;">
+              Recibimos una solicitud para restablecer la contraseña de tu cuenta.
+              Ingresá el siguiente código en la app:
+            </p>
+            <div style="background: #1a1a2e; border: 2px solid #7c3aed; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+              <span style="font-size: 42px; font-weight: 700; letter-spacing: 12px; color: #a78bfa; font-family: monospace;">
+                ${code}
+              </span>
+            </div>
+            <p style="color: #6b7280; font-size: 13px;">
+              ⏱ Este código expira en <strong style="color: #9ca3af;">15 minutos</strong>.
+            </p>
+            <p style="color: #6b7280; font-size: 13px;">
+              Si no solicitaste esto, podés ignorar este email. Tu contraseña no será cambiada.
+            </p>
+          </div>
+          <div style="background: #1a1a1a; padding: 16px; text-align: center;">
+            <p style="color: #4b5563; font-size: 12px; margin: 0;">© 2026 Lynkon. Todos los derechos reservados.</p>
+          </div>
+        </div>
+      `,
+    });
   } catch (err) {
-    const code = err.response?.data?.error?.message;
-    if (code === 'EMAIL_NOT_FOUND') {
-      // Silencioso por seguridad
-      return { message: 'If that email exists, a reset link has been sent.' };
-    }
-    throw err;
+    console.error('Error sending reset email:', err.message);
+    throw Object.assign(new Error('Could not send reset email. Please try again later.'), { status: 500 });
   }
 
-  return { message: 'If that email exists, a reset link has been sent.' };
+  return { message: 'If that email exists, a reset code has been sent.' };
 };
 
-const resetPassword = async (oobCode, newPassword) => {
-  if (!oobCode)      throw Object.assign(new Error('oobCode is required'), { status: 400 });
-  if (!newPassword)  throw Object.assign(new Error('newPassword is required'), { status: 400 });
+// ─── Verify Code ──────────────────────────────────────────────────────────────
+const verifyResetCode = async (email, code) => {
+  if (!email || !code)
+    throw Object.assign(new Error('email and code are required'), { status: 400 });
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const doc = await db.collection('passwordResetCodes').doc(normalizedEmail).get();
+
+  if (!doc.exists)
+    throw Object.assign(new Error('Invalid or expired code'), { status: 400 });
+
+  const data = doc.data();
+
+  if (data.used)
+    throw Object.assign(new Error('This code has already been used'), { status: 400 });
+
+  if (new Date() > new Date(data.expiresAt))
+    throw Object.assign(new Error('Code has expired. Request a new one.'), { status: 400 });
+
+  if (data.code !== code.trim())
+    throw Object.assign(new Error('Invalid code'), { status: 400 });
+
+  return { message: 'Code verified successfully' };
+};
+
+// ─── Reset Password ───────────────────────────────────────────────────────────
+const resetPassword = async (email, code, newPassword) => {
+  if (!email)       throw Object.assign(new Error('email is required'), { status: 400 });
+  if (!code)        throw Object.assign(new Error('code is required'), { status: 400 });
+  if (!newPassword) throw Object.assign(new Error('newPassword is required'), { status: 400 });
 
   const letterCount = (newPassword.match(/[a-zA-Z]/g) || []).length;
   const numberCount = (newPassword.match(/[0-9]/g) || []).length;
@@ -135,23 +200,33 @@ const resetPassword = async (oobCode, newPassword) => {
   if (newPassword.length < 8) errors.push('password must be at least 8 characters');
   if (errors.length) throw Object.assign(new Error(errors.join(', ')), { status: 400 });
 
-  const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
-  if (!FIREBASE_API_KEY)
-    throw Object.assign(new Error('Server misconfiguration: missing FIREBASE_API_KEY'), { status: 500 });
+  const normalizedEmail = email.trim().toLowerCase();
+  const doc = await db.collection('passwordResetCodes').doc(normalizedEmail).get();
 
-  try {
-    await axios.post(
-      `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${FIREBASE_API_KEY}`,
-      { oobCode, newPassword }
-    );
-  } catch (err) {
-    const code = err.response?.data?.error?.message;
-    if (['EXPIRED_OOB_CODE', 'INVALID_OOB_CODE'].includes(code))
-      throw Object.assign(new Error('Reset code is invalid or has expired'), { status: 400 });
-    throw err;
-  }
+  if (!doc.exists)
+    throw Object.assign(new Error('Invalid or expired code'), { status: 400 });
+
+  const data = doc.data();
+
+  if (data.used)
+    throw Object.assign(new Error('This code has already been used'), { status: 400 });
+
+  if (new Date() > new Date(data.expiresAt))
+    throw Object.assign(new Error('Code has expired. Request a new one.'), { status: 400 });
+
+  if (data.code !== code.trim())
+    throw Object.assign(new Error('Invalid code'), { status: 400 });
+
+  const snap = await db.collection('users').where('email', '==', normalizedEmail).limit(1).get();
+  if (snap.empty)
+    throw Object.assign(new Error('User not found'), { status: 404 });
+
+  const uid = snap.docs[0].data().uid;
+
+  await auth.updateUser(uid, { password: newPassword });
+  await db.collection('passwordResetCodes').doc(normalizedEmail).update({ used: true });
 
   return { message: 'Password updated successfully' };
 };
 
-module.exports = { register, login, forgotPassword, resetPassword };
+module.exports = { register, login, forgotPassword, verifyResetCode, resetPassword };
