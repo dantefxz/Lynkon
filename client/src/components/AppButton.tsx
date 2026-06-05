@@ -1,10 +1,3 @@
-/**
- * AppButton
- * ---------
- * Botón reutilizable con variantes: primary | secondary | destructive | ghost.
- * Soporta estado de carga (spinner) y ícono opcional.
- * Usado en: todas las pantallas.
- */
 import React from 'react';
 import {
   TouchableOpacity, Text, ActivityIndicator,

@@ -1,18 +1,3 @@
-/**
- * AddGameModal
- * -----------
- * Modal de dos pasos:
- *  1. Seleccionar plataforma (Steam / PSN / Xbox)
- *  2. Ver los juegos de esa plataforma y togglear visibilidad
- *
- * Props:
- *  visible        – controla visibilidad del modal
- *  platforms      – plataformas vinculadas del usuario
- *  allGames       – todos los juegos disponibles (traídos del server)
- *  visibleIds     – set de IDs actualmente visibles
- *  onToggle(id)   – callback para toggle de un juego
- *  onClose        – cierra el modal
- */
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, Modal, TouchableOpacity, FlatList,
@@ -40,6 +25,7 @@ interface Props {
   visibleIds: Set<string>;
   onToggle: (id: string) => void;
   onClose: () => void;
+  title?: string;
 }
 
 const PLATFORM_ICONS: Record<PlatformId, string> = {
@@ -48,16 +34,16 @@ const PLATFORM_ICONS: Record<PlatformId, string> = {
   xbox: 'videogame-asset',
 };
 
-export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggle, onClose }: Props) {
+export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggle, onClose, title }: Props) {
   const [step, setStep] = useState<'platform' | 'games'>('platform');
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const platformGames = useMemo(() => {
     if (!selectedPlatform) return [];
-    return allGames.filter((g) =>
-      g.platforms.some((p) => p.name.toLowerCase() === selectedPlatform.toLowerCase())
-    );
+    return allGames
+      .filter((g) => g.platforms.some((p) => p.name.toLowerCase() === selectedPlatform.toLowerCase()))
+      .sort((a, b) => b.totalHours - a.totalHours);
   }, [allGames, selectedPlatform]);
 
   const filteredGames = useMemo(() => {
@@ -100,7 +86,7 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
               <View style={styles.backBtn} />
             )}
             <Text style={styles.title}>
-              {step === 'platform' ? 'Añadir Juego' : 'Seleccionar Juegos'}
+              {step === 'platform' ? (title || 'Añadir a Mi Perfil') : 'Seleccionar Juegos'}
             </Text>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <MaterialIcons name="close" size={rw(22)} color={colors.textMuted} />
@@ -109,7 +95,7 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
 
           {step === 'platform' ? (
             <>
-              <Text style={styles.subtitle}>Selecciona una plataforma para ver tus juegos</Text>
+              <Text style={styles.subtitle}>Elegí de qué plataforma querés mostrar juegos</Text>
               <View style={styles.platformList}>
                 {platforms.map((plat) => {
                   const id = normalizePlatformId(plat);
@@ -139,7 +125,7 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
             </>
           ) : (
             <>
-              <Text style={styles.subtitle}>Selecciona los juegos que querés añadir</Text>
+              <Text style={styles.subtitle}>Activá los juegos que querés mostrar en tu perfil</Text>
 
               {/* Buscador */}
               <View style={styles.searchWrapper}>
@@ -174,9 +160,6 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
                       <View style={styles.gameInfo}>
                         <Text style={styles.gameName} numberOfLines={1}>{item.name}</Text>
                         <Text style={styles.gameMeta}>{item.totalHours}h jugadas</Text>
-                        <Text style={styles.gameMeta}>
-                          {item.completedAchievements}/{item.totalAchievements} logros
-                        </Text>
                       </View>
                       <Switch
                         value={isVisible}
@@ -197,9 +180,9 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
 
               {/* Footer */}
               <View style={styles.footer}>
-                <Text style={styles.footerText}>{selectedCount} juegos seleccionados</Text>
+                <Text style={styles.footerText}>{selectedCount} juego{selectedCount !== 1 ? 's' : ''} en tu perfil</Text>
                 <TouchableOpacity style={styles.addBtn} onPress={handleClose} activeOpacity={0.85}>
-                  <Text style={styles.addBtnText}>Añadir Juegos</Text>
+                  <Text style={styles.addBtnText}>Listo</Text>
                 </TouchableOpacity>
               </View>
             </>

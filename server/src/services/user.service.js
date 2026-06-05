@@ -96,8 +96,7 @@ const getRecommendations = async (userId) => {
 
 
 // ─── Favoritos ────────────────────────────────────────────────────────────────
-// Se persiste en: users/{uid}.favoriteGames = [{ gameId, name, platform, addedAt }]
-// Límite: 20 juegos favoritos por usuario.
+// stored at users/{uid}.favoriteGames — capped at 20 per user
 
 const addFavoriteGame = async (userId, game) => {
   const snap = await db.collection('users').doc(userId).get();
@@ -147,9 +146,60 @@ const getFavoriteGames = async (userId) => {
   return snap.data().favoriteGames || [];
 };
 
+// ─── Profile Games ────────────────────────────────────────────────────────────
+// games the user manually picks to show on their public profile
+
+const addProfileGame = async (userId, game) => {
+  const snap = await db.collection('users').doc(userId).get();
+  if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
+
+  const profileGames = snap.data().profileGames || [];
+
+  if (profileGames.find((g) => g.gameId === game.gameId && g.platform === game.platform))
+    throw Object.assign(new Error('Game is already in profile'), { status: 409 });
+
+  const newEntry = {
+    gameId:        game.gameId,
+    name:          game.name,
+    platform:      game.platform,
+    cover:         game.cover || null,
+    playtimeHours: game.playtimeHours || 0,
+    addedAt:       new Date().toISOString(),
+  };
+
+  await db.collection('users').doc(userId).update({
+    profileGames: [...profileGames, newEntry],
+  });
+
+  return newEntry;
+};
+
+const removeProfileGame = async (userId, gameId, platform) => {
+  const snap = await db.collection('users').doc(userId).get();
+  if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
+
+  const profileGames = snap.data().profileGames || [];
+  const updated      = profileGames.filter(
+    (g) => !(g.gameId === gameId && (platform ? g.platform === platform : true))
+  );
+
+  if (updated.length === profileGames.length)
+    throw Object.assign(new Error('Game not found in profile'), { status: 404 });
+
+  await db.collection('users').doc(userId).update({ profileGames: updated });
+  return { removed: profileGames.length - updated.length };
+};
+
+const getProfileGames = async (userId) => {
+  const snap = await db.collection('users').doc(userId).get();
+  if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
+  return snap.data().profileGames || [];
+};
+
 module.exports = {
   getMyProfile, getProfile, createProfile, updateProfile,
   getSettings, createSettings, updateSettings,
   deleteUser, searchUsers, getRecommendations,
   addFavoriteGame, removeFavoriteGame, getFavoriteGames,
+  addProfileGame, removeProfileGame, getProfileGames,
 };

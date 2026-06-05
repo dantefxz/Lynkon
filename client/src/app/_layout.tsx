@@ -30,7 +30,7 @@ function RootGuard() {
     }).start(() => setShowSplash(false));
   };
 
-  // Tiempo mínimo del splash
+  // keep splash visible for at least SPLASH_MIN_MS
   useEffect(() => {
     const t = setTimeout(() => {
       timerDone.current = true;
@@ -39,7 +39,7 @@ function RootGuard() {
     return () => clearTimeout(t);
   }, []);
 
-  // Cuando termina la auth
+  // once auth resolves, try to hide splash
   useEffect(() => {
     if (!isLoading) {
       authDone.current = true;
@@ -47,7 +47,7 @@ function RootGuard() {
     }
   }, [isLoading]);
 
-  // Navegación luego de ocultar splash
+  // redirect based on auth state after splash fades
   useEffect(() => {
     if (showSplash || isLoading) return;
 

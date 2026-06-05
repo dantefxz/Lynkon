@@ -14,7 +14,6 @@ const getAccessToken = async (npssoToken) => {
 };
 
 const getStats = async (npssoToken) => {
-  throw Object.assign(new Error('PSN: integración en desarrollo, próximamente disponible'), { status: 501 });
   const accessToken = await getAccessToken(npssoToken);
   const { trophySummary } = await getUserTrophySummary({ accessToken }, 'me');
   return {
@@ -30,7 +29,6 @@ const getStats = async (npssoToken) => {
 };
 
 const getGames = async (npssoToken) => {
-  throw Object.assign(new Error('PSN: integración en desarrollo, próximamente disponible'), { status: 501 });
   const accessToken = await getAccessToken(npssoToken);
   const { trophyTitles } = await getUserTitles({ accessToken }, 'me');
   return (trophyTitles || []).map((t) => ({
@@ -46,7 +44,6 @@ const getGames = async (npssoToken) => {
 };
 
 const getAchievements = async (npssoToken) => {
-  throw Object.assign(new Error('PSN: integración en desarrollo, próximamente disponible'), { status: 501 });
   const accessToken = await getAccessToken(npssoToken);
   const { trophyTitles } = await getUserTitles({ accessToken }, 'me');
   if (!trophyTitles?.length) return [];
@@ -74,4 +71,28 @@ const getAchievements = async (npssoToken) => {
   };
 };
 
-module.exports = { getStats, getGames, getAchievements };
+const getGameAchievements = async (npssoToken, npCommId) => {
+  try {
+    const accessToken = await getAccessToken(npssoToken);
+    const [allTrophies, earnedTrophies] = await Promise.all([
+      getTitleTrophies({ accessToken }, npCommId, 'all'),
+      getUserTrophiesEarnedForTitle({ accessToken }, 'me', npCommId, 'all'),
+    ]);
+    const earnedMap = new Map(
+      (earnedTrophies.trophies || []).map((t) => [t.trophyId, t])
+    );
+    return (allTrophies.trophies || []).map((t) => ({
+      apiname:     String(t.trophyId),
+      name:        t.trophyName || '',
+      description: t.trophyDetail || '',
+      unlocked:    !!earnedMap.get(t.trophyId)?.earned,
+      unlockedAt:  earnedMap.get(t.trophyId)?.earnedDateTime || null,
+      icon:        t.trophyIconUrl || null,
+      type:        t.trophyType,
+    }));
+  } catch {
+    return [];
+  }
+};
+
+module.exports = { getStats, getGames, getAchievements, getGameAchievements };

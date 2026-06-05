@@ -21,7 +21,8 @@
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#0A0A0F"
       },
-      "package": "com.lynkon.app"
+      "package": "com.lynkon.app",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       [

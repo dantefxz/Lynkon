@@ -18,13 +18,19 @@ interface Game {
   id: string;
   name: string;
   cover: string;
-  rank: number;
   totalHours: number;
   totalAchievements: number;
   completedAchievements: number;
   platform?: string;
-  isFavorite?: boolean;
   platforms: { name: string; hours: number; achievements: number; completedAchievements: number }[];
+}
+
+interface ProfileGame {
+  gameId: string;
+  name: string;
+  platform: string;
+  cover: string | null;
+  playtimeHours: number;
 }
 
 const COLS     = gridColumns();
@@ -32,23 +38,28 @@ const CARD_W   = cardWidth(COLS);
 const FAV_CARD_W = cardWidth(Math.min(COLS + 1, 3));
 
 export default function ProfileScreen() {
-  const router      = useRouter();
-  const { user }    = useAuth();
-  const { colors }  = useTheme();
+  const router     = useRouter();
+  const { user }   = useAuth();
+  const { colors } = useTheme();
 
-  const [allGames, setAllGames]         = useState<Game[]>([]);
-  const [platforms, setPlatforms]       = useState<string[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [refreshing, setRefreshing]     = useState(false);
+  // All games fetched from platforms (for search/add modal)
+  const [allGames, setAllGames]           = useState<Game[]>([]);
+  const [platforms, setPlatforms]         = useState<string[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [refreshing, setRefreshing]       = useState(false);
+  const [syncing, setSyncing]             = useState(false);
 
-  // Visibilidad — cargada desde la API (hidden = true → oculto del perfil público)
-  const [hiddenIds, setHiddenIds]       = useState<Set<string>>(new Set());
+  // Profile games — curated by the user
+  const [profileGames, setProfileGames]   = useState<ProfileGame[]>([]);
 
-  // Favoritos — cargados desde la API
+  // Favorites
   const [favoriteGames, setFavoriteGames] = useState<Game[]>([]);
 
-  const [addModalVisible, setAddModalVisible]   = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [achievementCounts, setAchievementCounts] = useState<Record<string, { total: number; completed: number }>>({});
+
+  const [addProfileModalVisible, setAddProfileModalVisible] = useState(false);
+  const [addFavModalVisible, setAddFavModalVisible]         = useState(false);
+  const [editModalVisible, setEditModalVisible]             = useState(false);
 
   // ── Carga principal ────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -61,22 +72,21 @@ export default function ProfileScreen() {
       );
       setPlatforms(linked);
 
-      // 2. Juegos de todas las plataformas
+      // 2. Juegos de todas las plataformas (para el modal de búsqueda)
       const fetched: Game[] = [];
       for (const plat of linked) {
         try {
           const gRes = await platformApi.getPlatformGames(plat);
           const serverGames: Game[] = ((gRes.data as any)?.games || gRes.data || []).map(
             (g: any, i: number) => ({
-              id:                    String(g.id || `${plat}_${i}`),
+              id:                    String(g.gameId || g.id || `${plat}_${i}`),
               name:                  g.name || g.title || 'Unknown',
-              cover:                 g.cover || g.imageUrl || 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=400&h=600&fit=crop',
-              rank:                  i + 1,
-              totalHours:            g.totalHours || g.playtime || 0,
-              totalAchievements:     g.totalAchievements || 100,
+              cover:                 g.cover || g.imageUrl || g.iconUrl || '',
+              totalHours:            g.playtimeHours || g.totalHours || g.playtime || 0,
+              totalAchievements:     g.totalAchievements || 0,
               completedAchievements: g.completedAchievements || 0,
               platform:              plat,
-              platforms: [{ name: plat, hours: g.totalHours || 0, achievements: g.totalAchievements || 100, completedAchievements: g.completedAchievements || 0 }],
+              platforms: [{ name: plat, hours: g.playtimeHours || g.totalHours || 0, achievements: g.totalAchievements || 0, completedAchievements: g.completedAchievements || 0 }],
             }),
           );
           fetched.push(...serverGames);
@@ -84,19 +94,13 @@ export default function ProfileScreen() {
       }
       setAllGames(fetched);
 
-      // 3. Visibilidad desde la API
+      // 3. Juegos del perfil (curados)
       try {
-        const visRes  = await platformApi.getGameVisibility();
-        const visData = (visRes.data as any)?.visibility || {};
-        const hidden  = new Set<string>(
-          Object.values(visData)
-            .filter((v: any) => v.hidden)
-            .map((v: any) => v.gameId),
-        );
-        setHiddenIds(hidden);
+        const pgRes = await userApi.getProfileGames(user.id);
+        setProfileGames((pgRes.data as any)?.profileGames || []);
       } catch {}
 
-      // 4. Favoritos desde la API
+      // 4. Favoritos
       try {
         const favRes = await userApi.getFavorites(user.id);
         const favList: any[] = (favRes.data as any)?.favoriteGames || favRes.data || [];
@@ -116,7 +120,42 @@ export default function ProfileScreen() {
     loadData().finally(() => setLoading(false));
   }, [loadData]);
 
-  const onRefresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
+  // Fetch achievement counts for profile + favorite games in background
+  useEffect(() => {
+    const games = [
+      ...profileGames.map((pg) => ({ platform: pg.platform, gameId: pg.gameId })),
+      ...favoriteGames.map((fg) => ({ platform: fg.platform || '', gameId: fg.id })),
+    ].filter((g, i, arr) =>
+      g.platform && arr.findIndex((x) => x.platform === g.platform && x.gameId === g.gameId) === i
+    );
+
+    games.forEach(({ platform, gameId }) => {
+      platformApi.getGameAchievements(platform, gameId)
+        .then((achRes) => {
+          const achievements: any[] = (achRes.data as any)?.achievements || [];
+          setAchievementCounts((prev) => ({
+            ...prev,
+            [`${platform}_${gameId}`]: {
+              total:     achievements.length,
+              completed: achievements.filter((a) => a.unlocked).length,
+            },
+          }));
+        })
+        .catch(() => {});
+    });
+  }, [profileGames.length, favoriteGames.length]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    await loadData();
+    setSyncing(false);
+  };
 
   // ── Favoritos ──────────────────────────────────────────────────────────────
   const handleAddFavorite = async (game: Game) => {
@@ -125,8 +164,7 @@ export default function ProfileScreen() {
       await userApi.addFavorite(user.id, game.id, game.name, game.platform || 'steam');
       setFavoriteGames((prev) => (prev.find((g) => g.id === game.id) ? prev : [...prev, game]));
     } catch (err: any) {
-      const msg = err?.response?.data?.error || 'No se pudo agregar a favoritos';
-      Alert.alert('Error', msg);
+      Alert.alert('Error', err?.response?.data?.error || 'No se pudo agregar a favoritos');
     }
   };
 
@@ -137,22 +175,59 @@ export default function ProfileScreen() {
       await userApi.removeFavorite(user.id, gameId, game?.platform);
       setFavoriteGames((prev) => prev.filter((g) => g.id !== gameId));
     } catch (err: any) {
-      const msg = err?.response?.data?.error || 'No se pudo eliminar de favoritos';
-      Alert.alert('Error', msg);
+      Alert.alert('Error', err?.response?.data?.error || 'No se pudo eliminar de favoritos');
     }
   };
 
-  const handleReorderFavorites = (reordered: Game[]) => setFavoriteGames(reordered);
+  const handleReorderFavorites = (reordered: any[]) => setFavoriteGames(reordered as Game[]);
 
-  // ── Juegos visibles (los no ocultos se muestran en el perfil público) ───────
-  const displayedGames = allGames.filter((g) => !hiddenIds.has(g.id));
+  // ── Juegos del perfil ──────────────────────────────────────────────────────
+  const profileGameIds = new Set(profileGames.map((g) => `${g.platform}_${g.gameId}`));
 
-  // Stats para el header
-  const totalHours    = displayedGames.reduce((acc, g) => acc + g.totalHours, 0);
-  const totalGames    = displayedGames.length;
-  const completedGames = displayedGames.filter(
-    (g) => g.totalAchievements > 0 && g.completedAchievements >= g.totalAchievements,
-  ).length;
+  const handleToggleProfileGame = async (id: string) => {
+    if (!user?.id) return;
+    const game = allGames.find((g) => g.id === id);
+    if (!game) return;
+    const key = `${game.platform}_${game.id}`;
+    const isInProfile = profileGameIds.has(key);
+    try {
+      if (isInProfile) {
+        await userApi.removeProfileGame(user.id, game.id, game.platform);
+        setProfileGames((prev) => prev.filter((g) => !(g.gameId === game.id && g.platform === game.platform)));
+      } else {
+        await userApi.addProfileGame(user.id, game.id, game.name, game.platform || 'steam', game.cover, game.totalHours);
+        setProfileGames((prev) => [...prev, {
+          gameId: game.id,
+          name: game.name,
+          platform: game.platform || 'steam',
+          cover: game.cover,
+          playtimeHours: game.totalHours,
+        }]);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.error || 'No se pudo actualizar el perfil');
+    }
+  };
+
+  const handleRemoveProfileGame = async (gameId: string, platform: string) => {
+    if (!user?.id) return;
+    try {
+      await userApi.removeProfileGame(user.id, gameId, platform);
+      setProfileGames((prev) => prev.filter((g) => !(g.gameId === gameId && g.platform === platform)));
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.error || 'No se pudo eliminar del perfil');
+    }
+  };
+
+  const totalHours = allGames.reduce((acc, g) => acc + g.totalHours, 0);
+  const totalGames = profileGames.length;
+
+  // Set de IDs de juegos en el perfil (para el modal — usa el mismo key de allGames)
+  const profileIdsForModal = new Set(
+    allGames
+      .filter((g) => profileGameIds.has(`${g.platform}_${g.id}`))
+      .map((g) => g.id)
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -165,11 +240,12 @@ export default function ProfileScreen() {
           email={user?.email}
           avatar={user?.avatar}
           stats={[
-            { icon: 'sports-esports', iconColor: colors.purple,  value: totalGames,       label: 'Juegos' },
-            { icon: 'schedule',       iconColor: '#60A5FA',       value: `${totalHours}h`, label: 'Horas'  },
-            { icon: 'emoji-events',   iconColor: colors.warning,  value: completedGames,   label: '100%'   },
+            { icon: 'sports-esports', iconColor: colors.purple, value: totalGames,        label: 'Juegos' },
+            { icon: 'schedule',       iconColor: '#60A5FA',      value: `${totalHours}h`, label: 'Horas'  },
           ]}
           platforms={platforms}
+          onSync={handleSync}
+          syncing={syncing}
         />
 
         {loading ? (
@@ -190,7 +266,7 @@ export default function ProfileScreen() {
                 <View style={styles.sectionActions}>
                   <TouchableOpacity
                     style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
-                    onPress={() => setAddModalVisible(true)}
+                    onPress={() => setAddFavModalVisible(true)}
                     activeOpacity={0.8}
                   >
                     <MaterialIcons name="add" size={rw(14)} color={colors.text} />
@@ -216,13 +292,18 @@ export default function ProfileScreen() {
                   keyExtractor={(item) => item.id}
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ paddingHorizontal: rs.md, gap: rw(12) }}
-                  renderItem={({ item }) => (
-                    <GameCard
-                      {...item}
-                      width={FAV_CARD_W}
-                      onPress={() => router.push(`/game/${item.id}`)}
-                    />
-                  )}
+                  renderItem={({ item }) => {
+                    const ach = achievementCounts[`${item.platform}_${item.id}`];
+                    return (
+                      <GameCard
+                        {...item}
+                        totalAchievements={ach?.total ?? item.totalAchievements}
+                        completedAchievements={ach?.completed ?? item.completedAchievements}
+                        width={FAV_CARD_W}
+                        onPress={() => router.push(`/game/${item.id}`)}
+                      />
+                    );
+                  }}
                 />
               ) : (
                 <View style={[styles.emptyFavs, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -234,45 +315,72 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* ── Todos los juegos ── */}
+            {/* ── Mis Juegos ── */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
                   <MaterialIcons name="sports-esports" size={rw(17)} color={colors.purple} />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Todos los Juegos{displayedGames.length > 0 ? ` (${displayedGames.length})` : ''}
+                    Mis Juegos{profileGames.length > 0 ? ` (${profileGames.length})` : ''}
                   </Text>
                 </View>
+                {platforms.length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
+                    onPress={() => setAddProfileModalVisible(true)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="add" size={rw(14)} color={colors.text} />
+                    <Text style={[styles.pillText, { color: colors.text }]}>Añadir</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
-              {displayedGames.length === 0 ? (
+              {profileGames.length === 0 ? (
                 <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={[styles.emptyIcon, { backgroundColor: colors.purpleMuted }]}>
                     <MaterialIcons name="videogame-asset-off" size={rw(40)} color={colors.purple} />
                   </View>
-                  <Text style={[styles.emptyTitle, { color: colors.text }]}>Todavía no tenés juegos</Text>
-                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                    Vinculá una plataforma para ver tus juegos y logros acá.
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                    {platforms.length === 0 ? 'Todavía no tenés juegos' : 'Agregá juegos a tu perfil'}
                   </Text>
-                  <TouchableOpacity
-                    style={[styles.emptyBtn, { backgroundColor: colors.purple }]}
-                    onPress={() => router.push('/tabs/settings')}
-                    activeOpacity={0.85}
-                  >
-                    <MaterialIcons name="link" size={rw(16)} color={colors.text} />
-                    <Text style={[styles.emptyBtnText, { color: colors.text }]}>Vincular plataforma</Text>
-                  </TouchableOpacity>
+                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+                    {platforms.length === 0
+                      ? 'Vinculá una plataforma para ver tus juegos acá.'
+                      : 'Tocá "Añadir" para elegir qué juegos mostrar en tu perfil.'}
+                  </Text>
+                  {platforms.length === 0 && (
+                    <TouchableOpacity
+                      style={[styles.emptyBtn, { backgroundColor: colors.purple }]}
+                      onPress={() => router.push('/tabs/settings')}
+                      activeOpacity={0.85}
+                    >
+                      <MaterialIcons name="link" size={rw(16)} color={colors.text} />
+                      <Text style={[styles.emptyBtnText, { color: colors.text }]}>Vincular plataforma</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 <View style={[styles.grid, { paddingHorizontal: rs.md, gap: rw(12) }]}>
-                  {displayedGames.map((game) => (
-                    <GameCard
-                      key={game.id}
-                      {...game}
-                      width={CARD_W}
-                      onPress={() => router.push(`/game/${game.id}`)}
-                    />
-                  ))}
+                  {profileGames.map((pg) => {
+                    const achKey = `${pg.platform}_${pg.gameId}`;
+                    const ach    = achievementCounts[achKey];
+                    return (
+                      <GameCard
+                        key={achKey}
+                        id={pg.gameId}
+                        name={pg.name}
+                        cover={pg.cover || ''}
+                        totalHours={pg.playtimeHours}
+                        totalAchievements={ach?.total ?? 0}
+                        completedAchievements={ach?.completed ?? 0}
+                        platform={pg.platform}
+                        width={CARD_W}
+                        onPress={() => router.push(`/game/${pg.gameId}?platform=${pg.platform}`)}
+                        onRemove={() => handleRemoveProfileGame(pg.gameId, pg.platform)}
+                      />
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -280,21 +388,30 @@ export default function ProfileScreen() {
         )}
       </ScrollView>
 
+      {/* Modal para juegos del perfil */}
       <AddGameModal
-        visible={addModalVisible}
+        visible={addProfileModalVisible}
         platforms={platforms}
         allGames={allGames}
-        visibleIds={new Set(allGames.filter((g) => !hiddenIds.has(g.id)).map((g) => g.id))}
+        visibleIds={profileIdsForModal}
+        onToggle={handleToggleProfileGame}
+        onClose={() => setAddProfileModalVisible(false)}
+      />
+
+      {/* Modal para favoritos */}
+      <AddGameModal
+        visible={addFavModalVisible}
+        title="Añadir Favorito"
+        platforms={platforms}
+        allGames={allGames}
+        visibleIds={new Set(favoriteGames.map((g) => g.id))}
         onToggle={(id) => {
-          // El toggle de visibilidad se maneja en la pantalla de plataforma
-          // Aquí AddGameModal se usa para agregar a favoritos
           const game = allGames.find((g) => g.id === id);
           if (!game) return;
-          const isFav = favoriteGames.some((g) => g.id === id);
-          if (isFav) handleRemoveFavorite(id);
+          if (favoriteGames.some((g) => g.id === id)) handleRemoveFavorite(id);
           else handleAddFavorite(game);
         }}
-        onClose={() => setAddModalVisible(false)}
+        onClose={() => setAddFavModalVisible(false)}
       />
 
       <EditFavoritesModal
@@ -309,22 +426,22 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:      { flex: 1 },
-  loading:        { height: rh(200), alignItems: 'center', justifyContent: 'center' },
-  section:        { marginBottom: rh(24) },
-  sectionHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: rs.md, marginBottom: rh(12) },
-  sectionTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: rw(6) },
-  sectionTitle:   { fontSize: rf(15), fontWeight: '700' },
-  sectionActions: { flexDirection: 'row', gap: rw(8) },
-  pill:           { flexDirection: 'row', alignItems: 'center', gap: rw(4), paddingHorizontal: rw(10), paddingVertical: rh(5), borderRadius: rw(20), borderWidth: 1 },
-  pillText:       { fontSize: rf(12), fontWeight: '600' },
-  emptyFavs:      { marginHorizontal: rs.md, borderRadius: rw(14), borderWidth: 1, paddingVertical: rh(20), alignItems: 'center', gap: rh(8), flexDirection: 'row', justifyContent: 'center' },
-  emptyFavsText:  { fontSize: rf(13) },
-  grid:           { flexDirection: 'row', flexWrap: 'wrap' },
-  emptyState:     { margin: rs.md, borderRadius: rw(20), borderWidth: 1, padding: rw(28), alignItems: 'center', gap: rh(12) },
-  emptyIcon:      { width: rw(80), height: rw(80), borderRadius: rw(40), alignItems: 'center', justifyContent: 'center', marginBottom: rh(4) },
-  emptyTitle:     { fontSize: rf(18), fontWeight: '700', textAlign: 'center' },
-  emptySubtitle:  { fontSize: rf(14), textAlign: 'center', lineHeight: rh(20) },
-  emptyBtn:       { flexDirection: 'row', alignItems: 'center', gap: rw(6), marginTop: rh(8), paddingHorizontal: rw(20), paddingVertical: rh(12), borderRadius: rw(12) },
-  emptyBtnText:   { fontSize: rf(14), fontWeight: '600' },
+  container:       { flex: 1 },
+  loading:         { height: rh(200), alignItems: 'center', justifyContent: 'center' },
+  section:         { marginBottom: rh(24) },
+  sectionHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: rs.md, marginBottom: rh(12) },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: rw(6) },
+  sectionTitle:    { fontSize: rf(15), fontWeight: '700' },
+  sectionActions:  { flexDirection: 'row', gap: rw(8) },
+  pill:            { flexDirection: 'row', alignItems: 'center', gap: rw(4), paddingHorizontal: rw(10), paddingVertical: rh(5), borderRadius: rw(20), borderWidth: 1 },
+  pillText:        { fontSize: rf(12), fontWeight: '600' },
+  emptyFavs:       { marginHorizontal: rs.md, borderRadius: rw(14), borderWidth: 1, paddingVertical: rh(20), alignItems: 'center', gap: rh(8), flexDirection: 'row', justifyContent: 'center' },
+  emptyFavsText:   { fontSize: rf(13) },
+  grid:            { flexDirection: 'row', flexWrap: 'wrap' },
+  emptyState:      { margin: rs.md, borderRadius: rw(20), borderWidth: 1, padding: rw(28), alignItems: 'center', gap: rh(12) },
+  emptyIcon:       { width: rw(80), height: rw(80), borderRadius: rw(40), alignItems: 'center', justifyContent: 'center', marginBottom: rh(4) },
+  emptyTitle:      { fontSize: rf(18), fontWeight: '700', textAlign: 'center' },
+  emptySubtitle:   { fontSize: rf(14), textAlign: 'center', lineHeight: rh(20) },
+  emptyBtn:        { flexDirection: 'row', alignItems: 'center', gap: rw(6), marginTop: rh(8), paddingHorizontal: rw(20), paddingVertical: rh(12), borderRadius: rw(12) },
+  emptyBtnText:    { fontSize: rf(14), fontWeight: '600' },
 });

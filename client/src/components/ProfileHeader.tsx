@@ -1,17 +1,12 @@
-/**
- * ProfileHeader
- * -------------
- * Header de perfil con avatar, nombre, email, stats y badges de plataformas.
- */
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 import { PLATFORM_LABELS, PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
 
 export interface ProfileStat {
-  icon: string; // MaterialIcons name
+  icon: string;
   iconColor: string;
   value: number | string;
   label: string;
@@ -23,9 +18,11 @@ export interface ProfileHeaderProps {
   avatar?: string;
   stats: ProfileStat[];
   platforms?: string[];
+  onSync?: () => void;
+  syncing?: boolean;
 }
 
-export function ProfileHeader({ name, email, avatar, stats, platforms = [] }: ProfileHeaderProps) {
+export function ProfileHeader({ name, email, avatar, stats, platforms = [], onSync, syncing }: ProfileHeaderProps) {
   const avatarSize = rw(72);
 
   return (
@@ -35,7 +32,7 @@ export function ProfileHeader({ name, email, avatar, stats, platforms = [] }: Pr
           styles.avatarRing,
           { width: avatarSize + rw(6), height: avatarSize + rw(6), borderRadius: (avatarSize + rw(6)) / 2 },
         ]}>
-          {avatar ? (
+          {avatar && avatar.startsWith('http') ? (
             <Image
               source={{ uri: avatar }}
               style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }}
@@ -50,6 +47,17 @@ export function ProfileHeader({ name, email, avatar, stats, platforms = [] }: Pr
           <Text style={styles.name} numberOfLines={1}>{name}</Text>
           {email ? <Text style={styles.email} numberOfLines={1}>{email}</Text> : null}
         </View>
+        {onSync && (
+          <TouchableOpacity
+            style={styles.syncBtn}
+            onPress={onSync}
+            disabled={syncing}
+          >
+            {syncing
+              ? <ActivityIndicator size="small" color={colors.purple} />
+              : <MaterialIcons name="sync" size={rw(22)} color={colors.purple} />}
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.statsRow}>
@@ -90,7 +98,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.55, shadowRadius: 10, elevation: 8,
   },
   avatarFallback: { backgroundColor: colors.purpleMuted, alignItems: 'center', justifyContent: 'center' },
-  userInfo: { flex: 1, gap: rh(3) },
+  userInfo:       { flex: 1, gap: rh(3) },
+  syncBtn:        { padding: rw(8) },
   name: { color: colors.text, fontSize: rf(21), fontWeight: '700' },
   email: { color: colors.textMuted, fontSize: rf(13) },
   statsRow: { flexDirection: 'row', gap: rw(10) },

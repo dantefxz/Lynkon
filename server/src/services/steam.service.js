@@ -45,11 +45,45 @@ const getGames = async (steamId) => {
     gameId:        String(g.appid),
     name:          g.name,
     playtimeHours: Math.round((g.playtime_forever || 0) / 60),
-    iconUrl: g.img_icon_url
-      ? `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.img_icon_url}.jpg`
-      : null,
+    cover:  `https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
     platform: 'steam',
   }));
+};
+
+const getGameAchievements = async (steamId, appid) => {
+  const resolvedId = await resolveId(steamId);
+  try {
+    const [playerRes, schemaRes] = await Promise.all([
+      axios.get(`${BASE}/ISteamUserStats/GetPlayerAchievements/v1/`, {
+        params: { key: DEV_KEY(), steamid: resolvedId, appid, l: 'spanish' },
+      }),
+      axios.get(`${BASE}/ISteamUserStats/GetSchemaForGame/v2/`, {
+        params: { key: DEV_KEY(), appid, l: 'spanish' },
+      }),
+    ]);
+    const playerAchs = playerRes.data.playerstats?.achievements || [];
+    const schemaAchs = schemaRes.data.game?.availableGameStats?.achievements || [];
+    const schemaMap  = Object.fromEntries(schemaAchs.map((a) => [a.name, a]));
+    return playerAchs.map((a) => ({
+      apiname:     a.apiname,
+      name:        schemaMap[a.apiname]?.displayName || a.apiname,
+      description: schemaMap[a.apiname]?.description || '',
+      unlocked:    a.achieved === 1,
+      unlockedAt:  a.achieved ? a.unlocktime : null,
+      icon:        schemaMap[a.apiname]?.icon
+        ? (schemaMap[a.apiname].icon.startsWith('http')
+            ? schemaMap[a.apiname].icon
+            : `https://steamcommunity.akamaihd.net/steamcommunity/public/images/apps/${appid}/${schemaMap[a.apiname].icon}.jpg`)
+        : null,
+      iconLocked: schemaMap[a.apiname]?.icongray
+        ? (schemaMap[a.apiname].icongray.startsWith('http')
+            ? schemaMap[a.apiname].icongray
+            : `https://steamcommunity.akamaihd.net/steamcommunity/public/images/apps/${appid}/${schemaMap[a.apiname].icongray}.jpg`)
+        : null,
+    }));
+  } catch {
+    return [];
+  }
 };
 
 const getAchievements = async (steamId) => {
@@ -79,4 +113,4 @@ const getAchievements = async (steamId) => {
   };
 };
 
-module.exports = { getStats, getGames, getAchievements, resolveId };
+module.exports = { getStats, getGames, getAchievements, getGameAchievements, resolveId };

@@ -1,9 +1,3 @@
-/**
- * SearchBar
- * ---------
- * Barra de búsqueda con ícono, input y botón de limpiar.
- * Usado en: social (buscar usuarios), platform detail (buscar juegos).
- */
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';

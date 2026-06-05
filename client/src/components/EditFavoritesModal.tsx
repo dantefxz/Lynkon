@@ -1,15 +1,7 @@
-/**
- * EditFavoritesModal
- * ------------------
- * Modal para reordenar y eliminar juegos favoritos.
- * Cada ítem tiene un botón de arrastre (⠿) y uno de eliminación (×).
- * Como RN no incluye DnD nativo, usamos simple up/down buttons.
- */
 import React, { useState } from 'react';
-import {
-  View, Text, Modal, TouchableOpacity,
-  FlatList, Image, StyleSheet,
-} from 'react-native';
+import { View, Text, Modal, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf, rs } from '@/utils/responsive';
@@ -34,97 +26,74 @@ interface Props {
 export function EditFavoritesModal({ visible, favorites, onReorder, onRemove, onClose }: Props) {
   const [list, setList] = useState<Game[]>([]);
 
-  // Sync local list when modal opens
   React.useEffect(() => {
     if (visible) setList([...favorites]);
   }, [visible, favorites]);
 
-  const move = (index: number, dir: -1 | 1) => {
-    const next = [...list];
-    const target = index + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    setList(next);
-  };
-
-  const remove = (id: string) => {
-    setList((prev) => prev.filter((g) => g.id !== id));
-  };
+  const remove = (id: string) => setList((prev) => prev.filter((g) => g.id !== id));
 
   const handleDone = () => {
+    const originalIds  = new Set(favorites.map((g) => g.id));
+    const remainingIds = new Set(list.map((g) => g.id));
+    [...originalIds].filter((id) => !remainingIds.has(id)).forEach((id) => onRemove(id));
     onReorder(list);
     onClose();
   };
 
+  const renderItem = ({ item, drag, isActive }: RenderItemParams<Game>) => (
+    <ScaleDecorator>
+      <View style={[styles.row, isActive && styles.rowActive]}>
+        <TouchableOpacity
+          onPressIn={drag}
+          style={styles.dragHandle}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <MaterialIcons name="drag-indicator" size={rw(22)} color={colors.textMuted} />
+        </TouchableOpacity>
+
+        <Image source={{ uri: item.cover }} style={styles.cover} resizeMode="cover" />
+
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.hours}>{item.totalHours}h jugadas</Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => remove(item.id)}
+          style={styles.removeBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="close" size={rw(18)} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    </ScaleDecorator>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <GestureHandlerRootView style={styles.sheet}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Mis Favoritos ({list.length})</Text>
-            <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.addPill} onPress={onClose} activeOpacity={0.8}>
-                <MaterialIcons name="add" size={rw(15)} color={colors.text} />
-                <Text style={styles.pillText}>Añadir</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.donePill} onPress={handleDone} activeOpacity={0.8}>
-                <MaterialIcons name="check" size={rw(15)} color={colors.text} />
-                <Text style={styles.pillText}>Listo</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.donePill} onPress={handleDone} activeOpacity={0.8}>
+              <MaterialIcons name="check" size={rw(15)} color={colors.text} />
+              <Text style={styles.pillText}>Listo</Text>
+            </TouchableOpacity>
           </View>
 
-          <FlatList
+          <DraggableFlatList
             data={list}
             keyExtractor={(item) => item.id}
+            onDragEnd={({ data }) => setList(data)}
+            renderItem={renderItem}
             contentContainerStyle={styles.listContent}
-            renderItem={({ item, index }) => {
-              const pct = item.totalAchievements > 0
-                ? Math.round((item.completedAchievements / item.totalAchievements) * 100)
-                : 0;
-              return (
-                <View style={styles.gameCard}>
-                  {/* Cover with overlay */}
-                  <Image source={{ uri: item.cover }} style={styles.cover} blurRadius={2} />
-                  <View style={styles.cardOverlay} />
-
-                  {/* Action buttons */}
-                  <View style={styles.actions}>
-                    <TouchableOpacity
-                      style={styles.dragBtn}
-                      onPress={() => move(index, -1)}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <MaterialIcons name="drag-indicator" size={rw(18)} color={colors.text} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.removeBtn}
-                      onPress={() => remove(item.id)}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <MaterialIcons name="close" size={rw(18)} color={colors.text} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Name at bottom */}
-                  <View style={styles.nameRow}>
-                    <Text style={styles.gameName} numberOfLines={2}>{item.name}</Text>
-                    <Text style={styles.gamePct}>{pct}%</Text>
-                  </View>
-                </View>
-              );
-            }}
-            numColumns={2}
-            columnWrapperStyle={styles.row}
           />
-        </View>
+        </GestureHandlerRootView>
       </View>
     </Modal>
   );
 }
-
-const CARD_W = (rw(375 - 32 - 12)) / 2;
 
 const styles = StyleSheet.create({
   overlay: {
@@ -153,21 +122,6 @@ const styles = StyleSheet.create({
     fontSize: rf(16),
     fontWeight: '700',
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: rw(8),
-  },
-  addPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: rw(4),
-    backgroundColor: colors.purpleMuted,
-    borderRadius: rw(20),
-    paddingHorizontal: rw(12),
-    paddingVertical: rh(6),
-    borderWidth: 1,
-    borderColor: colors.purpleBorder,
-  },
   donePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -184,61 +138,50 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: rs.md,
-    gap: rh(12),
   },
   row: {
-    gap: rw(12),
-    marginBottom: rh(12),
-  },
-  gameCard: {
-    width: CARD_W,
-    height: CARD_W * 1.4,
-    borderRadius: rw(16),
-    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.card,
+    borderRadius: rw(12),
     borderWidth: 1,
     borderColor: colors.border,
+    paddingVertical: rh(10),
+    paddingHorizontal: rw(10),
+    gap: rw(10),
+    marginBottom: rh(8),
+  },
+  rowActive: {
+    borderColor: colors.purple,
+    opacity: 0.9,
+    elevation: 8,
+    shadowColor: colors.purple,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  dragHandle: {
+    paddingHorizontal: rw(2),
   },
   cover: {
-    ...StyleSheet.absoluteFillObject,
+    width: rw(50),
+    height: rw(50),
+    borderRadius: rw(8),
+    backgroundColor: colors.purpleMuted,
   },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  info: {
+    flex: 1,
+    gap: rh(3),
   },
-  actions: {
-    position: 'absolute',
-    top: rw(10),
-    left: rw(10),
-    right: rw(10),
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dragBtn: {
-    backgroundColor: colors.purple,
-    borderRadius: rw(10),
-    padding: rw(8),
-  },
-  removeBtn: {
-    backgroundColor: '#EF4444',
-    borderRadius: rw(10),
-    padding: rw(8),
-  },
-  nameRow: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: rw(10),
-  },
-  gameName: {
+  name: {
     color: colors.text,
-    fontSize: rf(13),
+    fontSize: rf(14),
     fontWeight: '600',
   },
-  gamePct: {
+  hours: {
     color: colors.textMuted,
-    fontSize: rf(11),
-    marginTop: rh(2),
+    fontSize: rf(12),
+  },
+  removeBtn: {
+    paddingHorizontal: rw(2),
   },
 });

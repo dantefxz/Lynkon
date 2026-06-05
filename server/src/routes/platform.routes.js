@@ -209,4 +209,6 @@ router.get('/me/visibility', authenticate, ctrl.getGameVisibility);
  */
 router.patch('/me/:platform/games/:gameId/visibility', authenticate, ctrl.toggleGameVisibility);
 
+router.get('/me/:platform/games/:gameId/achievements', authenticate, ctrl.getGameAchievements);
+
 module.exports = router;

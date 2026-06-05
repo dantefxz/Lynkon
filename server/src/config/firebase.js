@@ -8,9 +8,8 @@ let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    // Reparar saltos de línea críticos
     serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-    console.log('[OK] Firebase: Configuración cargada desde variables de entorno');
+    console.log('[OK] Firebase: config cargada desde env');
   } catch (err) {
     console.error('[ERROR] Error al parsear FIREBASE_SERVICE_ACCOUNT:', err.message);
   }
@@ -49,7 +48,6 @@ if (!admin.apps.length && serviceAccount) {
   }
 }
 
-// Obtener referencias
 let auth, db;
 
 try {

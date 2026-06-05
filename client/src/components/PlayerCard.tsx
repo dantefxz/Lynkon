@@ -1,9 +1,3 @@
-/**
- * PlayerCard
- * ----------
- * Card de jugador recomendado con avatar, nombre, juegos en común y botón de acción.
- * Usado en: social (sugerencias de amigos, resultados de búsqueda).
- */
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -17,24 +11,25 @@ export interface PlayerCardProps {
   avatar?: string;
   gamesInCommon?: number;
   isOnline?: boolean;
-  /** Texto del botón de acción */
   actionLabel?: string;
   onAction?: () => void;
   onPress?: () => void;
+  disabled?: boolean;
 }
 
 export function PlayerCard({
   name, avatar, gamesInCommon = 0,
   isOnline = false, actionLabel = 'Ver perfil',
-  onAction, onPress,
+  onAction, onPress, disabled = false,
 }: PlayerCardProps) {
   const avatarSize = rw(48);
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-      onPress={onPress}
-      activeOpacity={0.85}
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: disabled ? 0.5 : 1 }]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.85}
+      disabled={disabled}
     >
       {/* Avatar */}
       <View style={styles.avatarWrapper}>

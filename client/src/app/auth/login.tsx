@@ -4,14 +4,14 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext'; // FIX: usar useTheme en vez de import directo
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 import { AppButton } from '@/components';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const { colors } = useTheme(); // FIX: consistente con el resto de la app
+  const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

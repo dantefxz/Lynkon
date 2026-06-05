@@ -11,7 +11,7 @@
  * @property {Array}    [featuredAchievements] - [{ achievementId, gameId, platform }]
  */
 
-const ALLOWED_PROFILE_FIELDS = ['bio', 'avatarId', 'favoriteGames', 'skillTags', 'featuredAchievements'];
+const ALLOWED_PROFILE_FIELDS = ['bio', 'avatarId', 'avatar', 'username', 'favoriteGames', 'skillTags', 'featuredAchievements'];
 
 /**
  * @param {Object} body
@@ -79,6 +79,7 @@ const serializeProfile = (userData, isOwner = false) => ({
   uid:                  userData.uid,
   username:             userData.username,
   bio:                  userData.bio || '',
+  avatar:               userData.avatar || userData.avatarId || null,
   avatarId:             userData.avatarId || null,
   favoriteGames:        userData.favoriteGames || [],
   featuredAchievements: userData.featuredAchievements || [],

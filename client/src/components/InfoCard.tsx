@@ -1,9 +1,3 @@
-/**
- * InfoCard
- * --------
- * Card informativa con ícono/logo, mini-título (label), título principal y texto.
- * Usado en: platform detail (stats), game detail (estadísticas), settings (secciones).
- */
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -11,20 +5,15 @@ import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 
 export interface InfoCardProps {
-  /** Ícono de MaterialIcons o emoji string */
   icon?: string;
   emoji?: string;
   iconBg?: string;
   iconColor?: string;
-  /** Texto pequeño encima del título (ej: "PLATAFORMA") */
   miniTitle?: string;
   title: string;
-  /** Valor/número grande a mostrar */
   value?: string | number;
-  /** Texto descriptivo debajo del título */
   description?: string;
   style?: ViewStyle;
-  /** Modo horizontal (ícono a la izquierda) vs vertical (ícono arriba, centrado) */
   layout?: 'horizontal' | 'vertical';
 }
 

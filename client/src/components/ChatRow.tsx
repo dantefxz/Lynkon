@@ -1,11 +1,3 @@
-/**
- * ChatRow
- * -------
- * Fila de conversación en la lista de chats: avatar, indicador online,
- * nombre, último mensaje y timestamp. También sirve como burbuja de mensaje
- * cuando mode="bubble".
- * Usado en: social screen (lista de amigos + chat).
- */
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';

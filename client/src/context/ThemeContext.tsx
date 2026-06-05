@@ -42,7 +42,7 @@ export const lightColors = {
   cardBorder:    'rgba(124, 58, 237, 0.2)',
 } as const;
 
-export type AppColors = typeof darkColors;
+export type AppColors = { [K in keyof typeof darkColors]: string };
 
 const THEME_STORAGE_KEY = 'app_theme';
 

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -11,7 +12,6 @@ import {
   PLATFORM_LABELS, PLATFORM_LOGOS, PLATFORM_ORDER,
   type PlatformId, normalizePlatformId,
 } from '@/constants/platforms';
-import { useState, useEffect } from 'react';
 
 interface LinkedPlatform { id: PlatformId; connected: boolean; }
 
@@ -26,20 +26,22 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await platformApi.getLinkedPlatforms();
-        const linked = new Set(
-          ((res.data as any)?.platforms || [])
-            .map((p: any) => normalizePlatformId(p.platform || p.name))
-            .filter(Boolean)
-        );
-        setPlatforms(PLATFORM_ORDER.map((id) => ({ id, connected: linked.has(id) })));
-      } catch {} finally { setLoading(false); }
-    };
-    load();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const load = async () => {
+        try {
+          const res = await platformApi.getLinkedPlatforms();
+          const linked = new Set(
+            ((res.data as any)?.platforms || [])
+              .map((p: any) => normalizePlatformId(p.platform || p.name))
+              .filter(Boolean)
+          );
+          setPlatforms(PLATFORM_ORDER.map((id) => ({ id, connected: linked.has(id) })));
+        } catch {} finally { setLoading(false); }
+      };
+      load();
+    }, [])
+  );
 
   const isDark = theme === 'dark';
 

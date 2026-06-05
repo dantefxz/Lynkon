@@ -1,10 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Change this to your machine's IP when running on Android emulator/device
-// For Android Studio emulator use: http://10.0.2.2:3000
-// For physical device use: http://<your-local-ip>:3000
-export const API_BASE_URL = 'http://10.0.2.2:3000/api';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -44,7 +41,7 @@ export const userApi = {
   searchUsers: (q: string) => api.get('/users/search', { params: { q } }),
 
   updateProfile: (userId: string, data: { username?: string; avatar?: string }) =>
-    api.put(`/users/${userId}/profile`, data),
+    api.patch(`/users/${userId}/profile`, data),
 
   changePassword: (userId: string, currentPassword: string, newPassword: string) =>
     api.put(`/users/${userId}/password`, { currentPassword, newPassword }),
@@ -58,6 +55,16 @@ export const userApi = {
 
   removeFavorite: (userId: string, gameId: string, platform?: string) =>
     api.delete(`/users/${userId}/favorites/${gameId}`, { params: platform ? { platform } : {} }),
+
+  // ── Juegos del perfil ──────────────────────────────
+  getProfileGames: (userId: string) =>
+    api.get(`/users/${userId}/profile-games`),
+
+  addProfileGame: (userId: string, gameId: string, name: string, platform: string, cover?: string | null, playtimeHours?: number) =>
+    api.post(`/users/${userId}/profile-games`, { gameId, name, platform, cover, playtimeHours }),
+
+  removeProfileGame: (userId: string, gameId: string, platform?: string) =>
+    api.delete(`/users/${userId}/profile-games/${gameId}`, { params: platform ? { platform } : {} }),
 };
 
 // ─── Platforms ─────────────────────────────────────────
@@ -78,11 +85,18 @@ export const platformApi = {
   getPlatformAchievements: (platform: string) =>
     api.get(`/platforms/me/${platform}/achievements`),
 
+  // ── OAuth / vinculación real ───────────────────────
+  initPlatformAuth: (platform: 'steam' | 'xbox', redirectUri?: string) =>
+    api.post(`/platforms/auth/${platform}/init`, { redirectUri }),
+
   // ── Visibilidad de juegos ──────────────────────────
   getGameVisibility: () => api.get('/platforms/me/visibility'),
 
   toggleGameVisibility: (platform: string, gameId: string) =>
     api.patch(`/platforms/me/${platform}/games/${gameId}/visibility`),
+
+  getGameAchievements: (platform: string, gameId: string) =>
+    api.get(`/platforms/me/${platform}/games/${gameId}/achievements`),
 };
 
 // ─── Friends ───────────────────────────────────────────

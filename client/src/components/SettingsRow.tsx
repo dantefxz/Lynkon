@@ -1,8 +1,3 @@
-/**
- * SettingsRow
- * -----------
- * Fila de configuración con ícono Material outlined, label, valor y flecha/switch.
- */
 import React from 'react';
 import { View, Text, TouchableOpacity, Switch, StyleSheet, Image, ImageSourcePropType } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
