@@ -139,9 +139,52 @@ const addFavorite = async (req, res, next) => {
 const removeFavorite = async (req, res, next) => {
   try {
     const { gameId } = req.params;
-    const { platform } = req.query; // opcional: filtra por plataforma si hay mismo gameId en varias
+    const { platform } = req.query; // optional: narrows match when same gameId exists across platforms
     const result = await userService.removeFavoriteGame(req.params.id, gameId, platform);
     return res.status(200).json({ message: 'Game removed from favorites', ...result });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+// ─── Profile Games ────────────────────────────────────────────────────────────
+
+const getProfileGames = async (req, res, next) => {
+  try {
+    const games = await userService.getProfileGames(req.params.id);
+    return res.status(200).json({ profileGames: games });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+const addProfileGame = async (req, res, next) => {
+  try {
+    const { gameId, name, platform, cover, playtimeHours } = req.body;
+    const errors = [];
+    if (!gameId)   errors.push('gameId is required');
+    if (!name)     errors.push('name is required');
+    if (!platform) errors.push('platform is required');
+    if (!['steam', 'psn', 'xbox'].includes(platform))
+      errors.push("platform must be 'steam', 'psn' or 'xbox'");
+    if (errors.length) return res.status(400).json({ errors });
+
+    const entry = await userService.addProfileGame(req.params.id, { gameId, name, platform, cover, playtimeHours });
+    return res.status(201).json({ message: 'Game added to profile', game: entry });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+const removeProfileGame = async (req, res, next) => {
+  try {
+    const { gameId } = req.params;
+    const { platform } = req.query;
+    const result = await userService.removeProfileGame(req.params.id, gameId, platform);
+    return res.status(200).json({ message: 'Game removed from profile', ...result });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
@@ -153,4 +196,5 @@ module.exports = {
   getSettings, createSettings, updateSettings,
   deleteUser, searchUsers, getRecommendations,
   getFavorites, addFavorite, removeFavorite,
+  getProfileGames, addProfileGame, removeProfileGame,
 };

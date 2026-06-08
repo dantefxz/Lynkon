@@ -1,73 +1,80 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
 
-export type Theme = 'dark' | 'light';
+export const darkColors = {
+  background:    '#0A0A0F',
+  backgroundGrad: '#12122A',
+  card:          '#16162A',
+  cardAlt:       '#1A1A2E',
+  purple:        '#7C3AED',
+  purpleLight:   '#A855F7',
+  purpleMuted:   'rgba(124, 58, 237, 0.2)',
+  purpleDim:     'rgba(124, 58, 237, 0.15)',
+  purpleBorder:  'rgba(124, 58, 237, 0.3)',
+  text:          '#FFFFFF',
+  textMuted:     '#9CA3AF',
+  textSecondary: '#C4B5FD',
+  online:        '#22C55E',
+  error:         '#EF4444',
+  warning:       '#EAB308',
+  border:        'rgba(124, 58, 237, 0.2)',
+  cardBorder:    'rgba(124, 58, 237, 0.25)',
+} as const;
 
-interface Colors {
-  background: string;
-  backgroundGrad: string;
-  card: string;
-  cardAlt: string;
-  cardBorder: string;
-  border: string;
-  text: string;
-  textMuted: string;
-  purple: string;
-  purpleLight: string;
-  purpleMuted: string;
-  purpleDim: string;
-  purpleBorder: string;
-  warning: string;
-}
+export const lightColors = {
+  background:    '#F4F4F8',
+  backgroundGrad: '#EAEAF5',
+  card:          '#FFFFFF',
+  cardAlt:       '#F0F0FA',
+  purple:        '#7C3AED',
+  purpleLight:   '#A855F7',
+  purpleMuted:   'rgba(124, 58, 237, 0.1)',
+  purpleDim:     'rgba(124, 58, 237, 0.08)',
+  purpleBorder:  'rgba(124, 58, 237, 0.25)',
+  text:          '#0F0F1A',
+  textMuted:     '#6B7280',
+  textSecondary: '#5B21B6',
+  online:        '#16A34A',
+  error:         '#DC2626',
+  warning:       '#D97706',
+  border:        'rgba(124, 58, 237, 0.15)',
+  cardBorder:    'rgba(124, 58, 237, 0.2)',
+} as const;
 
-const darkColors: Colors = {
-  background: '#0D0D14',
-  backgroundGrad: '#12121C',
-  card: '#16161F',
-  cardAlt: '#1C1C2A',
-  cardBorder: '#2A2A3D',
-  border: '#2A2A3D',
-  text: '#FFFFFF',
-  textMuted: '#8888AA',
-  purple: '#A855F7',
-  purpleLight: '#C084FC',
-  purpleMuted: '#2D1B4E',
-  purpleDim: '#1E1030',
-  purpleBorder: '#5B21B6',
-  warning: '#F59E0B',
-};
+export type AppColors = { [K in keyof typeof darkColors]: string };
 
-const lightColors: Colors = {
-  background: '#F5F5FA',
-  backgroundGrad: '#EEEEF5',
-  card: '#FFFFFF',
-  cardAlt: '#EDEDF5',
-  cardBorder: '#DDDDEE',
-  border: '#DDDDEE',
-  text: '#111111',
-  textMuted: '#666688',
-  purple: '#7C3AED',
-  purpleLight: '#A855F7',
-  purpleMuted: '#EDE9FE',
-  purpleDim: '#F5F3FF',
-  purpleBorder: '#C4B5FD',
-  warning: '#D97706',
-};
+const THEME_STORAGE_KEY = 'app_theme';
 
 interface ThemeContextType {
-  theme: Theme;
+  theme: 'dark' | 'light';
   toggleTheme: () => void;
-  colors: Colors;
+  colors: AppColors;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_STORAGE_KEY).then((stored) => {
+      if (stored === 'light' || stored === 'dark') setTheme(stored);
+    }).catch(() => {});
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme((t) => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      AsyncStorage.setItem(THEME_STORAGE_KEY, next).catch(() => {});
+      return next;
+    });
+  };
+
+  const colors = theme === 'dark' ? darkColors : lightColors;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, colors: theme === 'dark' ? darkColors : lightColors }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, colors }}>
       {children}
     </ThemeContext.Provider>
   );

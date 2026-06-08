@@ -51,4 +51,24 @@ const getAchievements = async (xuid) => {
   }));
 };
 
-module.exports = { getStats, getGames, getAchievements };
+const getGameAchievements = async (xuid, titleId) => {
+  try {
+    const resolvedId = validateXuid(xuid);
+    const res = await axios.get(
+      `${BASE}/achievements/player/${resolvedId}/title/${titleId}`,
+      { headers: headers() }
+    );
+    return (res.data.content?.achievements || []).map((a) => ({
+      apiname:     String(a.id),
+      name:        a.name || '',
+      description: a.description || '',
+      unlocked:    a.progressState === 'Achieved',
+      unlockedAt:  a.progression?.timeUnlocked || null,
+      icon:        a.mediaAssets?.find((m) => m.type === 'Icon')?.url || null,
+    }));
+  } catch {
+    return [];
+  }
+};
+
+module.exports = { getStats, getGames, getAchievements, getGameAchievements };

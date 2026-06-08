@@ -1,12 +1,7 @@
 const jwt = require('jsonwebtoken');
 
-// Secret para validar JWTs (debe coincidir con el de auth.controller.js)
+// must match the secret used when signing tokens in auth.service.js
 const JWT_SECRET = process.env.JWT_SECRET || 'lynkon-dev-secret-key-2026';
-
-/**
- * Verifica el JWT en el header Authorization: Bearer <token>
- * Adjunta el usuario decodificado a req.user
- */
 const authenticate = async (req, res, next) => {
   const header = req.headers.authorization;
 

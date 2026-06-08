@@ -94,7 +94,7 @@ const login = async (email, password) => {
   };
 };
 
-// ─── Forgot Password — genera código numérico y manda email con Resend ─────────
+// ─── Forgot Password ──────────────────────────────────────────────────────────
 const forgotPassword = async (email) => {
   if (!email || typeof email !== 'string' || !email.includes('@'))
     throw Object.assign(new Error('A valid email is required'), { status: 400 });
@@ -103,11 +103,10 @@ const forgotPassword = async (email) => {
 
   const snap = await db.collection('users').where('email', '==', normalizedEmail).limit(1).get();
 
-  // Por seguridad respondemos igual aunque no exista (evitar user enumeration)
+  // always return the same response to avoid user enumeration
   if (snap.empty)
     return { message: 'If that email exists, a reset code has been sent.' };
 
-  // Generar código numérico de 6 dígitos
   const code = crypto.randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
 

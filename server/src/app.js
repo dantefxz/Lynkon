@@ -7,21 +7,17 @@ const swaggerSpec = require('./config/swagger');
 
 const authRoutes     = require('./routes/auth.routes');
 const userRoutes     = require('./routes/user.routes');
-const platformRoutes = require('./routes/platform.routes');
+const platformRoutes     = require('./routes/platform.routes');
+const platformAuthRoutes = require('./routes/platform-auth.routes');
 const friendRoutes   = require('./routes/friend.routes');
 const messageRoutes  = require('./routes/message.routes');
-const { auth } = require('./config/firebase'); 
 const app = express();
 
 
 // ─── Middlewares globales ─────────────────────────────────────────────────────────────────
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(cors()); 
-app.use(
-  helmet({
-    contentSecurityPolicy: false, // asegurar que Swagger cargue
-  })
-);
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(morgan('dev'));
 app.use(express.json());
@@ -32,6 +28,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth',      authRoutes);
 app.use('/api/users',     userRoutes);
 app.use('/api/platforms', platformRoutes);
+app.use('/api/platforms/auth', platformAuthRoutes);
 app.use('/api/friends',   friendRoutes);
 app.use('/api/messages',  messageRoutes);
 

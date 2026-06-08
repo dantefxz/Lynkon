@@ -11,13 +11,6 @@ const xboxService  = require('../services/xbox.service');
 
 const SERVICE_MAP = { steam: steamService, psn: psnService, xbox: xboxService };
 
-// ─── Helper: lee la credencial del usuario desde Firestore ───────────────────
-//
-// Cada usuario guarda su propia credencial por plataforma:
-//   Steam → steamId   (el server usa STEAM_API_KEY global para consultar)
-//   Xbox  → xuid      (el server usa XBL_API_KEY   global para consultar)
-//   PSN   → npssoToken (el server no tiene key propia; usa el token del usuario)
-//
 const getUserPlatformCredential = async (userId, platform) => {
   const snap = await db.collection('users').doc(userId).get();
   if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
@@ -25,7 +18,6 @@ const getUserPlatformCredential = async (userId, platform) => {
   const linked = (snap.data().platforms || []).find((p) => p.platform === platform);
   if (!linked) throw Object.assign(new Error(`Platform ${platform} is not linked`), { status: 404 });
 
-  // platformUserId contiene el steamId / puuid / xuid / npssoToken según la plataforma
   return linked.platformUserId;
 };
 
@@ -71,11 +63,7 @@ const linkPlatform = async (req, res, next) => {
     await db.collection('users').doc(userId).update({
       platforms: [
         ...platforms,
-        {
-          platform:       data.platform,
-          platformUserId,
-          linkedAt:       new Date().toISOString(),
-        },
+        { platform: data.platform, platformUserId, linkedAt: new Date().toISOString() },
       ],
     });
 
@@ -101,9 +89,7 @@ const unlinkPlatform = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Consultas a plataformas ─────────────────────────────────────────────────
-// El controller lee la credencial del usuario desde Firestore y la pasa al service.
-// El service combina esa credencial con la dev key del servidor (en .env) para llamar a la API.
+// ─── Plataformas ──────────────────────────────────────────────────────────────
 
 const getPlatformStats = async (req, res, next) => {
   try {
@@ -141,10 +127,7 @@ const getPlatformAchievements = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-
-// ─── Toggle visibilidad de un juego ─────────────────────────────────────────
-// Persiste en: users/{uid}/gameVisibility/{platform}_{gameId} = { hidden: bool }
-// El campo "hidden" indica si el juego NO debe mostrarse en el perfil público.
+// ─── Visibilidad ──────────────────────────────────────────────────────────────
 
 const toggleGameVisibility = async (req, res, next) => {
   try {
@@ -157,7 +140,6 @@ const toggleGameVisibility = async (req, res, next) => {
     if (!gameId || !gameId.trim())
       return res.status(400).json({ error: 'gameId is required' });
 
-    // Leemos el estado actual de visibilidad (si existe)
     const visRef = db
       .collection('users').doc(userId)
       .collection('gameVisibility').doc(`${platform}_${gameId}`);
@@ -173,16 +155,10 @@ const toggleGameVisibility = async (req, res, next) => {
       updatedAt: new Date().toISOString(),
     });
 
-    return res.status(200).json({
-      message:  `Game visibility updated`,
-      platform,
-      gameId,
-      hidden:   newHidden,
-    });
+    return res.status(200).json({ message: `Game visibility updated`, platform, gameId, hidden: newHidden });
   } catch (err) { next(err); }
 };
 
-// ─── Obtener mapa de visibilidades del usuario ───────────────────────────────
 const getGameVisibility = async (req, res, next) => {
   try {
     const userId = req.user.uid;
@@ -201,8 +177,18 @@ const getGameVisibility = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const getGameAchievements = async (req, res, next) => {
+  try {
+    const { platform, gameId } = req.params;
+    if (!SERVICE_MAP[platform]) return res.status(400).json({ error: `Unsupported platform: ${platform}` });
+    const platformUserId = await getUserPlatformCredential(req.user.uid, platform);
+    const achievements   = await SERVICE_MAP[platform].getGameAchievements(platformUserId, gameId);
+    return res.status(200).json({ platform, gameId, achievements });
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   getSupportedPlatforms, getLinkedPlatforms, linkPlatform, unlinkPlatform,
-  getPlatformStats, getPlatformGames, getPlatformAchievements,
+  getPlatformStats, getPlatformGames, getPlatformAchievements, getGameAchievements,
   toggleGameVisibility, getGameVisibility,
 };

@@ -360,4 +360,8 @@ router.post('/:id/favorites', authenticate, authorizeOwner, ctrl.addFavorite);
  */
 router.delete('/:id/favorites/:gameId', authenticate, authorizeOwner, ctrl.removeFavorite);
 
+router.get('/:id/profile-games',            authenticate,                 ctrl.getProfileGames);
+router.post('/:id/profile-games',           authenticate, authorizeOwner, ctrl.addProfileGame);
+router.delete('/:id/profile-games/:gameId', authenticate, authorizeOwner, ctrl.removeProfileGame);
+
 module.exports = router;
