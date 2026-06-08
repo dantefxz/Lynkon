@@ -1,28 +1,26 @@
-import { ImageSourcePropType } from 'react-native';
+export type PlatformId = 'steam' | 'playstation' | 'psn' | 'xbox';
 
-export type PlatformId = 'steam' | 'psn' | 'xbox';
-
-export const PLATFORM_ORDER: PlatformId[] = ['psn', 'xbox', 'steam'];
+export const PLATFORM_ORDER: PlatformId[] = ['steam', 'playstation', 'xbox'];
 
 export const PLATFORM_LABELS: Record<PlatformId, string> = {
   steam: 'Steam',
-  psn: 'PlayStation',
+  playstation: 'PlayStation',
+  psn: 'PlayStation Network',
   xbox: 'Xbox',
 };
 
-export const PLATFORM_LOGOS: Record<PlatformId, ImageSourcePropType> = {
+export const PLATFORM_LOGOS: Record<PlatformId, any> = {
   steam: require('../../assets/plataforms/Steam.png'),
+  playstation: require('../../assets/plataforms/PlayStation.png'),
   psn: require('../../assets/plataforms/PlayStation.png'),
   xbox: require('../../assets/plataforms/Xbox.png'),
 };
 
-export const normalizePlatformId = (value?: string | null): PlatformId | null => {
-  if (!value) return null;
-
-  const normalized = value.toLowerCase();
-  if (normalized === 'steam') return 'steam';
-  if (normalized === 'psn' || normalized === 'playstation') return 'psn';
-  if (normalized === 'xbox') return 'xbox';
-
+export function normalizePlatformId(raw: string): PlatformId | null {
+  if (!raw) return null;
+  const lower = raw.toLowerCase().trim();
+  if (lower.includes('steam')) return 'steam';
+  if (lower === 'psn' || lower.includes('playstation') || lower.includes('ps')) return 'psn';
+  if (lower.includes('xbox') || lower.includes('microsoft')) return 'xbox';
   return null;
-};
+}

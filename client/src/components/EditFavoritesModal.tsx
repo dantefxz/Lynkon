@@ -1,244 +1,117 @@
-/**
- * EditFavoritesModal
- * ------------------
- * Modal para reordenar y eliminar juegos favoritos.
- * Cada ítem tiene un botón de arrastre (⠿) y uno de eliminación (×).
- * Como RN no incluye DnD nativo, usamos simple up/down buttons.
- */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, Modal, TouchableOpacity,
-  FlatList, Image, StyleSheet,
+  Modal, View, Text, FlatList, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '@/theme/colors';
 import { rw, rh, rf, rs } from '@/utils/responsive';
+import { useTheme } from '@/context/ThemeContext';
 
 interface Game {
   id: string;
   name: string;
-  cover: string;
-  totalHours: number;
-  completedAchievements: number;
-  totalAchievements: number;
+  cover?: string;
 }
 
 interface Props {
   visible: boolean;
   favorites: Game[];
-  onReorder: (reordered: Game[]) => void;
+  onReorder: (games: Game[]) => void;
   onRemove: (id: string) => void;
   onClose: () => void;
 }
 
 export function EditFavoritesModal({ visible, favorites, onReorder, onRemove, onClose }: Props) {
-  const [list, setList] = useState<Game[]>([]);
+  const { colors } = useTheme();
+  const [list, setList] = useState<Game[]>(favorites);
 
-  // Sync local list when modal opens
-  React.useEffect(() => {
-    if (visible) setList([...favorites]);
-  }, [visible, favorites]);
+  useEffect(() => {
+    setList(favorites);
+  }, [favorites]);
 
-  const move = (index: number, dir: -1 | 1) => {
+  const moveUp = (index: number) => {
+    if (index === 0) return;
     const next = [...list];
-    const target = index + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
+    [next[index - 1], next[index]] = [next[index], next[index - 1]];
     setList(next);
+    onReorder(next);
   };
 
-  const remove = (id: string) => {
-    setList((prev) => prev.filter((g) => g.id !== id));
-  };
-
-  const handleDone = () => {
-    onReorder(list);
-    onClose();
+  const moveDown = (index: number) => {
+    if (index === list.length - 1) return;
+    const next = [...list];
+    [next[index + 1], next[index]] = [next[index], next[index + 1]];
+    setList(next);
+    onReorder(next);
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Mis Favoritos ({list.length})</Text>
-            <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.addPill} onPress={onClose} activeOpacity={0.8}>
-                <MaterialIcons name="add" size={rw(15)} color={colors.text} />
-                <Text style={styles.pillText}>Añadir</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.donePill} onPress={handleDone} activeOpacity={0.8}>
-                <MaterialIcons name="check" size={rw(15)} color={colors.text} />
-                <Text style={styles.pillText}>Listo</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <FlatList
-            data={list}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item, index }) => {
-              const pct = item.totalAchievements > 0
-                ? Math.round((item.completedAchievements / item.totalAchievements) * 100)
-                : 0;
-              return (
-                <View style={styles.gameCard}>
-                  {/* Cover with overlay */}
-                  <Image source={{ uri: item.cover }} style={styles.cover} blurRadius={2} />
-                  <View style={styles.cardOverlay} />
-
-                  {/* Action buttons */}
-                  <View style={styles.actions}>
-                    <TouchableOpacity
-                      style={styles.dragBtn}
-                      onPress={() => move(index, -1)}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <MaterialIcons name="drag-indicator" size={rw(18)} color={colors.text} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.removeBtn}
-                      onPress={() => remove(item.id)}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <MaterialIcons name="close" size={rw(18)} color={colors.text} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Name at bottom */}
-                  <View style={styles.nameRow}>
-                    <Text style={styles.gameName} numberOfLines={2}>{item.name}</Text>
-                    <Text style={styles.gamePct}>{pct}%</Text>
-                  </View>
-                </View>
-              );
-            }}
-            numColumns={2}
-            columnWrapperStyle={styles.row}
-          />
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.title, { color: colors.text }]}>Editar favoritos</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <MaterialIcons name="close" size={rw(24)} color={colors.text} />
+          </TouchableOpacity>
         </View>
+
+        <FlatList
+          data={list}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item, index }) => (
+            <View style={[styles.row, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+              <MaterialIcons name="drag-handle" size={rw(22)} color={colors.textMuted} style={styles.drag} />
+              <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+              <View style={styles.actions}>
+                <TouchableOpacity onPress={() => moveUp(index)} disabled={index === 0} style={styles.actionBtn}>
+                  <MaterialIcons name="arrow-upward" size={rw(20)} color={index === 0 ? colors.cardBorder : colors.purple} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => moveDown(index)} disabled={index === list.length - 1} style={styles.actionBtn}>
+                  <MaterialIcons name="arrow-downward" size={rw(20)} color={index === list.length - 1 ? colors.cardBorder : colors.purple} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onRemove(item.id)} style={styles.actionBtn}>
+                  <MaterialIcons name="delete-outline" size={rw(20)} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          ListEmptyComponent={
+            <Text style={[styles.empty, { color: colors.textMuted }]}>
+              No tenés juegos favoritos todavía
+            </Text>
+          }
+        />
       </View>
     </Modal>
   );
 }
 
-const CARD_W = (rw(375 - 32 - 12)) / 2;
-
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: rw(24),
-    borderTopRightRadius: rw(24),
-    paddingBottom: rh(40),
-    maxHeight: '85%',
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: rs.md,
-    paddingVertical: rh(18),
+    paddingVertical: rh(16),
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  title: {
-    color: colors.text,
-    fontSize: rf(16),
-    fontWeight: '700',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: rw(8),
-  },
-  addPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: rw(4),
-    backgroundColor: colors.purpleMuted,
-    borderRadius: rw(20),
-    paddingHorizontal: rw(12),
-    paddingVertical: rh(6),
-    borderWidth: 1,
-    borderColor: colors.purpleBorder,
-  },
-  donePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: rw(4),
-    backgroundColor: colors.purple,
-    borderRadius: rw(20),
-    paddingHorizontal: rw(12),
-    paddingVertical: rh(6),
-  },
-  pillText: {
-    color: colors.text,
-    fontSize: rf(13),
-    fontWeight: '600',
-  },
-  listContent: {
-    padding: rs.md,
-    gap: rh(12),
-  },
+  title: { fontSize: rf(18), fontWeight: '700' },
+  closeBtn: { padding: rs.sm },
+  list: { paddingHorizontal: rs.md, paddingTop: rh(8) },
   row: {
-    gap: rw(12),
-    marginBottom: rh(12),
-  },
-  gameCard: {
-    width: CARD_W,
-    height: CARD_W * 1.4,
-    borderRadius: rw(16),
-    overflow: 'hidden',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cover: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  actions: {
-    position: 'absolute',
-    top: rw(10),
-    left: rw(10),
-    right: rw(10),
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dragBtn: {
-    backgroundColor: colors.purple,
+    alignItems: 'center',
     borderRadius: rw(10),
-    padding: rw(8),
+    borderBottomWidth: 1,
+    paddingVertical: rh(12),
+    paddingHorizontal: rs.md,
+    marginBottom: rh(6),
   },
-  removeBtn: {
-    backgroundColor: '#EF4444',
-    borderRadius: rw(10),
-    padding: rw(8),
-  },
-  nameRow: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: rw(10),
-  },
-  gameName: {
-    color: colors.text,
-    fontSize: rf(13),
-    fontWeight: '600',
-  },
-  gamePct: {
-    color: colors.textMuted,
-    fontSize: rf(11),
-    marginTop: rh(2),
-  },
+  drag: { marginRight: rs.sm },
+  name: { flex: 1, fontSize: rf(14), fontWeight: '500' },
+  actions: { flexDirection: 'row', gap: rw(4) },
+  actionBtn: { padding: rw(6) },
+  empty: { textAlign: 'center', marginTop: rh(48), fontSize: rf(14) },
 });

@@ -1,19 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authApi, userApi } from '@/services/api';
 
-interface UserProfile {
+export interface User {
   id: string;
   name: string;
-  avatar: string;
   email: string;
-  isUnder16: boolean;
+  avatar?: string;
+  isUnder16?: boolean;
 }
 
 interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
-  user: UserProfile | null;
-  token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, username: string, birthDate: string) => Promise<void>;
@@ -22,91 +20,107 @@ interface AuthContextType {
   updateUserAvatar: (avatar: string) => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.46:8081';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session on boot
   useEffect(() => {
-    const restoreSession = async () => {
+    const restore = async () => {
       try {
-        const storedToken = await AsyncStorage.getItem('authToken');
-        if (storedToken) {
-          setToken(storedToken);
-          const res = await userApi.getMyProfile();
-          const profile = res.data;
-          setUser({
-            id: profile.id,
-            name: profile.username || profile.name || 'Usuario',
-            avatar: profile.avatar || '',
-            email: profile.email || '',
-            isUnder16: profile.isUnder16 || false,
-          });
-          setIsAuthenticated(true);
-        }
+        const stored = await AsyncStorage.getItem('user');
+        if (stored) setUser(JSON.parse(stored));
       } catch {
-        // Token expired or invalid — clear it
-        await AsyncStorage.removeItem('authToken');
+        // ignore
       } finally {
         setIsLoading(false);
       }
     };
-    restoreSession();
+    restore();
   }, []);
 
+  const saveUser = async (u: User) => {
+    setUser(u);
+    await AsyncStorage.setItem('user', JSON.stringify(u));
+  };
+
   const login = async (email: string, password: string) => {
-    const res = await authApi.login(email, password);
-    const { idToken, user: serverUser } = res.data;
-    await AsyncStorage.setItem('authToken', idToken);
-    setToken(idToken);
-    setUser({
-      id: serverUser.id,
-      name: serverUser.username || serverUser.name || 'Usuario',
-      avatar: serverUser.avatar || '',
-      email: serverUser.email || email,
-      isUnder16: serverUser.isUnder16 || false,
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     });
-    setIsAuthenticated(true);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw { response: { data: err } };
+    }
+    const data = await res.json();
+    const u: User = {
+      id: data.user?.id || data.id,
+      name: data.user?.username || data.user?.name || data.username || email,
+      email: data.user?.email || email,
+      avatar: data.user?.avatar,
+      isUnder16: data.user?.isUnder16,
+    };
+    if (data.token) await AsyncStorage.setItem('token', data.token);
+    await saveUser(u);
   };
 
   const register = async (email: string, password: string, username: string, birthDate: string) => {
-    const res = await authApi.register(email, password, username, birthDate);
-    const { idToken, user: serverUser } = res.data;
-    await AsyncStorage.setItem('authToken', idToken);
-    setToken(idToken);
-    setUser({
-      id: serverUser.id,
-      name: serverUser.username || username,
-      avatar: serverUser.avatar || '',
-      email: email,
-      isUnder16: serverUser.isUnder16 || false,
+    const res = await fetch(`${BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, username, birthDate }),
     });
-    setIsAuthenticated(true);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw { response: { data: err } };
+    }
+    const data = await res.json();
+    const u: User = {
+      id: data.user?.id || data.id,
+      name: data.user?.username || data.user?.name || username,
+      email: data.user?.email || email,
+      avatar: data.user?.avatar,
+      isUnder16: data.user?.isUnder16,
+    };
+    if (data.token) await AsyncStorage.setItem('token', data.token);
+    await saveUser(u);
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem('authToken');
-    setToken(null);
     setUser(null);
-    setIsAuthenticated(false);
+    await AsyncStorage.multiRemove(['user', 'token']);
   };
 
   const updateUserName = (name: string) => {
-    setUser((prev) => (prev ? { ...prev, name } : prev));
+    if (!user) return;
+    const updated = { ...user, name };
+    setUser(updated);
+    AsyncStorage.setItem('user', JSON.stringify(updated));
   };
 
   const updateUserAvatar = (avatar: string) => {
-    setUser((prev) => (prev ? { ...prev, avatar } : prev));
+    if (!user) return;
+    const updated = { ...user, avatar };
+    setUser(updated);
+    AsyncStorage.setItem('user', JSON.stringify(updated));
   };
 
   return (
-    <AuthContext.Provider
-      value={{ isAuthenticated, user, token, isLoading, login, register, logout, updateUserName, updateUserAvatar }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: !!user,
+      isLoading,
+      login,
+      register,
+      logout,
+      updateUserName,
+      updateUserAvatar,
+    }}>
       {children}
     </AuthContext.Provider>
   );

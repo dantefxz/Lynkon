@@ -2,39 +2,28 @@ import { Dimensions, PixelRatio } from 'react-native';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-// Base design size (standard phone ~375×812)
-const BASE_W = 375;
-const BASE_H = 812;
+export const SCREEN_WIDTH = SCREEN_W;
+export const SCREEN_HEIGHT = SCREEN_H;
+const BASE_W = 390;
+const BASE_H = 844;
 
-/**
- * Scale a size proportionally to screen width.
- * Use for horizontal measurements: padding, margin, icon sizes, font sizes.
- */
+/** Responsive width — scales value relative to 390px base */
 export function rw(size: number): number {
-  return Math.round((SCREEN_W / BASE_W) * size);
+  return PixelRatio.roundToNearestPixel((size / BASE_W) * SCREEN_W);
 }
 
-/**
- * Scale a size proportionally to screen height.
- * Use for vertical measurements: heights, vertical padding.
- */
+/** Responsive height — scales value relative to 844px base */
 export function rh(size: number): number {
-  return Math.round((SCREEN_H / BASE_H) * size);
+  return PixelRatio.roundToNearestPixel((size / BASE_H) * SCREEN_H);
 }
 
-/**
- * Responsive font size — scales with width but caps at 1.3× to avoid
- * giant text on tablets.
- */
+/** Responsive font — scales based on width, capped gently */
 export function rf(size: number): number {
-  const scale = SCREEN_W / BASE_W;
-  const capped = Math.min(scale, 1.3);
-  return Math.round(PixelRatio.roundToNearestPixel(size * capped));
+  const scaled = (size / BASE_W) * SCREEN_W;
+  return PixelRatio.roundToNearestPixel(Math.min(scaled, size * 1.3));
 }
 
-/**
- * Responsive spacing — shorthand for common spacing values.
- */
+/** Responsive spacing — alias for rw */
 export const rs = {
   xs: rw(4),
   sm: rw(8),
@@ -44,25 +33,16 @@ export const rs = {
   xxl: rw(48),
 };
 
-/** Is this a tablet-sized device (width ≥ 600dp)? */
-export const isTablet = SCREEN_W >= 600;
-
-/** Screen dimensions — import instead of calling Dimensions every file. */
-export const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = { width: SCREEN_W, height: SCREEN_H };
-
-/**
- * Returns the number of grid columns based on screen width.
- * phones → 2, large phones → 2, tablets → 3, big tablets → 4
- */
+/** How many columns fit in the grid (min 2, max 4) */
 export function gridColumns(): number {
-  if (SCREEN_W >= 900) return 4;
-  if (SCREEN_W >= 600) return 3;
+  if (SCREEN_W >= 768) return 4;
+  if (SCREEN_W >= 500) return 3;
   return 2;
 }
 
-/**
- * Card width for a grid with `cols` columns, given horizontal padding and gap.
- */
-export function cardWidth(cols: number, hPadding = rw(16), gap = rw(12)): number {
-  return (SCREEN_W - hPadding * 2 - gap * (cols - 1)) / cols;
+/** Card width for a given column count with 16px horizontal padding and 12px gaps */
+export function cardWidth(cols: number): number {
+  const totalPadding = rw(16) * 2;
+  const totalGap = rw(12) * (cols - 1);
+  return (SCREEN_W - totalPadding - totalGap) / cols;
 }

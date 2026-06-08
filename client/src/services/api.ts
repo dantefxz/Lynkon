@@ -1,117 +1,83 @@
-import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Change this to your machine's IP when running on Android emulator/device
-// For Android Studio emulator use: http://10.0.2.2:3000
-// For physical device use: http://<your-local-ip>:3000
-export const API_BASE_URL = 'http://10.0.2.2:3000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.46:8081';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
-});
+async function getHeaders() {
+  const token = await AsyncStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
-// Inject token on every request
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('authToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+async function request(method: string, path: string, body?: object) {
+  const headers = await getHeaders();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw { response: { data, status: res.status } };
+  return { data, status: res.status };
+}
 
-// ─── Auth ──────────────────────────────────────────────
+// ─── Auth ────────────────────────────────────────────────────────────────────
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
-
-  register: (email: string, password: string, username: string, birthDate: string) =>
-    api.post('/auth/register', { email, password, username, birthDate }),
-
   forgotPassword: (email: string) =>
-    api.post('/auth/forgot-password', { email }),
-
+    request('POST', '/auth/forgot-password', { email }),
   verifyResetCode: (email: string, code: string) =>
-    api.post('/auth/verify-reset-code', { email, code }),
-
-  resetPassword: (email: string, code: string, newPassword: string) =>
-    api.post('/auth/reset-password', { email, code, newPassword }),
+    request('POST', '/auth/verify-reset-code', { email, code }),
+  resetPassword: (email: string, code: string, password: string) =>
+    request('POST', '/auth/reset-password', { email, code, password }),
 };
 
-// ─── Users ─────────────────────────────────────────────
+// ─── User ────────────────────────────────────────────────────────────────────
 export const userApi = {
-  getMyProfile: () => api.get('/users/me/profile'),
-
-  searchUsers: (q: string) => api.get('/users/search', { params: { q } }),
-
   updateProfile: (userId: string, data: { username?: string; avatar?: string }) =>
-    api.put(`/users/${userId}/profile`, data),
-
-  changePassword: (userId: string, currentPassword: string, newPassword: string) =>
-    api.put(`/users/${userId}/password`, { currentPassword, newPassword }),
-
-  // ── Favoritos ──────────────────────────────────────
+    request('PUT', `/users/${userId}`, data),
+  changePassword: (userId: string, data: { currentPassword: string; newPassword: string }) =>
+    request('PUT', `/users/${userId}/password`, data),
   getFavorites: (userId: string) =>
-    api.get(`/users/${userId}/favorites`),
-
-  addFavorite: (userId: string, gameId: string, name: string, platform: string) =>
-    api.post(`/users/${userId}/favorites`, { gameId, name, platform }),
-
-  removeFavorite: (userId: string, gameId: string, platform?: string) =>
-    api.delete(`/users/${userId}/favorites/${gameId}`, { params: platform ? { platform } : {} }),
+    request('GET', `/users/${userId}/favorites`),
+  addFavorite: (userId: string, gameId: string) =>
+    request('POST', `/users/${userId}/favorites`, { gameId }),
+  removeFavorite: (userId: string, gameId: string) =>
+    request('DELETE', `/users/${userId}/favorites/${gameId}`),
+  searchUsers: (query: string) =>
+    request('GET', `/users/search?q=${encodeURIComponent(query)}`),
 };
 
-// ─── Platforms ─────────────────────────────────────────
+// ─── Platform ────────────────────────────────────────────────────────────────
 export const platformApi = {
-  getSupportedPlatforms: () => api.get('/platforms/supported'),
-
-  getLinkedPlatforms: () => api.get('/platforms/me'),
-
-  linkPlatform: (platform: string, platformUserId: string) =>
-    api.post('/platforms/me/link', { platform, platformUserId }),
-
-  unlinkPlatform: (platform: string) => api.delete(`/platforms/me/${platform}`),
-
-  getPlatformStats: (platform: string) => api.get(`/platforms/me/${platform}/stats`),
-
-  getPlatformGames: (platform: string) => api.get(`/platforms/me/${platform}/games`),
-
-  getPlatformAchievements: (platform: string) =>
-    api.get(`/platforms/me/${platform}/achievements`),
-
-  // ── Visibilidad de juegos ──────────────────────────
-  getGameVisibility: () => api.get('/platforms/me/visibility'),
-
-  toggleGameVisibility: (platform: string, gameId: string) =>
-    api.patch(`/platforms/me/${platform}/games/${gameId}/visibility`),
+  getLinkedPlatforms: () =>
+    request('GET', '/platforms'),
+  linkPlatform: (platform: string, credentials: object) =>
+    request('POST', `/platforms/${platform}/link`, credentials),
+  unlinkPlatform: (platform: string) =>
+    request('DELETE', `/platforms/${platform}`),
+  getPlatformGames: (platform: string) =>
+    request('GET', `/platforms/${platform}/games`),
+  getPlatformStats: (platform: string) =>
+    request('GET', `/platforms/${platform}/stats`),
+  getGameVisibility: (gameId: string) =>
+    request('GET', `/games/${gameId}/visibility`),
 };
 
-// ─── Friends ───────────────────────────────────────────
+// ─── Friends ─────────────────────────────────────────────────────────────────
 export const friendApi = {
-  getFriends: () => api.get('/friends/me'),
-
-  getFriendRequests: () => api.get('/friends/me/requests'),
-
-  sendFriendRequest: (targetUserId: string) =>
-    api.post('/friends/me/requests', { targetUserId }),
-
-  respondToRequest: (requestId: string, action: boolean) =>
-    api.patch(`/friends/me/requests/${requestId}`, { action }),
-
-  removeFriend: (friendId: string) => api.delete(`/friends/me/${friendId}`),
+  getFriends: () =>
+    request('GET', '/friends'),
+  getFriendRequests: () =>
+    request('GET', '/friends/requests'),
+  sendFriendRequest: (userId: string) =>
+    request('POST', '/friends/request', { userId }),
 };
 
-// ─── Messages ──────────────────────────────────────────
+// ─── Messages ────────────────────────────────────────────────────────────────
 export const messageApi = {
-  getConversations: () => api.get('/messages/me'),
-
-  getMessages: (friendId: string) => api.get(`/messages/me/${friendId}`),
-
-  sendMessage: (toUserId: string, message: string) =>
-    api.post('/messages/me', { toUserId, message }),
-
-  deleteConversation: (friendId: string) => api.delete('/messages/me'),
-
-  markAsRead: (messageId: string) => api.patch(`/messages/me/${messageId}`),
+  getMessages: (userId: string) =>
+    request('GET', `/messages/${userId}`),
+  sendMessage: (userId: string, message: string) =>
+    request('POST', `/messages/${userId}`, { message }),
 };
-
-export default api;
