@@ -6,11 +6,12 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 
-// ─── Validación de contraseña (misma lógica que el back) ─────────────────────
+// ─── Validación de contraseña ─────────────────────────────────────────────────
 interface PasswordRule {
   key: string;
   label: string;
@@ -44,6 +45,23 @@ function usePasswordValidation(password: string) {
     const allPassed = results.every((r) => r.passed);
     return { results, allPassed };
   }, [password]);
+}
+
+// ─── Helpers de fecha ─────────────────────────────────────────────────────────
+/** Muestra "DD/MM/YYYY" al usuario */
+function formatDisplay(date: Date): string {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+/** Envía "YYYY-MM-DD" al backend */
+function formatISO(date: Date): string {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 // ─── Componente de regla individual ──────────────────────────────────────────
@@ -84,18 +102,42 @@ export default function RegisterScreen() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [birthDate, setBirthDate] = useState('');
+
+  // Fecha: guardamos un objeto Date internamente
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
   const { results: passwordRules, allPassed: passwordOk } = usePasswordValidation(password);
 
-  const allFieldsFilled =
-    username.trim() && email.trim() && birthDate.trim() && passwordOk;
+  // La fecha que se envía al backend (YYYY-MM-DD) o string vacío
+  const birthDate = selectedDate ? formatISO(selectedDate) : '';
 
+  const allFieldsFilled =
+    username.trim() && email.trim() && selectedDate !== null && passwordOk;
+
+  // ─── Handler del DateTimePicker ────────────────────────────────────────────
+  const onDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    // En Android el picker se cierra solo; en iOS lo cerramos al confirmar
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (event.type === 'set' && date) {
+        setSelectedDate(date);
+      }
+    } else {
+      // iOS: el picker es inline, actualizamos en tiempo real
+      if (date) setSelectedDate(date);
+    }
+  };
+
+  const handleConfirmIOS = () => setShowDatePicker(false);
+
+  // ─── Registro ──────────────────────────────────────────────────────────────
   const handleRegister = async () => {
-    if (!username.trim() || !email.trim() || !password.trim() || !birthDate.trim()) {
+    if (!username.trim() || !email.trim() || !password.trim() || !birthDate) {
       Alert.alert('Error', 'Por favor completá todos los campos');
       return;
     }
@@ -106,16 +148,16 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
-      await register(email.trim(), password, username.trim(), birthDate.trim());
+      await register(email.trim(), password, username.trim(), birthDate);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'No se pudo completar el registro';
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'No se pudo completar el registro';
       Alert.alert('Error al registrarse', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const fields = [
+  const textFields = [
     {
       label: 'Usuario',
       value: username,
@@ -132,24 +174,14 @@ export default function RegisterScreen() {
       placeholder: 'tu@email.com',
       type: 'email-address',
     },
-    {
-      label: 'Fecha de nacimiento',
-      value: birthDate,
-      setter: setBirthDate,
-      icon: 'calendar-today',
-      placeholder: 'YYYY-MM-DD',
-      type: 'default',
-    },
   ];
 
-  // Color del borde del input de contraseña
   const passwordBorderColor = !passwordTouched
     ? colors.cardBorder
     : passwordOk
     ? '#22C55E'
     : '#EF4444';
 
-  // Progreso visual (0–3 reglas cumplidas)
   const passedCount = passwordRules.filter((r) => r.passed).length;
 
   return (
@@ -173,8 +205,8 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.form}>
-            {/* Campos estándar */}
-            {fields.map(({ label, value, setter, icon, placeholder, type }) => (
+            {/* Campos de texto estándar */}
+            {textFields.map(({ label, value, setter, icon, placeholder, type }) => (
               <View key={label} style={styles.field}>
                 <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
                   {label}
@@ -204,6 +236,73 @@ export default function RegisterScreen() {
                 </View>
               </View>
             ))}
+
+            {/* ─── Selector de fecha de nacimiento ─────────────────────────── */}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
+                Fecha de nacimiento
+              </Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.inputRow,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: selectedDate ? colors.purple : colors.cardBorder,
+                  },
+                ]}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="calendar-today"
+                  size={rw(20)}
+                  color={selectedDate ? colors.purple : colors.textMuted}
+                  style={styles.inputIcon}
+                />
+                <Text
+                  style={[
+                    styles.input,
+                    {
+                      color: selectedDate ? colors.text : colors.textMuted,
+                      fontSize: rf(15),
+                      paddingVertical: rh(12),
+                    },
+                  ]}
+                >
+                  {selectedDate ? formatDisplay(selectedDate) : 'Seleccioná tu fecha'}
+                </Text>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={rw(20)}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+
+              {/* DateTimePicker — Android: modal nativo | iOS: inline */}
+              {showDatePicker && (
+                <>
+                  <DateTimePicker
+                    value={selectedDate ?? new Date(2000, 0, 1)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                    onChange={onDateChange}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1900, 0, 1)}
+                    locale="es-AR"
+                  />
+                  {/* Botón "Listo" solo en iOS (Android se cierra solo) */}
+                  {Platform.OS === 'ios' && (
+                    <TouchableOpacity
+                      style={[styles.iosConfirmButton, { backgroundColor: colors.purple }]}
+                      onPress={handleConfirmIOS}
+                    >
+                      <Text style={[styles.iosConfirmText, { fontSize: rf(15) }]}>Listo</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
 
             {/* Campo contraseña */}
             <View style={styles.field}>
@@ -251,7 +350,6 @@ export default function RegisterScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Reglas de contraseña — aparecen al empezar a escribir */}
               {passwordTouched && (
                 <View
                   style={[
@@ -262,7 +360,6 @@ export default function RegisterScreen() {
                     },
                   ]}
                 >
-                  {/* Barra de progreso */}
                   <View style={[styles.progressTrack, { backgroundColor: colors.purpleMuted }]}>
                     <View
                       style={[
@@ -279,8 +376,6 @@ export default function RegisterScreen() {
                       ]}
                     />
                   </View>
-
-                  {/* Lista de reglas */}
                   <View style={styles.rulesList}>
                     {passwordRules.map((rule) => (
                       <RuleRow
@@ -360,6 +455,15 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: rh(12) },
   eyeButton: { padding: rs.sm },
 
+  // Botón "Listo" iOS
+  iosConfirmButton: {
+    borderRadius: rw(10),
+    paddingVertical: rh(10),
+    alignItems: 'center',
+    marginTop: rh(4),
+  },
+  iosConfirmText: { color: '#fff', fontWeight: '600' },
+
   // Tarjeta de reglas
   rulesCard: {
     borderRadius: rw(12),
@@ -376,7 +480,6 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 2,
-    // transición suave (RN no tiene transition, pero el rerender es suficientemente rápido)
   },
   rulesList: { gap: rh(7) },
 

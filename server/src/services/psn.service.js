@@ -2,7 +2,7 @@ const {
   exchangeNpssoForCode,
   exchangeCodeForAccessToken,
   getUserTitles,
-  getUserTrophySummary,
+  getUserTrophyProfileSummary,
   getTitleTrophies,
   getUserTrophiesEarnedForTitle,
 } = require('psn-api');
@@ -15,7 +15,7 @@ const getAccessToken = async (npssoToken) => {
 
 const getStats = async (npssoToken) => {
   const accessToken = await getAccessToken(npssoToken);
-  const { trophySummary } = await getUserTrophySummary({ accessToken }, 'me');
+  const trophySummary = await getUserTrophyProfileSummary({ accessToken }, 'me');
   return {
     platform:      'psn',
     accountId:     trophySummary.accountId,
