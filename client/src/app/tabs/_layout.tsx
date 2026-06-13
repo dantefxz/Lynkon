@@ -4,23 +4,19 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
+import { resolveAvatarSource } from '@/constants/avatars';
 
-function AvatarTabIcon({ focused, avatar, colors }: { focused: boolean; avatar: string; colors: any }) {
+function AvatarTabIcon({ focused, avatar, colors, seed }: { focused: boolean; avatar: string; colors: any; seed: string }) {
   const size = rw(48);
+  const avatarSource = resolveAvatarSource(avatar, seed);
   return (
     <View style={[
-      { width: size, height: size, borderRadius: size / 2, borderWidth: 2, overflow: 'hidden' },
+      { width: size, height: size, borderRadius: size / 2, borderWidth: 2, overflow: 'hidden', marginBottom: rh(5) },
       focused
         ? { borderColor: colors.purple, shadowColor: colors.purple, shadowOpacity: 0.6, shadowRadius: 8, elevation: 6 }
         : { borderColor: colors.textMuted },
     ]}>
-      {avatar ? (
-        <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
-      ) : (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.purpleDim }}>
-          <MaterialIcons name="person-outline" size={rw(20)} color={colors.purple} />
-        </View>
-      )}
+      <Image source={avatarSource} style={{ width: '100%', height: '100%' }} />
     </View>
   );
 }
@@ -51,7 +47,7 @@ export default function TabsLayout() {
         options={{
           title: 'Social',
           tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons name={focused ? 'forum' : 'chat-bubble-outline'} size={rw(24)} color={color} />
+            <MaterialIcons name="forum" size={rw(24)} color={color} />
           ),
         }}
         listeners={({ navigation, route }) => ({
@@ -69,7 +65,7 @@ export default function TabsLayout() {
         options={{
           title: 'Inicio',
           tabBarIcon: ({ focused }) => (
-            <AvatarTabIcon focused={focused} avatar={user?.avatar || ''} colors={colors} />
+            <AvatarTabIcon focused={focused} avatar={user?.avatar || ''} seed={user?.name || user?.id || ''} colors={colors} />
           ),
         }}
       />

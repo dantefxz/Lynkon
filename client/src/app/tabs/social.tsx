@@ -35,7 +35,7 @@ function Under16Block() {
   return (
     <SafeAreaView style={[styles.container, { alignItems: 'center', justifyContent: 'center', padding: rw(32) }]}>
       <View style={[styles.blockIconCircle, { backgroundColor: colors.purpleMuted }]}>
-        <MaterialIcons name="lock" size={rw(48)} color={colors.purple} />
+        <MaterialIcons name="lock-outline" size={rw(48)} color={colors.purple} />
       </View>
       <Text style={[styles.blockTitle, { color: colors.text }]}>
         Función no disponible

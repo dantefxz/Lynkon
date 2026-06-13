@@ -10,36 +10,28 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { userApi } from '@/services/api';
 import { rw, rh, rf, rs } from '@/utils/responsive';
-
-const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
-];
+import { AVATAR_IDS, normalizeAvatarId, resolveAvatarSource } from '@/constants/avatars';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, updateUserName, updateUserAvatar } = useAuth();
   const { colors } = useTheme();
   const [name, setName] = useState(user?.name || '');
-  const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || PRESET_AVATARS[0]);
+  const [selectedAvatarId, setSelectedAvatarId] = useState(normalizeAvatarId(user?.avatar, user?.id || user?.name || ''));
   const [showPicker, setShowPicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      if (user?.id) await userApi.updateProfile(user.id, { username: name, avatar: selectedAvatar });
+      if (user?.id) await userApi.updateProfile(user.id, { username: name, avatarId: selectedAvatarId });
       updateUserName(name);
-      updateUserAvatar(selectedAvatar);
-      Alert.alert('✅ Listo', 'Perfil actualizado correctamente');
+      updateUserAvatar(selectedAvatarId);
+      Alert.alert('Listo', 'Perfil actualizado correctamente');
       router.back();
     } catch {
       updateUserName(name);
-      updateUserAvatar(selectedAvatar);
+      updateUserAvatar(selectedAvatarId);
       router.back();
     } finally { setLoading(false); }
   };
@@ -60,7 +52,7 @@ export default function EditProfileScreen() {
         <View style={[styles.content, { padding: rs.xl, gap: rh(24) }]}>
           <View style={styles.avatarSection}>
             <View style={[styles.avatarRing, { borderColor: colors.purple, width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}>
-              <Image source={{ uri: selectedAvatar }} style={styles.avatar} />
+              <Image source={resolveAvatarSource(selectedAvatarId, user?.id || user?.name || '')} style={styles.avatar} />
             </View>
             <TouchableOpacity style={[styles.changeAvatarBtn, { backgroundColor: colors.purple }]} onPress={() => setShowPicker(!showPicker)}>
               <MaterialIcons name="photo-camera" size={rw(16)} color="#fff" />
@@ -72,14 +64,14 @@ export default function EditProfileScreen() {
             <View style={[styles.avatarPicker, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <Text style={[styles.pickerTitle, { color: colors.text, fontSize: rf(15) }]}>Elegí un avatar</Text>
               <View style={styles.avatarGrid}>
-                {PRESET_AVATARS.map((av) => (
+                {AVATAR_IDS.map((avatarId) => (
                   <TouchableOpacity
-                    key={av}
-                    onPress={() => { setSelectedAvatar(av); setShowPicker(false); }}
+                    key={avatarId}
+                    onPress={() => { setSelectedAvatarId(avatarId); setShowPicker(false); }}
                     style={[styles.avatarOption, { width: optionSize, height: optionSize, borderRadius: optionSize / 2 },
-                      selectedAvatar === av && { borderColor: colors.purple, borderWidth: 3 }]}
+                      selectedAvatarId === avatarId && { borderColor: colors.purple, borderWidth: 3 }]}
                   >
-                    <Image source={{ uri: av }} style={styles.avatarOptionImg} />
+                    <Image source={resolveAvatarSource(avatarId)} style={styles.avatarOptionImg} />
                   </TouchableOpacity>
                 ))}
               </View>

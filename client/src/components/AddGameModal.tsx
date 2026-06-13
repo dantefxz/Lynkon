@@ -28,12 +28,6 @@ interface Props {
   title?: string;
 }
 
-const PLATFORM_ICONS: Record<PlatformId, string> = {
-  steam: 'sports-esports',
-  psn: 'videogame-asset',
-  xbox: 'videogame-asset',
-};
-
 export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggle, onClose, title }: Props) {
   const [step, setStep] = useState<'platform' | 'games'>('platform');
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);

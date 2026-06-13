@@ -6,6 +6,8 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 import { useTheme } from '@/context/ThemeContext';
+import { getProfileAvatar } from '@/services/mockData';
+import { resolveAvatarSource } from '@/constants/avatars';
 
 // ─── AppButton ────────────────────────────────────────────────────────────────
 export function AppButton({
@@ -67,12 +69,12 @@ export function ProfileHeader({
   platforms?: string[];
 }) {
   const { colors } = useTheme();
-  const avatarUri = avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
+  const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
 
   return (
     <View style={[phStyles.container, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
       <View style={[phStyles.avatarRing, { borderColor: colors.purple }]}>
-        <Image source={{ uri: avatarUri }} style={phStyles.avatar} />
+        <Image source={avatarSource} style={phStyles.avatar} />
       </View>
       <Text style={[phStyles.name, { color: colors.text }]}>{name}</Text>
       {email ? <Text style={[phStyles.email, { color: colors.textMuted }]}>{email}</Text> : null}
@@ -266,14 +268,14 @@ export function PlayerCard({
   onPress?: () => void;
 }) {
   const { colors } = useTheme();
-  const avatarUri = avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
+  const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
   return (
     <TouchableOpacity
       onPress={onPress}
       style={[pcStyles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
     >
       <View style={pcStyles.avatarWrap}>
-        <Image source={{ uri: avatarUri }} style={pcStyles.avatar} />
+        <Image source={avatarSource} style={pcStyles.avatar} />
         {isOnline && <View style={[pcStyles.dot, { backgroundColor: '#22C55E' }]} />}
       </View>
       <Text style={[pcStyles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
@@ -307,13 +309,13 @@ export function ChatRow({
   onPress?: () => void;
 }) {
   const { colors } = useTheme();
-  const avatarUri = avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
+  const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
   return (
     <TouchableOpacity
       onPress={onPress}
       style={[crStyles.row, { borderBottomColor: colors.border }]}
     >
-      <Image source={{ uri: avatarUri }} style={crStyles.avatar} />
+      <Image source={avatarSource} style={crStyles.avatar} />
       <View style={crStyles.content}>
         <Text style={[crStyles.name, { color: colors.text }]}>{name}</Text>
         {lastMessage ? <Text style={[crStyles.msg, { color: colors.textMuted }]} numberOfLines={1}>{lastMessage}</Text> : null}

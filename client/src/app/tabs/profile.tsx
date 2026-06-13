@@ -258,7 +258,7 @@ export default function ProfileScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
-                  <MaterialIcons name="star" size={rw(17)} color="#F59E0B" />
+                    <MaterialIcons name="star-outline" size={rw(17)} color="#F59E0B" />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
                     Mis Favoritos{favoriteGames.length > 0 ? ` (${favoriteGames.length})` : ''}
                   </Text>

@@ -40,7 +40,7 @@ export const userApi = {
 
   searchUsers: (q: string) => api.get('/users/search', { params: { q } }),
 
-  updateProfile: (userId: string, data: { username?: string; avatar?: string }) =>
+  updateProfile: (userId: string, data: { username?: string; avatarId?: string }) =>
     api.patch(`/users/${userId}/profile`, data),
 
   changePassword: (userId: string, currentPassword: string, newPassword: string) =>

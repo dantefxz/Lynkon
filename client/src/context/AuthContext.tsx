@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi, userApi } from '@/services/api';
+import { getProfileAvatar } from '@/services/mockData';
 
 interface UserProfile {
   id: string;
@@ -40,11 +41,12 @@ const applySession = (
   setUser: (u: UserProfile) => void,
   setIsAuthenticated: (v: boolean) => void,
 ) => {
+  const avatarId = serverUser.avatarId || serverUser.avatar || getProfileAvatar(serverUser.uid || serverUser.id || serverUser.username || '');
   setToken(idToken);
   setUser({
     id:        serverUser.uid       || serverUser.id || '',
     name:      serverUser.username  || 'Usuario',
-    avatar:    serverUser.avatar    || serverUser.avatarId || '',
+    avatar:    avatarId,
     email:     serverUser.email     || '',
     isUnder16: serverUser.isUnder16 || false,
   });
@@ -72,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser({
             id:        payload.uid,
             name:      payload.username  || 'Usuario',
-            avatar:    payload.avatarId  || '',
+            avatar:    payload.avatarId  || getProfileAvatar(payload.uid),
             email:     payload.email     || '',
             isUnder16: payload.isUnder16 || false,
           });
@@ -86,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser((prev) => prev ? {
                 ...prev,
                 name:   profile.username || prev.name,
-                avatar: profile.avatar   || prev.avatar,
+                avatar: profile.avatarId || profile.avatar || prev.avatar,
               } : prev);
             }
           } catch (err: any) {

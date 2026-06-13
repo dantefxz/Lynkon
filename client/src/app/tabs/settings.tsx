@@ -57,7 +57,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>CUENTA</Text>
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingsRow
-              icon="manage-accounts"
+              icon="person-outline"
               label="Editar perfil"
               value={user?.name || ''}
               onPress={() => router.push('/settings/edit-profile')}

@@ -244,7 +244,7 @@ export default function GameDetailScreen() {
                         ) : null}
                       </View>
                       {ach.unlocked && (
-                        <MaterialIcons name="check-circle" size={rw(18)} color="#22C55E" />
+                        <MaterialIcons name="check-circle-outline" size={rw(18)} color="#22C55E" />
                       )}
                     </View>
                   );

@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 import { AppButton } from './AppButton';
+import { getProfileAvatar } from '@/services/mockData';
+import { resolveAvatarSource } from '@/constants/avatars';
 
 export interface PlayerCardProps {
   id: string;
@@ -23,6 +24,7 @@ export function PlayerCard({
   onAction, onPress, disabled = false,
 }: PlayerCardProps) {
   const avatarSize = rw(48);
+  const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
 
   return (
     <TouchableOpacity
@@ -33,19 +35,7 @@ export function PlayerCard({
     >
       {/* Avatar */}
       <View style={styles.avatarWrapper}>
-        {avatar ? (
-          <Image
-            source={{ uri: avatar }}
-            style={[styles.avatar, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}
-          />
-        ) : (
-          <View style={[
-            styles.avatarFallback,
-            { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, backgroundColor: colors.purpleMuted },
-          ]}>
-            <MaterialIcons name="person-outline" size={rw(22)} color={colors.purple} />
-          </View>
-        )}
+        <Image source={avatarSource} style={[styles.avatar, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]} />
         {/* Indicador online */}
         <View style={[
           styles.onlineDot,

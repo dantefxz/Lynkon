@@ -77,7 +77,7 @@ function RuleRow({ label, passed, touched }: { label: string; passed: boolean; t
   const icon = !touched
     ? 'radio-button-unchecked'
     : passed
-    ? 'check-circle'
+    ? 'check-circle-outline'
     : 'cancel';
 
   return (

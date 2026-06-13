@@ -4,6 +4,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
 import { PLATFORM_LABELS, PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
+import { getProfileAvatar } from '@/services/mockData';
+import { resolveAvatarSource } from '@/constants/avatars';
 
 export interface ProfileStat {
   icon: string;
@@ -24,6 +26,7 @@ export interface ProfileHeaderProps {
 
 export function ProfileHeader({ name, email, avatar, stats, platforms = [], onSync, syncing }: ProfileHeaderProps) {
   const avatarSize = rw(72);
+  const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.cardAlt }]}>
@@ -32,16 +35,7 @@ export function ProfileHeader({ name, email, avatar, stats, platforms = [], onSy
           styles.avatarRing,
           { width: avatarSize + rw(6), height: avatarSize + rw(6), borderRadius: (avatarSize + rw(6)) / 2 },
         ]}>
-          {avatar && avatar.startsWith('http') ? (
-            <Image
-              source={{ uri: avatar }}
-              style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }}
-            />
-          ) : (
-            <View style={[styles.avatarFallback, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}>
-              <MaterialIcons name="person-outline" size={rw(34)} color={colors.purple} />
-            </View>
-          )}
+          <Image source={avatarSource} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
         </View>
         <View style={styles.userInfo}>
           <Text style={styles.name} numberOfLines={1}>{name}</Text>

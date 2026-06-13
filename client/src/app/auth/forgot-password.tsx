@@ -151,7 +151,7 @@ function CodeStep({ email, onVerified }: { email: string; onVerified: (code: str
       <View style={styles.form}>
         {/* Banner email enviado */}
         <View style={[styles.sentBanner, { backgroundColor: colors.purpleDim }]}>
-          <MaterialIcons name="mark-email-read" size={rw(20)} color={colors.purple} />
+          <MaterialIcons name="mail-outline" size={rw(20)} color={colors.purple} />
           <Text style={[styles.sentText, { color: colors.purple, fontSize: rf(13) }]}>
             Enviamos un código a{' '}
             <Text style={{ fontWeight: '700' }}>{email}</Text>

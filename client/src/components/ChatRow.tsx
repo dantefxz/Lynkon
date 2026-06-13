@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '@/theme/colors';
 import { rw, rh, rf } from '@/utils/responsive';
+import { getProfileAvatar } from '@/services/mockData';
+import { resolveAvatarSource } from '@/constants/avatars';
 
 // ── Lista de conversaciones ────────────────────────────
 export interface ChatRowProps {
@@ -20,6 +21,7 @@ export function ChatRow({
   lastMessage, timestamp, unread = 0, onPress,
 }: ChatRowProps) {
   const avatarSize = rw(46);
+  const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
 
   return (
     <TouchableOpacity
@@ -29,13 +31,7 @@ export function ChatRow({
     >
       {/* Avatar + online */}
       <View style={styles.avatarWrapper}>
-        {avatar ? (
-          <Image source={{ uri: avatar }} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
-        ) : (
-          <View style={[styles.avatarFallback, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}>
-            <MaterialIcons name="person-outline" size={rw(22)} color={colors.purple} />
-          </View>
-        )}
+        <Image source={avatarSource} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
         <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.online : colors.textMuted }]} />
       </View>
 
