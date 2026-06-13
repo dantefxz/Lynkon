@@ -1,5 +1,6 @@
 const { db } = require('../config/firebase');
 const { serializeMessage } = require('../dtos/message.dto');
+const { normalizeAvatarId } = require('../utils/avatar.utils');
 
 const convId = (a, b) => [a, b].sort().join('_');
 
@@ -23,7 +24,7 @@ const getConversations = async (userId) => {
 
     return {
       conversationId: doc.id,
-      with: other ? { uid: other.uid, username: other.username, avatarId: other.avatarId } : null,
+      with: other ? { uid: other.uid, username: other.username, avatarId: normalizeAvatarId(other.avatarId || other.avatar, other.uid) } : null,
       lastMessage:    d.lastMessage || '',
       lastMessageAt:  d.lastMessageAt,
       unreadCount:    d[`unread_${userId}`] || 0,

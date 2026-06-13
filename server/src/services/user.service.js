@@ -1,25 +1,43 @@
 const { db, auth } = require('../config/firebase');
 const { serializeProfile } = require('../dtos/user.dto');
+const { normalizeAvatarId } = require('../utils/avatar.utils');
+
+const ensureAvatarIdPersisted = async (userId, userData) => {
+  const avatarId = normalizeAvatarId(userData.avatarId || userData.avatar, userId);
+  if (userData.avatarId !== avatarId) {
+    await db.collection('users').doc(userId).update({ avatarId, updatedAt: new Date().toISOString() });
+    return { ...userData, avatarId };
+  }
+  return userData;
+};
 
 const getMyProfile = async (userId) => {
   const snap = await db.collection('users').doc(userId).get();
   if (!snap.exists) throw Object.assign(new Error('User profile not found'), { status: 404 });
-  return serializeProfile(snap.data(), true);
+  const userData = await ensureAvatarIdPersisted(userId, snap.data());
+  return serializeProfile(userData, true);
 };
 
 const getProfile = async (userId, requesterId) => {
   const snap = await db.collection('users').doc(userId).get();
   if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
-  return serializeProfile(snap.data(), requesterId === userId);
+  const userData = await ensureAvatarIdPersisted(userId, snap.data());
+  return serializeProfile(userData, requesterId === userId);
 };
 
 const createProfile = async (userId, data) => {
+  data.avatarId = normalizeAvatarId(data.avatarId || data.avatar, userId);
+  delete data.avatar;
   data.updatedAt = new Date().toISOString();
   await db.collection('users').doc(userId).update(data);
   return data;
 };
 
 const updateProfile = async (userId, data) => {
+  if (data.avatarId || data.avatar) {
+    data.avatarId = normalizeAvatarId(data.avatarId || data.avatar, userId);
+  }
+  delete data.avatar;
   data.updatedAt = new Date().toISOString();
   await db.collection('users').doc(userId).update(data);
   return data;
@@ -65,7 +83,7 @@ const searchUsers = async (q) => {
 
   return snap.docs.map((d) => {
     const u = d.data();
-    return { uid: u.uid, username: u.username, avatarId: u.avatarId };
+    return { uid: u.uid, username: u.username, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid) };
   });
 };
 
@@ -89,7 +107,7 @@ const getRecommendations = async (userId) => {
     .map((d) => {
       const u = d.data();
       const common = (u.favoriteGames || []).filter((g) => myGameIds.includes(g.gameId));
-      return { uid: u.uid, username: u.username, avatarId: u.avatarId, commonGamesCount: common.length };
+      return { uid: u.uid, username: u.username, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid), commonGamesCount: common.length };
     })
     .sort((a, b) => b.commonGamesCount - a.commonGamesCount);
 };

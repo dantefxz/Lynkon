@@ -1,5 +1,6 @@
 const { db, auth } = require('../config/firebase');
 const { generateUsername } = require('../utils/username.utils');
+const { normalizeAvatarId } = require('../utils/avatar.utils');
 const jwt  = require('jsonwebtoken');
 const axios = require('axios');
 const { Resend } = require('resend');
@@ -34,7 +35,7 @@ const register = async (data) => {
     isUnder16:     age < 16,
     authProvider:  data.authProvider,
     bio:           '',
-    avatarId:      null,
+    avatarId:      normalizeAvatarId(null, uid),
     favoriteGames:        [],
     featuredAchievements: [],
     skillTags:            {},
@@ -46,13 +47,13 @@ const register = async (data) => {
   await db.collection('users').doc(uid).set(userDoc);
 
   const idToken = jwt.sign(
-    { uid, email: data.email, username: userDoc.username, isUnder16: userDoc.isUnder16 },
+    { uid, email: data.email, username: userDoc.username, isUnder16: userDoc.isUnder16, avatarId: userDoc.avatarId },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
 
   return {
-    user: { uid, username: userDoc.username, email: userDoc.email, isUnder16: userDoc.isUnder16 },
+    user: { uid, username: userDoc.username, email: userDoc.email, isUnder16: userDoc.isUnder16, avatarId: userDoc.avatarId },
     idToken,
   };
 };
@@ -83,13 +84,13 @@ const login = async (email, password) => {
 
   const u = userSnap.data();
   const idToken = jwt.sign(
-    { uid: u.uid, email: u.email, username: u.username, isUnder16: u.isUnder16 },
+    { uid: u.uid, email: u.email, username: u.username, isUnder16: u.isUnder16, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid) },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
 
   return {
-    user: { uid: u.uid, username: u.username, email: u.email, isUnder16: u.isUnder16 },
+    user: { uid: u.uid, username: u.username, email: u.email, isUnder16: u.isUnder16, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid) },
     idToken,
   };
 };

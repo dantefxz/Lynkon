@@ -23,6 +23,8 @@ const parseSendFriendRequestDTO = (body, senderUid) => {
  * @property {true|false} action
  */
 
+const { normalizeAvatarId } = require('../utils/avatar.utils');
+
 const parseRespondFriendRequestDTO = (body) => {
   const errors = [];
   const { action } = body;
@@ -40,7 +42,7 @@ const parseRespondFriendRequestDTO = (body) => {
 const serializeBasicProfile = (userData) => ({
   uid:      userData.uid,
   username: userData.username,
-  avatarId: userData.avatarId || null,
+  avatarId: normalizeAvatarId(userData.avatarId || userData.avatar, userData.uid),
 });
 
 module.exports = { parseSendFriendRequestDTO, parseRespondFriendRequestDTO, serializeBasicProfile };
