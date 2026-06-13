@@ -26,7 +26,7 @@ const buildCallbackPage = (url) => `<!DOCTYPE html>
   <p style="margin-top:8px;color:#888;font-size:14px">Volvé a Lynkon para continuar</p>
   <a href="${url}">Abrir Lynkon</a>
 </body></html>`;
-
+/*
 const linkIfNotLinked = async (uid, platform, platformUserId) => {
   const ref      = db.collection('users').doc(uid);
   const snap     = await ref.get();
@@ -37,7 +37,47 @@ const linkIfNotLinked = async (uid, platform, platformUserId) => {
     platforms: [...platforms, { platform, platformUserId, linkedAt: new Date().toISOString() }],
   });
 };
+*/
+const linkIfNotLinked = async (uid, platform, platformUserId) => {
+  const ref = db.collection('users').doc(uid);
+  const snap = await ref.get();
 
+  if (!snap.exists) {
+    throw Object.assign(new Error('User not found'), {
+      status: 404,
+    });
+  }
+
+  const platforms = snap.data().platforms || [];
+
+  console.log('===== LINK PLATFORM =====');
+  console.log('UID:', uid);
+  console.log('PLATFORM:', platform);
+  console.log('PLATFORM USER ID:', platformUserId);
+  console.log('CURRENT PLATFORMS:', JSON.stringify(platforms, null, 2));
+
+  const existing = platforms.find(
+    (p) => p.platform === platform
+  );
+
+  if (existing) {
+    console.log('PLATFORM ALREADY LINKED');
+    return;
+  }
+
+  await ref.update({
+    platforms: [
+      ...platforms,
+      {
+        platform,
+        platformUserId,
+        linkedAt: new Date().toISOString(),
+      },
+    ],
+  });
+
+  console.log('PLATFORM SAVED');
+};
 // ── Steam ─────────────────────────────────────────────────────────────────────
 
 const steamInit = (req, res) => {

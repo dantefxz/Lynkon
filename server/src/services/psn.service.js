@@ -31,16 +31,38 @@ const getStats = async (npssoToken) => {
 const getGames = async (npssoToken) => {
   const accessToken = await getAccessToken(npssoToken);
   const { trophyTitles } = await getUserTitles({ accessToken }, 'me');
-  return (trophyTitles || []).map((t) => ({
-    gameId:        t.npCommunicationId,
-    name:          t.trophyTitleName,
-    platform:      t.trophyTitlePlatform,
-    bronzeCount:   t.earnedTrophies.bronze,
-    silverCount:   t.earnedTrophies.silver,
-    goldCount:     t.earnedTrophies.gold,
-    platinumCount: t.earnedTrophies.platinum,
-    lastPlayed:    t.lastUpdatedDateTime,
-  }));
+  return (trophyTitles || []).map((t) => {
+    const earned  = t.earnedTrophies  || {};
+    const defined = t.definedTrophies || {};
+
+    const completedAchievements =
+      (earned.bronze   || 0) +
+      (earned.silver   || 0) +
+      (earned.gold     || 0) +
+      (earned.platinum || 0);
+
+    const totalAchievements =
+      (defined.bronze   || 0) +
+      (defined.silver   || 0) +
+      (defined.gold     || 0) +
+      (defined.platinum || 0);
+
+    return {
+      gameId:               t.npCommunicationId,
+      name:                 t.trophyTitleName,
+      platform:             t.trophyTitlePlatform,
+      cover:                t.trophyTitleIconUrl || null,
+      // Campos que el cliente necesita para mostrar progreso
+      totalAchievements,
+      completedAchievements,
+      // Campos originales mantenidos por compatibilidad
+      bronzeCount:          earned.bronze   || 0,
+      silverCount:          earned.silver   || 0,
+      goldCount:            earned.gold     || 0,
+      platinumCount:        earned.platinum || 0,
+      lastPlayed:           t.lastUpdatedDateTime,
+    };
+  });
 };
 
 const getAchievements = async (npssoToken) => {

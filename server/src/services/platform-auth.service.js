@@ -84,7 +84,6 @@ const getXboxAuthUrl = (uid, redirectUri) => {
   });
   return `${MS_AUTH_BASE}/authorize?${params.toString()}`;
 };
-
 const verifyXboxCallback = async (code) => {
   const redirectUri = `${SERVER_URL()}/api/platforms/auth/xbox/callback`;
 
@@ -92,7 +91,7 @@ const verifyXboxCallback = async (code) => {
     `${MS_AUTH_BASE}/token`,
     new URLSearchParams({
       client_id:     process.env.MICROSOFT_CLIENT_ID,
-      client_secret: process.env.MICROSOFT_CLIENT_SECRET,
+      //client_secret: process.env.MICROSOFT_CLIENT_SECRET, Generaba error al momento de obetener el token.
       code,
       grant_type:    'authorization_code',
       redirect_uri:  redirectUri,

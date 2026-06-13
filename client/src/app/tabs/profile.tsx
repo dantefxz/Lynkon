@@ -153,8 +153,14 @@ export default function ProfileScreen() {
 
   const handleSync = async () => {
     setSyncing(true);
-    await loadData();
-    setSyncing(false);
+    try {
+      await Promise.all(platforms.map((platform) => platformApi.syncPlatform(platform)));
+      await loadData();
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.error || 'No se pudo sincronizar las plataformas');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   // ── Favoritos ──────────────────────────────────────────────────────────────
@@ -325,14 +331,28 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
                 {platforms.length > 0 && (
-                  <TouchableOpacity
-                    style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
-                    onPress={() => setAddProfileModalVisible(true)}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialIcons name="add" size={rw(14)} color={colors.text} />
-                    <Text style={[styles.pillText, { color: colors.text }]}>Añadir</Text>
-                  </TouchableOpacity>
+                  <View style={styles.sectionActions}>
+                    <TouchableOpacity
+                      style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
+                      onPress={handleSync}
+                      activeOpacity={0.8}
+                      disabled={syncing}
+                    >
+                      {syncing
+                        ? <ActivityIndicator size="small" color={colors.purple} />
+                        : <MaterialIcons name="refresh" size={rw(14)} color={colors.text} />}
+                      <Text style={[styles.pillText, { color: colors.text }]}>Recargar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
+                      onPress={() => setAddProfileModalVisible(true)}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialIcons name="add" size={rw(14)} color={colors.text} />
+                      <Text style={[styles.pillText, { color: colors.text }]}>Añadir</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
 

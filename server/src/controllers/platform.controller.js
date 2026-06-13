@@ -127,6 +127,35 @@ const getPlatformAchievements = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const syncPlatform = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { platform } = req.params;
+    if (!SERVICE_MAP[platform]) return res.status(400).json({ error: `Unsupported platform: ${platform}` });
+
+    const platformUserId = await getUserPlatformCredential(userId, platform);
+
+    await Promise.all([
+      SERVICE_MAP[platform].getStats(platformUserId),
+      SERVICE_MAP[platform].getGames(platformUserId),
+    ]);
+
+    const ref = db.collection('users').doc(userId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ error: 'User not found' });
+
+    const platforms = snap.data().platforms || [];
+    const updatedAt = new Date().toISOString();
+    const updatedPlatforms = platforms.map((p) => (
+      p.platform === platform ? { ...p, linkedAt: updatedAt } : p
+    ));
+
+    await ref.update({ platforms: updatedPlatforms });
+
+    return res.status(200).json({ message: `${platform} synchronized successfully`, platform, linkedAt: updatedAt });
+  } catch (err) { next(err); }
+};
+
 // ─── Visibilidad ──────────────────────────────────────────────────────────────
 
 const toggleGameVisibility = async (req, res, next) => {
@@ -190,5 +219,6 @@ const getGameAchievements = async (req, res, next) => {
 module.exports = {
   getSupportedPlatforms, getLinkedPlatforms, linkPlatform, unlinkPlatform,
   getPlatformStats, getPlatformGames, getPlatformAchievements, getGameAchievements,
+  syncPlatform,
   toggleGameVisibility, getGameVisibility,
 };

@@ -165,6 +165,29 @@ router.get('/me/:platform/games', authenticate, ctrl.getPlatformGames);
  */
 router.get('/me/:platform/achievements', authenticate, ctrl.getPlatformAchievements);
 
+/**
+ * @swagger
+ * /platforms/me/{platform}/sync:
+ *   post:
+ *     summary: Fuerza la sincronización de una plataforma vinculada
+ *     tags: [Platforms]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: platform
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [steam, psn, xbox]
+ *     responses:
+ *       200:
+ *         description: Plataforma sincronizada y timestamp actualizado
+ *       404:
+ *         description: Plataforma no vinculada
+ */
+router.post('/me/:platform/sync', authenticate, ctrl.syncPlatform);
+
 
 /**
  * @swagger

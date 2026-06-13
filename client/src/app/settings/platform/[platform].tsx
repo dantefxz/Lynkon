@@ -48,6 +48,7 @@ export default function PlatformGamesScreen() {
   const [connected,    setConnected]    = useState(false);
   const [linkedAt,     setLinkedAt]     = useState<string | null>(null);
   const [loading,      setLoading]      = useState(true);
+  const [syncing,      setSyncing]      = useState(false);
   const [linking,      setLinking]      = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [credential,   setCredential]   = useState('');
@@ -181,6 +182,21 @@ export default function PlatformGamesScreen() {
     } finally { setLinking(false); }
   };
 
+  const handleSync = async () => {
+    if (!platformId || !connected) return;
+    setSyncing(true);
+    try {
+      await platformApi.syncPlatform(platformId);
+      setLoading(true);
+      await load();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'No se pudo sincronizar la plataforma';
+      Alert.alert('Error', msg);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleUnlink = () => {
     if (!platformId) return;
     Alert.alert(
@@ -266,6 +282,19 @@ export default function PlatformGamesScreen() {
             <Text style={styles.unlinkText}>Desvincular {platformLabel}</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[styles.syncButton, { backgroundColor: colors.purple, opacity: syncing ? 0.7 : 1 }]}
+            onPress={handleSync}
+            disabled={syncing}
+          >
+            {syncing
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <>
+                  <MaterialIcons name="refresh" size={rw(18)} color="#fff" />
+                  <Text style={styles.syncButtonText}>Recargar {platformLabel}</Text>
+                </>}
+          </TouchableOpacity>
+
           {games.length > 0 && (
             <>
               <View style={[styles.searchContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -338,13 +367,20 @@ export default function PlatformGamesScreen() {
                       onPress={() => router.push(`/game/${gid}?platform=${platformId}`)}
                       activeOpacity={0.75}
                     >
-                      {imageUri ? (
-                        <Image source={{ uri: imageUri }} style={styles.gameCover} resizeMode="cover" />
-                      ) : (
-                        <View style={[styles.gameCoverPlaceholder, { backgroundColor: colors.purpleDim }]}>
-                          <MaterialIcons name="sports-esports" size={rw(24)} color={colors.purple} />
-                        </View>
-                      )}
+                      <View style={styles.gameCoverWrapper}>
+                        {imageUri ? (
+                          <Image source={{ uri: imageUri }} style={styles.gameCover} resizeMode="cover" />
+                        ) : (
+                          <View style={[styles.gameCoverPlaceholder, { backgroundColor: colors.purpleDim }]}>
+                            <MaterialIcons name="sports-esports" size={rw(24)} color={colors.purple} />
+                          </View>
+                        )}
+                        {pct === 100 && game.totalAchievements > 0 && (
+                          <View style={styles.trophyBadge}>
+                            <MaterialIcons name="emoji-events" size={rw(11)} color="#000" />
+                          </View>
+                        )}
+                      </View>
                       <View style={styles.gameInfo}>
                         <Text style={[styles.gameName, { color: colors.text }]} numberOfLines={1}>{game.name || game.title}</Text>
                         <Text style={{ color: colors.textMuted, fontSize: rf(12), marginTop: rh(4) }}>
@@ -505,14 +541,18 @@ const styles = StyleSheet.create({
   sortDirBtn:           { padding: rw(8), borderRadius: rw(8), borderWidth: 1 },
   sectionTitle:         { fontSize: rf(16), fontWeight: '600' },
   gameRow:              { flexDirection: 'row', alignItems: 'center', borderRadius: rw(12), borderWidth: 1, overflow: 'hidden' },
+  gameCoverWrapper:     { position: 'relative' },
   gameCover:            { width: rw(70), height: rw(70) },
   gameCoverPlaceholder: { width: rw(70), height: rw(70), alignItems: 'center', justifyContent: 'center' },
+  trophyBadge:          { position: 'absolute', top: rw(5), right: rw(5), backgroundColor: '#F59E0B', padding: rw(4), borderRadius: rw(6), zIndex: 1 },
   gameInfo:             { flex: 1, padding: rw(12) },
   gameName:             { fontSize: rf(14), fontWeight: '600' },
   progressBar:          { height: rh(4), borderRadius: 2, overflow: 'hidden' },
   progressFill:         { height: '100%', borderRadius: 2 },
   unlinkButton:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rw(8), padding: rh(14), borderRadius: rw(12), borderWidth: 1, marginTop: rh(8), marginBottom: rh(24) },
   unlinkText:           { color: '#EF4444', fontWeight: '600', fontSize: rf(15) },
+  syncButton:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rw(8), padding: rh(14), borderRadius: rw(12), marginBottom: rh(24) },
+  syncButtonText:       { color: '#fff', fontWeight: '600', fontSize: rf(15) },
   connectContainer:     { flex: 1, alignItems: 'center', justifyContent: 'center', padding: rw(32), gap: rh(20) },
   connectIconCircle:    { width: rw(110), height: rw(110), borderRadius: rw(55), alignItems: 'center', justifyContent: 'center' },
   connectTitle:         { fontSize: rf(20), fontWeight: '700', textAlign: 'center' },

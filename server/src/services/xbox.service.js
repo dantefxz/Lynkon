@@ -32,8 +32,10 @@ const getGames = async (xuid) => {
     gameId:               String(t.titleId),
     name:                 t.name,
     platform:             'xbox',
-    achievementsUnlocked: t.achievement?.currentAchievements,
-    achievementsTotal:    t.achievement?.totalAchievements,
+    cover:                t.displayImage || null,
+    totalAchievements:    t.achievement?.totalAchievements    || 0,
+    completedAchievements:t.achievement?.currentAchievements  || 0,
+    // Campos originales mantenidos por compatibilidad
     gamerscore:           t.achievement?.currentGamerscore,
     lastPlayed:           t.titleHistory?.lastTimePlayed,
   }));
@@ -45,8 +47,8 @@ const getAchievements = async (xuid) => {
   return (res.data.content?.titles || []).slice(0, 10).map((t) => ({
     gameId:               String(t.titleId),
     gameName:             t.name,
-    achievementsUnlocked: t.achievement?.currentAchievements,
-    achievementsTotal:    t.achievement?.totalAchievements,
+    totalAchievements:    t.achievement?.totalAchievements   || 0,
+    completedAchievements:t.achievement?.currentAchievements || 0,
     gamerscore:           t.achievement?.currentGamerscore,
   }));
 };

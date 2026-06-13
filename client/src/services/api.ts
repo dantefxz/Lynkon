@@ -85,6 +85,9 @@ export const platformApi = {
   getPlatformAchievements: (platform: string) =>
     api.get(`/platforms/me/${platform}/achievements`),
 
+  syncPlatform: (platform: string) =>
+    api.post(`/platforms/me/${platform}/sync`),
+
   // ── OAuth / vinculación real ───────────────────────
   initPlatformAuth: (platform: 'steam' | 'xbox', redirectUri?: string) =>
     api.post(`/platforms/auth/${platform}/init`, { redirectUri }),
