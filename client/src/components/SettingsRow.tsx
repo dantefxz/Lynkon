@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Switch, StyleSheet, Image, ImageSourcePropType } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
 
 export interface SettingsRowProps {
@@ -17,9 +17,11 @@ export interface SettingsRowProps {
 }
 
 export function SettingsRow({
-  icon, emoji, iconImage, iconBg, iconColor = colors.purple,
+  icon, emoji, iconImage, iconBg, iconColor,
   label, value, onPress, showDivider = false,
 }: SettingsRowProps) {
+  const { colors } = useTheme();
+  const resolvedIconColor = iconColor ?? colors.purple;
   const bg = iconBg ?? colors.purpleMuted;
 
   return (
@@ -31,13 +33,13 @@ export function SettingsRow({
           ) : emoji ? (
             <Text style={{ fontSize: rw(18) }}>{emoji}</Text>
           ) : icon ? (
-            <MaterialIcons name={icon as any} size={rw(19)} color={iconColor} />
+            <MaterialIcons name={icon as any} size={rw(19)} color={resolvedIconColor} />
           ) : null}
         </View>
         <View style={styles.textBlock}>
-          <Text style={styles.label}>{label}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
           {value ? (
-            <Text style={[styles.value, value.startsWith('●') && { color: colors.online }]}>
+            <Text style={[styles.value, { color: colors.textMuted }, value.startsWith('●') && { color: colors.online }]}>
               {value}
             </Text>
           ) : null}
@@ -60,18 +62,20 @@ export interface SettingsSwitchRowProps {
 }
 
 export function SettingsSwitchRow({
-  icon, iconBg, iconColor = colors.purple,
+  icon, iconBg, iconColor,
   label, value, onValueChange, showDivider = false,
 }: SettingsSwitchRowProps) {
+  const { colors } = useTheme();
+  const resolvedIconColor = iconColor ?? colors.purple;
   const bg = iconBg ?? colors.purpleMuted;
 
   return (
     <>
       <View style={styles.row}>
         <View style={[styles.iconBox, { backgroundColor: bg }]}>
-          <MaterialIcons name={icon as any} size={rw(19)} color={iconColor} />
+          <MaterialIcons name={icon as any} size={rw(19)} color={resolvedIconColor} />
         </View>
-        <Text style={[styles.label, { flex: 1 }]}>{label}</Text>
+        <Text style={[styles.label, { color: colors.text, flex: 1 }]}>{label}</Text>
         <Switch
           value={value}
           onValueChange={onValueChange}
@@ -89,7 +93,7 @@ const styles = StyleSheet.create({
   iconBox: { width: rw(36), height: rw(36), borderRadius: rw(10), alignItems: 'center', justifyContent: 'center' },
   iconImage: { width: rw(22), height: rw(22) },
   textBlock: { flex: 1, gap: rh(2) },
-  label: { color: colors.text, fontSize: rf(15), fontWeight: '500' },
-  value: { color: colors.textMuted, fontSize: rf(12) },
+  label: { fontSize: rf(15), fontWeight: '500' },
+  value: { fontSize: rf(12) },
   divider: { height: 1, marginHorizontal: rw(14) },
 });

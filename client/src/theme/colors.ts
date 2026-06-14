@@ -14,4 +14,6 @@ export const colors = {
   purpleDim: '#1E1030',
   purpleBorder: '#5B21B6',
   warning: '#F59E0B',
+  error:   '#EF4444',
+  online:  '#22C55E',
 } as const;

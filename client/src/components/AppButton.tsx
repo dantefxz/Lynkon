@@ -4,7 +4,7 @@ import {
   StyleSheet, ViewStyle, TextStyle,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost';
@@ -20,18 +20,20 @@ export interface AppButtonProps {
   style?: ViewStyle;
 }
 
-const variantStyles: Record<ButtonVariant, { bg: string; border: string; text: string }> = {
-  primary:     { bg: colors.purple,      border: colors.purple,       text: '#fff' },
-  secondary:   { bg: colors.card,        border: colors.purpleBorder,  text: colors.text },
-  destructive: { bg: 'transparent',      border: colors.error,         text: colors.error },
-  ghost:       { bg: 'transparent',      border: 'transparent',        text: colors.purpleLight },
-};
-
 export function AppButton({
   label, onPress, variant = 'primary',
   loading = false, disabled = false,
   icon, fullWidth = true, style,
 }: AppButtonProps) {
+  const { colors } = useTheme();
+
+  const variantStyles: Record<ButtonVariant, { bg: string; border: string; text: string }> = {
+    primary:     { bg: colors.purple,      border: colors.purple,       text: '#fff' },
+    secondary:   { bg: colors.card,        border: colors.purpleBorder,  text: colors.text },
+    destructive: { bg: 'transparent',      border: colors.error,         text: colors.error },
+    ghost:       { bg: 'transparent',      border: 'transparent',        text: colors.purpleLight },
+  };
+
   const v = variantStyles[variant];
   const opacity = disabled || loading ? 0.55 : 1;
 

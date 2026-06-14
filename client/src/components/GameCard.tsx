@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
 import { PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
 
@@ -25,6 +25,7 @@ export function GameCard({
   totalAchievements, completedAchievements,
   width, onPress, onRemove,
 }: GameCardProps) {
+  const { colors } = useTheme();
   const pct = totalAchievements > 0
     ? Math.round((completedAchievements / totalAchievements) * 100)
     : 0;
@@ -45,7 +46,7 @@ export function GameCard({
       />
 
       {isComplete && (
-        <View style={styles.trophyBadge}>
+        <View style={[styles.trophyBadge, { backgroundColor: colors.warning }]}>
           <MaterialIcons name="emoji-events" size={rw(13)} color="#000" />
         </View>
       )}
@@ -61,14 +62,14 @@ export function GameCard({
       )}
 
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{name}</Text>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
         {totalAchievements > 0 && (
           <View style={[styles.progressTrack, { backgroundColor: colors.purpleMuted }]}>
-            <View style={[styles.progressFill, { width: `${pct}%` }]} />
+            <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: colors.purple }]} />
           </View>
         )}
         <View style={styles.statsRow}>
-          <Text style={styles.stats}>
+          <Text style={[styles.stats, { color: colors.textMuted }]}>
             {totalAchievements > 0
               ? `${completedAchievements}/${totalAchievements} · ${pct}%`
               : `${totalHours}h jugadas`}
@@ -78,7 +79,7 @@ export function GameCard({
           )}
         </View>
         {totalAchievements > 0 && (
-          <Text style={styles.hours}>{totalHours}h jugadas</Text>
+          <Text style={[styles.hours, { color: colors.textMuted }]}>{totalHours}h jugadas</Text>
         )}
       </View>
     </TouchableOpacity>
@@ -88,14 +89,14 @@ export function GameCard({
 const styles = StyleSheet.create({
   card:          { borderRadius: rw(12), borderWidth: 1, overflow: 'hidden' },
   cover:         { width: '100%' },
-  trophyBadge:   { position: 'absolute', top: rw(8), right: rw(8), backgroundColor: colors.warning, padding: rw(5), borderRadius: rw(7) },
+  trophyBadge:   { position: 'absolute', top: rw(8), right: rw(8), padding: rw(5), borderRadius: rw(7) },
   removeBadge:   { position: 'absolute', top: rw(8), left: rw(8), backgroundColor: 'rgba(0,0,0,0.65)', padding: rw(5), borderRadius: rw(7) },
   info:          { padding: rw(10), gap: rh(5) },
-  name:          { color: colors.text, fontSize: rf(13), fontWeight: '600' },
+  name:          { fontSize: rf(13), fontWeight: '600' },
   progressTrack: { height: rh(4), borderRadius: 2, overflow: 'hidden' },
-  progressFill:  { height: '100%', backgroundColor: colors.purple, borderRadius: 2 },
+  progressFill:  { height: '100%', borderRadius: 2 },
   statsRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  stats:         { color: colors.textMuted, fontSize: rf(11) },
-  hours:         { color: colors.textMuted, fontSize: rf(10) },
+  stats:         { fontSize: rf(11) },
+  hours:         { fontSize: rf(10) },
   platformLogo:  { width: rw(13), height: rw(13) },
 });

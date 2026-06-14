@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
 
 export interface SearchBarProps {
@@ -10,23 +10,39 @@ export interface SearchBarProps {
   placeholder?: string;
   onClear?: () => void;
   autoFocus?: boolean;
+  onSearch?: () => void;
 }
 
 export function SearchBar({
   value, onChangeText, placeholder = 'Buscar...',
-  onClear, autoFocus = false,
+  onClear, autoFocus = false, onSearch,
 }: SearchBarProps) {
+  const { colors } = useTheme();
+
   const handleClear = () => {
     onChangeText('');
     onClear?.();
   };
 
+  const canSearch = !!onSearch && value.length >= 2;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <MaterialIcons name="search" size={rw(18)} color={colors.textMuted} style={styles.icon} />
+      <TouchableOpacity
+        onPress={canSearch ? onSearch : undefined}
+        disabled={!canSearch}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <MaterialIcons
+          name="search"
+          size={rw(18)}
+          color={canSearch ? colors.purple : colors.textMuted}
+          style={styles.icon}
+        />
+      </TouchableOpacity>
 
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: colors.text }]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -35,6 +51,7 @@ export function SearchBar({
         returnKeyType="search"
         autoCapitalize="none"
         autoCorrect={false}
+        onSubmitEditing={onSearch}
       />
 
       {value.length > 0 && (
@@ -59,7 +76,6 @@ const styles = StyleSheet.create({
   icon: {},
   input: {
     flex: 1,
-    color: colors.text,
     fontSize: rf(15),
     padding: 0,
   },

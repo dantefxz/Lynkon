@@ -3,7 +3,7 @@ import { View, Text, Modal, TouchableOpacity, Image, StyleSheet } from 'react-na
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 
 interface Game {
@@ -24,6 +24,7 @@ interface Props {
 }
 
 export function EditFavoritesModal({ visible, favorites, onReorder, onRemove, onClose }: Props) {
+  const { colors } = useTheme();
   const [list, setList] = useState<Game[]>([]);
 
   React.useEffect(() => {
@@ -42,7 +43,11 @@ export function EditFavoritesModal({ visible, favorites, onReorder, onRemove, on
 
   const renderItem = ({ item, drag, isActive }: RenderItemParams<Game>) => (
     <ScaleDecorator>
-      <View style={[styles.row, isActive && styles.rowActive]}>
+      <View style={[
+        styles.row,
+        { backgroundColor: colors.card, borderColor: colors.border },
+        isActive && { borderColor: colors.purple, opacity: 0.9, elevation: 8, shadowColor: colors.purple, shadowOpacity: 0.3, shadowRadius: 8 },
+      ]}>
         <TouchableOpacity
           onPressIn={drag}
           style={styles.dragHandle}
@@ -51,11 +56,11 @@ export function EditFavoritesModal({ visible, favorites, onReorder, onRemove, on
           <MaterialIcons name="drag-indicator" size={rw(22)} color={colors.textMuted} />
         </TouchableOpacity>
 
-        <Image source={{ uri: item.cover }} style={styles.cover} resizeMode="cover" />
+        <Image source={{ uri: item.cover }} style={[styles.cover, { backgroundColor: colors.purpleMuted }]} resizeMode="cover" />
 
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.hours}>{item.totalHours}h jugadas</Text>
+          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.hours, { color: colors.textMuted }]}>{item.totalHours}h jugadas</Text>
         </View>
 
         <TouchableOpacity
@@ -72,13 +77,13 @@ export function EditFavoritesModal({ visible, favorites, onReorder, onRemove, on
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <GestureHandlerRootView style={styles.sheet}>
+        <GestureHandlerRootView style={[styles.sheet, { backgroundColor: colors.background }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Mis Favoritos ({list.length})</Text>
-            <TouchableOpacity style={styles.donePill} onPress={handleDone} activeOpacity={0.8}>
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.title, { color: colors.text }]}>Mis Favoritos ({list.length})</Text>
+            <TouchableOpacity style={[styles.donePill, { backgroundColor: colors.purple }]} onPress={handleDone} activeOpacity={0.8}>
               <MaterialIcons name="check" size={rw(15)} color={colors.text} />
-              <Text style={styles.pillText}>Listo</Text>
+              <Text style={[styles.pillText, { color: colors.text }]}>Listo</Text>
             </TouchableOpacity>
           </View>
 
@@ -102,7 +107,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.background,
     borderTopLeftRadius: rw(24),
     borderTopRightRadius: rw(24),
     paddingBottom: rh(40),
@@ -115,10 +119,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: rs.md,
     paddingVertical: rh(18),
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   title: {
-    color: colors.text,
     fontSize: rf(16),
     fontWeight: '700',
   },
@@ -126,13 +128,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: rw(4),
-    backgroundColor: colors.purple,
     borderRadius: rw(20),
     paddingHorizontal: rw(12),
     paddingVertical: rh(6),
   },
   pillText: {
-    color: colors.text,
     fontSize: rf(13),
     fontWeight: '600',
   },
@@ -142,22 +142,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
     borderRadius: rw(12),
     borderWidth: 1,
-    borderColor: colors.border,
     paddingVertical: rh(10),
     paddingHorizontal: rw(10),
     gap: rw(10),
     marginBottom: rh(8),
-  },
-  rowActive: {
-    borderColor: colors.purple,
-    opacity: 0.9,
-    elevation: 8,
-    shadowColor: colors.purple,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   dragHandle: {
     paddingHorizontal: rw(2),
@@ -166,19 +156,16 @@ const styles = StyleSheet.create({
     width: rw(50),
     height: rw(50),
     borderRadius: rw(8),
-    backgroundColor: colors.purpleMuted,
   },
   info: {
     flex: 1,
     gap: rh(3),
   },
   name: {
-    color: colors.text,
     fontSize: rf(14),
     fontWeight: '600',
   },
   hours: {
-    color: colors.textMuted,
     fontSize: rf(12),
   },
   removeBtn: {

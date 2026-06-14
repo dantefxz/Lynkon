@@ -3,7 +3,8 @@ import { Stack, useRouter, useSegments, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Image, Animated, Dimensions, StyleSheet } from 'react-native';
+import { View, Animated, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 
@@ -30,7 +31,6 @@ function RootGuard() {
     }).start(() => setShowSplash(false));
   };
 
-  // keep splash visible for at least SPLASH_MIN_MS
   useEffect(() => {
     const t = setTimeout(() => {
       timerDone.current = true;
@@ -39,7 +39,6 @@ function RootGuard() {
     return () => clearTimeout(t);
   }, []);
 
-  // once auth resolves, try to hide splash
   useEffect(() => {
     if (!isLoading) {
       authDone.current = true;
@@ -47,7 +46,6 @@ function RootGuard() {
     }
   }, [isLoading]);
 
-  // redirect based on auth state after splash fades
   useEffect(() => {
     if (showSplash || isLoading) return;
 
@@ -94,7 +92,8 @@ function RootGuard() {
               width: Dimensions.get('window').width,
               height: Dimensions.get('window').height,
             }}
-            resizeMode="cover"
+            contentFit="cover"
+            autoplay
           />
         </Animated.View>
       )}

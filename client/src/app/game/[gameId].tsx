@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { platformApi } from '@/services/api';
 import { rw, rh, rf, rs, SCREEN_WIDTH } from '@/utils/responsive';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
 
 interface Achievement {
@@ -38,6 +38,7 @@ function formatDate(ts: number | string | null): string {
 }
 
 export default function GameDetailScreen() {
+  const { colors } = useTheme();
   const router    = useRouter();
   const { gameId, platform: platformParam } = useLocalSearchParams<{ gameId: string; platform?: string }>();
 
@@ -109,7 +110,7 @@ export default function GameDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.purple} />
         </View>
@@ -119,13 +120,13 @@ export default function GameDetailScreen() {
 
   if (!game) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtnAbs}>
           <MaterialIcons name="arrow-back" size={rw(24)} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.center}>
           <MaterialIcons name="videogame-asset-off" size={rw(48)} color={colors.textMuted} />
-          <Text style={[styles.notFoundText, { marginTop: rh(12) }]}>Juego no encontrado</Text>
+          <Text style={[styles.notFoundText, { color: colors.textMuted, marginTop: rh(12) }]}>Juego no encontrado</Text>
         </View>
       </SafeAreaView>
     );
@@ -143,7 +144,7 @@ export default function GameDetailScreen() {
   const displayedAchs = showLocked ? achievements : unlockedAchs;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Portada */}
         <View style={[styles.coverContainer, { height: coverH }]}>
@@ -172,20 +173,20 @@ export default function GameDetailScreen() {
           <View style={styles.statsRow}>
             <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <MaterialIcons name="schedule" size={rw(20)} color={colors.purple} />
-              <Text style={styles.statValue}>{game.totalHours}h</Text>
-              <Text style={styles.statLabel}>Horas</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{game.totalHours}h</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Horas</Text>
             </View>
             {game.totalAchievements > 0 && (
               <>
                 <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <MaterialIcons name="emoji-events" size={rw(20)} color="#F59E0B" />
-                  <Text style={styles.statValue}>{game.completedAchievements}/{game.totalAchievements}</Text>
-                  <Text style={styles.statLabel}>Logros</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{game.completedAchievements}/{game.totalAchievements}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Logros</Text>
                 </View>
                 <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <MaterialIcons name="bar-chart" size={rw(20)} color={colors.purple} />
-                  <Text style={styles.statValue}>{totalPct}%</Text>
-                  <Text style={styles.statLabel}>Progreso</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{totalPct}%</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Progreso</Text>
                 </View>
               </>
             )}
@@ -259,9 +260,9 @@ export default function GameDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:          { flex: 1, backgroundColor: colors.background },
+  container:          { flex: 1 },
   center:             { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  notFoundText:       { color: colors.textMuted, fontSize: rf(16) },
+  notFoundText:       { fontSize: rf(16) },
   backBtnAbs:         { position: 'absolute', top: rh(16), left: rw(16), zIndex: 10, padding: rw(8) },
   coverContainer:     { position: 'relative' },
   cover:              { width: '100%', height: '100%' },
@@ -274,8 +275,8 @@ const styles = StyleSheet.create({
   platformLabel:      { color: '#fff', fontSize: rf(13), textTransform: 'capitalize' },
   statsRow:           { flexDirection: 'row', gap: rw(10) },
   statCard:           { flex: 1, alignItems: 'center', paddingVertical: rh(14), paddingHorizontal: rw(8), borderRadius: rw(12), borderWidth: 1, gap: rh(4) },
-  statValue:          { color: colors.text, fontSize: rf(17), fontWeight: '700' },
-  statLabel:          { color: colors.textMuted, fontSize: rf(11) },
+  statValue:          { fontSize: rf(17), fontWeight: '700' },
+  statLabel:          { fontSize: rf(11) },
   achLoading:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rw(10), paddingVertical: rh(16) },
   achLoadingText:     { fontSize: rf(14) },
   achCard:            { borderRadius: rw(14), borderWidth: 1, overflow: 'hidden' },

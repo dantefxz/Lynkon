@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
 import { getProfileAvatar } from '@/services/mockData';
 import { resolveAvatarSource } from '@/constants/avatars';
@@ -20,6 +20,7 @@ export function ChatRow({
   name, avatar, isOnline = false,
   lastMessage, timestamp, unread = 0, onPress,
 }: ChatRowProps) {
+  const { colors } = useTheme();
   const avatarSize = rw(46);
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
 
@@ -32,20 +33,20 @@ export function ChatRow({
       {/* Avatar + online */}
       <View style={styles.avatarWrapper}>
         <Image source={avatarSource} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
-        <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.online : colors.textMuted }]} />
+        <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.online : colors.textMuted, borderColor: colors.card }]} />
       </View>
 
       {/* Texto */}
       <View style={styles.textBlock}>
-        <Text style={styles.name} numberOfLines={1}>{name}</Text>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
         {lastMessage && (
-          <Text style={styles.lastMsg} numberOfLines={1}>{lastMessage}</Text>
+          <Text style={[styles.lastMsg, { color: colors.textMuted }]} numberOfLines={1}>{lastMessage}</Text>
         )}
       </View>
 
       {/* Derecha */}
       <View style={styles.right}>
-        {timestamp && <Text style={styles.timestamp}>{timestamp}</Text>}
+        {timestamp && <Text style={[styles.timestamp, { color: colors.textMuted }]}>{timestamp}</Text>}
         {unread > 0 && (
           <View style={[styles.badge, { backgroundColor: colors.purple }]}>
             <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
@@ -64,6 +65,7 @@ export interface ChatBubbleProps {
 }
 
 export function ChatBubble({ message, timestamp, isOwn }: ChatBubbleProps) {
+  const { colors } = useTheme();
   return (
     <View style={{ flexDirection: 'row', justifyContent: isOwn ? 'flex-end' : 'flex-start' }}>
       <View style={[
@@ -92,11 +94,6 @@ const styles = StyleSheet.create({
     gap: rw(12),
   },
   avatarWrapper: { position: 'relative' },
-  avatarFallback: {
-    backgroundColor: colors.purpleMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   onlineDot: {
     position: 'absolute',
     bottom: 1,
@@ -105,13 +102,12 @@ const styles = StyleSheet.create({
     height: rw(11),
     borderRadius: rw(6),
     borderWidth: 2,
-    borderColor: colors.card,
   },
   textBlock: { flex: 1, gap: rh(3) },
-  name: { color: colors.text, fontSize: rf(15), fontWeight: '600' },
-  lastMsg: { color: colors.textMuted, fontSize: rf(13) },
+  name: { fontSize: rf(15), fontWeight: '600' },
+  lastMsg: { fontSize: rf(13) },
   right: { alignItems: 'flex-end', gap: rh(4) },
-  timestamp: { color: colors.textMuted, fontSize: rf(11) },
+  timestamp: { fontSize: rf(11) },
   badge: {
     minWidth: rw(18),
     height: rw(18),

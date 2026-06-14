@@ -4,7 +4,7 @@ import {
   StyleSheet, TextInput, Switch, Image,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 import { PLATFORM_LABELS, PLATFORM_LOGOS, normalizePlatformId, PlatformId } from '@/constants/platforms';
 
@@ -29,6 +29,7 @@ interface Props {
 }
 
 export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggle, onClose, title }: Props) {
+  const { colors } = useTheme();
   const [step, setStep] = useState<'platform' | 'games'>('platform');
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -69,7 +70,7 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { backgroundColor: colors.card }]}>
           {/* Header */}
           <View style={styles.header}>
             {step === 'games' ? (
@@ -79,7 +80,7 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
             ) : (
               <View style={styles.backBtn} />
             )}
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: colors.text }]}>
               {step === 'platform' ? (title || 'Añadir a Mi Perfil') : 'Seleccionar Juegos'}
             </Text>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -89,18 +90,18 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
 
           {step === 'platform' ? (
             <>
-              <Text style={styles.subtitle}>Elegí de qué plataforma querés mostrar juegos</Text>
+              <Text style={[styles.subtitle, { color: colors.textMuted }]}>Elegí de qué plataforma querés mostrar juegos</Text>
               <View style={styles.platformList}>
                 {platforms.map((plat) => {
                   const id = normalizePlatformId(plat);
                   return (
                     <TouchableOpacity
                       key={plat}
-                      style={styles.platformRow}
+                      style={[styles.platformRow, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}
                       onPress={() => handlePlatformPress(plat)}
                       activeOpacity={0.75}
                     >
-                      <View style={styles.platformIcon}>
+                      <View style={[styles.platformIcon, { backgroundColor: colors.purpleMuted }]}>
                         {id && PLATFORM_LOGOS[id] ? (
                           <Image source={PLATFORM_LOGOS[id]} style={styles.platformLogo} resizeMode="contain" />
                         ) : (
@@ -108,8 +109,8 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
                         )}
                       </View>
                       <View style={styles.platformInfo}>
-                        <Text style={styles.platformName}>{id ? PLATFORM_LABELS[id] : plat}</Text>
-                        <Text style={styles.platformStatus}>Conectado</Text>
+                        <Text style={[styles.platformName, { color: colors.text }]}>{id ? PLATFORM_LABELS[id] : plat}</Text>
+                        <Text style={[styles.platformStatus, { color: colors.online }]}>Conectado</Text>
                       </View>
                       <MaterialIcons name="chevron-right" size={rw(20)} color={colors.textMuted} />
                     </TouchableOpacity>
@@ -119,13 +120,13 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
             </>
           ) : (
             <>
-              <Text style={styles.subtitle}>Activá los juegos que querés mostrar en tu perfil</Text>
+              <Text style={[styles.subtitle, { color: colors.textMuted }]}>Activá los juegos que querés mostrar en tu perfil</Text>
 
               {/* Buscador */}
-              <View style={styles.searchWrapper}>
+              <View style={[styles.searchWrapper, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
                 <MaterialIcons name="search" size={rw(18)} color={colors.textMuted} />
                 <TextInput
-                  style={styles.searchInput}
+                  style={[styles.searchInput, { color: colors.text }]}
                   placeholder="Buscar juegos..."
                   placeholderTextColor={colors.textMuted}
                   value={search}
@@ -146,14 +147,14 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
 
                   return (
                     <TouchableOpacity
-                      style={styles.gameRow}
+                      style={[styles.gameRow, { borderBottomColor: colors.border }]}
                       onPress={() => onToggle(item.id)}
                       activeOpacity={0.8}
                     >
-                      <Image source={{ uri: item.cover }} style={styles.gameCover} />
+                      <Image source={{ uri: item.cover }} style={[styles.gameCover, { backgroundColor: colors.purpleMuted }]} />
                       <View style={styles.gameInfo}>
-                        <Text style={styles.gameName} numberOfLines={1}>{item.name}</Text>
-                        <Text style={styles.gameMeta}>{item.totalHours}h jugadas</Text>
+                        <Text style={[styles.gameName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[styles.gameMeta, { color: colors.textMuted }]}>{item.totalHours}h jugadas</Text>
                       </View>
                       <Switch
                         value={isVisible}
@@ -167,16 +168,16 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
                 ListEmptyComponent={
                   <View style={styles.emptyGames}>
                     <MaterialIcons name="videogame-asset-off" size={rw(32)} color={colors.textMuted} />
-                    <Text style={styles.emptyGamesText}>No hay juegos en esta plataforma</Text>
+                    <Text style={[styles.emptyGamesText, { color: colors.textMuted }]}>No hay juegos en esta plataforma</Text>
                   </View>
                 }
               />
 
               {/* Footer */}
               <View style={styles.footer}>
-                <Text style={styles.footerText}>{selectedCount} juego{selectedCount !== 1 ? 's' : ''} en tu perfil</Text>
-                <TouchableOpacity style={styles.addBtn} onPress={handleClose} activeOpacity={0.85}>
-                  <Text style={styles.addBtnText}>Listo</Text>
+                <Text style={[styles.footerText, { color: colors.textMuted }]}>{selectedCount} juego{selectedCount !== 1 ? 's' : ''} en tu perfil</Text>
+                <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.purple }]} onPress={handleClose} activeOpacity={0.85}>
+                  <Text style={[styles.addBtnText, { color: colors.text }]}>Listo</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -194,7 +195,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.card,
     borderTopLeftRadius: rw(24),
     borderTopRightRadius: rw(24),
     paddingBottom: rh(32),
@@ -213,12 +213,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   title: {
-    color: colors.text,
     fontSize: rf(17),
     fontWeight: '700',
   },
   subtitle: {
-    color: colors.textMuted,
     fontSize: rf(13),
     paddingHorizontal: rs.md,
     marginTop: rh(4),
@@ -233,17 +231,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: rw(12),
-    backgroundColor: colors.cardAlt,
     borderRadius: rw(12),
     padding: rw(14),
     borderWidth: 1,
-    borderColor: colors.border,
   },
   platformIcon: {
     width: rw(40),
     height: rw(40),
     borderRadius: rw(10),
-    backgroundColor: colors.purpleMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -253,31 +248,26 @@ const styles = StyleSheet.create({
   },
   platformInfo: { flex: 1 },
   platformName: {
-    color: colors.text,
     fontSize: rf(14),
     fontWeight: '600',
   },
   platformStatus: {
-    color: colors.online,
     fontSize: rf(12),
     marginTop: rh(2),
   },
   searchWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardAlt,
     borderRadius: rw(10),
     marginHorizontal: rs.md,
     paddingHorizontal: rw(12),
     paddingVertical: rh(8),
     gap: rw(8),
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: rh(8),
   },
   searchInput: {
     flex: 1,
-    color: colors.text,
     fontSize: rf(14),
     padding: 0,
   },
@@ -291,22 +281,18 @@ const styles = StyleSheet.create({
     gap: rw(12),
     paddingVertical: rh(12),
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   gameCover: {
     width: rw(52),
     height: rw(52),
     borderRadius: rw(8),
-    backgroundColor: colors.purpleMuted,
   },
   gameInfo: { flex: 1 },
   gameName: {
-    color: colors.text,
     fontSize: rf(14),
     fontWeight: '600',
   },
   gameMeta: {
-    color: colors.textMuted,
     fontSize: rf(12),
     marginTop: rh(2),
   },
@@ -316,7 +302,6 @@ const styles = StyleSheet.create({
     paddingVertical: rh(32),
   },
   emptyGamesText: {
-    color: colors.textMuted,
     fontSize: rf(13),
   },
   footer: {
@@ -325,18 +310,15 @@ const styles = StyleSheet.create({
     gap: rh(12),
   },
   footerText: {
-    color: colors.textMuted,
     fontSize: rf(13),
     textAlign: 'center',
   },
   addBtn: {
-    backgroundColor: colors.purple,
     borderRadius: rw(12),
     paddingVertical: rh(14),
     alignItems: 'center',
   },
   addBtnText: {
-    color: colors.text,
     fontSize: rf(15),
     fontWeight: '700',
   },

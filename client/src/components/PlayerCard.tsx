@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
 import { AppButton } from './AppButton';
 import { getProfileAvatar } from '@/services/mockData';
@@ -14,6 +14,7 @@ export interface PlayerCardProps {
   isOnline?: boolean;
   actionLabel?: string;
   onAction?: () => void;
+  actionDisabled?: boolean;
   onPress?: () => void;
   disabled?: boolean;
 }
@@ -21,8 +22,9 @@ export interface PlayerCardProps {
 export function PlayerCard({
   name, avatar, gamesInCommon = 0,
   isOnline = false, actionLabel = 'Ver perfil',
-  onAction, onPress, disabled = false,
+  onAction, actionDisabled = false, onPress, disabled = false,
 }: PlayerCardProps) {
+  const { colors } = useTheme();
   const avatarSize = rw(48);
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
 
@@ -39,15 +41,15 @@ export function PlayerCard({
         {/* Indicador online */}
         <View style={[
           styles.onlineDot,
-          { backgroundColor: isOnline ? colors.online : colors.textMuted },
+          { backgroundColor: isOnline ? colors.online : colors.textMuted, borderColor: colors.card },
         ]} />
       </View>
 
       {/* Info */}
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{name}</Text>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
         {gamesInCommon > 0 && (
-          <Text style={styles.gamesCommon}>
+          <Text style={[styles.gamesCommon, { color: colors.textMuted }]}>
             {gamesInCommon} juego{gamesInCommon !== 1 ? 's' : ''} en común
           </Text>
         )}
@@ -60,6 +62,7 @@ export function PlayerCard({
           onPress={onAction}
           variant="secondary"
           fullWidth={false}
+          disabled={actionDisabled}
           style={styles.actionBtn}
         />
       )}
@@ -80,10 +83,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatar: {},
-  avatarFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   onlineDot: {
     position: 'absolute',
     bottom: 1,
@@ -92,19 +91,16 @@ const styles = StyleSheet.create({
     height: rw(11),
     borderRadius: rw(6),
     borderWidth: 2,
-    borderColor: colors.card,
   },
   info: {
     flex: 1,
     gap: rh(3),
   },
   name: {
-    color: colors.text,
     fontSize: rf(15),
     fontWeight: '600',
   },
   gamesCommon: {
-    color: colors.textMuted,
     fontSize: rf(12),
   },
   actionBtn: {
