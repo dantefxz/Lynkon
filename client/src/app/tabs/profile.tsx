@@ -14,6 +14,7 @@ import { rw, rh, rf, rs, gridColumns, cardWidth } from '@/utils/responsive';
 import { GameCard, ProfileHeader } from '@/components';
 import { AddGameModal } from '@/components/AddGameModal';
 import { EditFavoritesModal } from '@/components/EditFavoritesModal';
+import { getAllSkillLevels, SkillLevel } from '@/utils/skillStorage';
 
 interface Game {
   id: string;
@@ -59,6 +60,7 @@ export default function ProfileScreen() {
 
   const [achievementCounts, setAchievementCounts] = useState<Record<string, { total: number; completed: number }>>({});
 
+  const [skillLevels, setSkillLevels] = useState<Record<string, SkillLevel>>({});
   const [addProfileModalVisible, setAddProfileModalVisible] = useState(false);
   const [addFavModalVisible, setAddFavModalVisible]         = useState(false);
   const [editModalVisible, setEditModalVisible]             = useState(false);
@@ -121,6 +123,10 @@ export default function ProfileScreen() {
     setLoading(true);
     loadData().finally(() => setLoading(false));
   }, [loadData]);
+
+  useEffect(() => {
+    getAllSkillLevels().then(setSkillLevels);
+  }, []);
 
   // Fetch achievement counts for profile + favorite games in background
   useEffect(() => {
@@ -307,6 +313,7 @@ export default function ProfileScreen() {
                         totalAchievements={ach?.total ?? item.totalAchievements}
                         completedAchievements={ach?.completed ?? item.completedAchievements}
                         width={FAV_CARD_W}
+                        skillLevel={skillLevels[item.id] ?? null}
                         onPress={() => router.push(`/game/${item.id}`)}
                       />
                     );
@@ -395,6 +402,7 @@ export default function ProfileScreen() {
                         completedAchievements={ach?.completed ?? 0}
                         platform={pg.platform}
                         width={CARD_W}
+                        skillLevel={skillLevels[pg.gameId] ?? null}
                         onPress={() => router.push(`/game/${pg.gameId}?platform=${pg.platform}`)}
                         onRemove={() => handleRemoveProfileGame(pg.gameId, pg.platform)}
                       />

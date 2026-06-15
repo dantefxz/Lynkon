@@ -54,8 +54,10 @@ export default {
       submit:       'Crear cuenta',
       haveAccount:  '¿Ya tenés cuenta?',
       login:        'Iniciá sesión',
-      errorFields:  'Por favor completá todos los campos',
-      errorPassword:'La contraseña no cumple todos los requisitos',
+      errorFields:         'Por favor completá todos los campos',
+      errorPassword:       'La contraseña no cumple todos los requisitos',
+      generateUsername:    'Generar',
+      usernamePlaceholder: 'Opcional — se genera uno automáticamente',
       requirements: {
         minLength:  'Al menos 8 caracteres',
         minLetters: 'Al menos 6 letras',
@@ -196,6 +198,14 @@ export default {
       silver:   'P',
       gold:     'O',
       platinum: '✦',
+    },
+    skillLevel: {
+      title:        'Mi nivel en este juego',
+      hint:         'Opcional — solo lo ves vos',
+      beginner:     'Principiante',
+      intermediate: 'Intermedio',
+      advanced:     'Avanzado',
+      expert:       'Experto',
     },
   },
 

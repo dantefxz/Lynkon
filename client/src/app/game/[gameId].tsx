@@ -11,6 +11,7 @@ import { rw, rh, rf, rs, SCREEN_WIDTH } from '@/utils/responsive';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
+import { getSkillLevel, setSkillLevel, SKILL_LEVELS, SKILL_COLORS, SkillLevel } from '@/utils/skillStorage';
 
 interface Achievement {
   apiname: string;
@@ -49,6 +50,7 @@ export default function GameDetailScreen() {
   const [loading,      setLoading]      = useState(true);
   const [loadingAchs,  setLoadingAchs]  = useState(false);
   const [showLocked,   setShowLocked]   = useState(false);
+  const [skillLevel,   setSkillLevelState] = useState<SkillLevel | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -109,6 +111,16 @@ export default function GameDetailScreen() {
     loadGame();
     return () => { active = false; };
   }, [gameId, platformParam]);
+
+  useEffect(() => {
+    if (gameId) getSkillLevel(gameId).then(setSkillLevelState);
+  }, [gameId]);
+
+  const handleSkillLevel = async (level: SkillLevel) => {
+    const next = skillLevel === level ? null : level;
+    setSkillLevelState(next);
+    if (gameId) await setSkillLevel(gameId, next);
+  };
 
   if (loading) {
     return (
@@ -192,6 +204,39 @@ export default function GameDetailScreen() {
                 </View>
               </>
             )}
+          </View>
+
+          {/* Nivel de habilidad */}
+          <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.skillHeader}>
+              <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />
+              <Text style={[styles.skillTitle, { color: colors.text }]}>{t('game.skillLevel.title')}</Text>
+              {skillLevel && (
+                <View style={[styles.skillBadge, { backgroundColor: SKILL_COLORS[skillLevel] + '22', borderColor: SKILL_COLORS[skillLevel] }]}>
+                  <Text style={[styles.skillBadgeText, { color: SKILL_COLORS[skillLevel] }]}>
+                    {t(`game.skillLevel.${skillLevel}` as any)}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.skillChips}>
+              {SKILL_LEVELS.map((level) => {
+                const active = skillLevel === level;
+                const color  = SKILL_COLORS[level];
+                return (
+                  <TouchableOpacity
+                    key={level}
+                    style={[styles.skillChip, { borderColor: active ? color : colors.border, backgroundColor: active ? color + '22' : colors.cardAlt ?? colors.background }]}
+                    onPress={() => handleSkillLevel(level)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.skillChipText, { color: active ? color : colors.textMuted, fontWeight: active ? '700' : '500' }]}>
+                      {t(`game.skillLevel.${level}` as any)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           {/* Logros */}
@@ -293,4 +338,13 @@ const styles = StyleSheet.create({
   achName:            { fontSize: rf(13), fontWeight: '600' },
   achDesc:            { fontSize: rf(12) },
   achDate:            { fontSize: rf(11) },
+  skillCard:          { borderRadius: rw(14), borderWidth: 1, padding: rw(16), gap: rh(10) },
+  skillHeader:        { flexDirection: 'row', alignItems: 'center', gap: rw(8) },
+  skillTitle:         { fontSize: rf(15), fontWeight: '700', flex: 1 },
+  skillBadge:         { borderWidth: 1, borderRadius: rw(20), paddingHorizontal: rw(10), paddingVertical: rh(3) },
+  skillBadgeText:     { fontSize: rf(12), fontWeight: '700' },
+  skillHint:          { fontSize: rf(12) },
+  skillChips:         { flexDirection: 'row', flexWrap: 'wrap', gap: rw(8) },
+  skillChip:          { paddingHorizontal: rw(14), paddingVertical: rh(8), borderRadius: rw(20), borderWidth: 1.5 },
+  skillChipText:      { fontSize: rf(13) },
 });

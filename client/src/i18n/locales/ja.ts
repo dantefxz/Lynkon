@@ -54,8 +54,10 @@ export default {
       submit:       'アカウント作成',
       haveAccount:  'すでにアカウントをお持ちですか？',
       login:        'ログイン',
-      errorFields:  'すべての項目を入力してください',
-      errorPassword:'パスワードがすべての要件を満たしていません',
+      errorFields:         'すべての項目を入力してください',
+      errorPassword:       'パスワードがすべての要件を満たしていません',
+      generateUsername:    '生成',
+      usernamePlaceholder: '任意 — 空白の場合は自動生成されます',
       requirements: {
         minLength:  '8文字以上',
         minLetters: '英字6文字以上',
@@ -196,6 +198,14 @@ export default {
       silver:   'S',
       gold:     'G',
       platinum: '✦',
+    },
+    skillLevel: {
+      title:        'このゲームのスキルレベル',
+      hint:         '任意 — 自分にのみ表示されます',
+      beginner:     '初心者',
+      intermediate: '中級者',
+      advanced:     '上級者',
+      expert:       'エキスパート',
     },
   },
 

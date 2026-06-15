@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
+import { generateUsername } from '@/utils/usernameGenerator';
 
 interface PasswordRule {
   key: string;
@@ -87,7 +88,7 @@ export default function RegisterScreen() {
   const { results: passwordRules, allPassed: passwordOk } = usePasswordValidation(password);
 
   const birthDate = selectedDate ? formatISO(selectedDate) : '';
-  const allFieldsFilled = username.trim() && email.trim() && selectedDate !== null && passwordOk;
+  const allFieldsFilled = email.trim() && selectedDate !== null && passwordOk;
 
   const onDateChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
@@ -101,7 +102,7 @@ export default function RegisterScreen() {
   const handleConfirmIOS = () => setShowDatePicker(false);
 
   const handleRegister = async () => {
-    if (!username.trim() || !email.trim() || !password.trim() || !birthDate) {
+    if (!email.trim() || !password.trim() || !birthDate) {
       Alert.alert(t('common.error'), t('auth.register.errorFields'));
       return;
     }
@@ -110,9 +111,11 @@ export default function RegisterScreen() {
       Alert.alert(t('common.error'), t('auth.register.errorPassword'));
       return;
     }
+    const finalUsername = username.trim() || generateUsername();
+    if (!username.trim()) setUsername(finalUsername);
     setLoading(true);
     try {
-      await register(email.trim(), password, username.trim(), birthDate);
+      await register(email.trim(), password, finalUsername, birthDate);
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.response?.data?.message || t('auth.register.errorFields');
       Alert.alert(t('common.error'), msg);
@@ -122,8 +125,7 @@ export default function RegisterScreen() {
   };
 
   const textFields = [
-    { labelKey: 'auth.register.username', value: username, setter: setUsername, icon: 'person-outline', placeholder: 'tu_usuario', type: 'default' },
-    { labelKey: 'auth.register.email',    value: email,    setter: setEmail,    icon: 'mail-outline',   placeholder: 'tu@email.com', type: 'email-address' },
+    { labelKey: 'auth.register.email', value: email, setter: setEmail, icon: 'mail-outline', placeholder: 'tu@email.com', type: 'email-address' },
   ];
 
   const passwordBorderColor = !passwordTouched ? colors.cardBorder : passwordOk ? '#22C55E' : '#EF4444';
@@ -143,6 +145,33 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.form}>
+            {/* Username con botón de generar */}
+            <View style={styles.field}>
+              <View style={styles.labelRow}>
+                <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
+                  {t('auth.register.username')}
+                </Text>
+                <TouchableOpacity onPress={() => setUsername(generateUsername())} style={styles.generateBtn} activeOpacity={0.7}>
+                  <MaterialIcons name="casino" size={rw(14)} color={colors.purple} />
+                  <Text style={[styles.generateText, { color: colors.purple, fontSize: rf(12) }]}>
+                    {t('auth.register.generateUsername')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <MaterialIcons name="person-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
+                  placeholder={t('auth.register.usernamePlaceholder')}
+                  placeholderTextColor={colors.textMuted}
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
             {textFields.map(({ labelKey, value, setter, icon, placeholder, type }) => (
               <View key={labelKey} style={styles.field}>
                 <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
@@ -291,4 +320,7 @@ const styles = StyleSheet.create({
   submitButton:     { paddingVertical: rh(16), borderRadius: rw(12), alignItems: 'center', marginTop: rh(8) },
   submitText:       { color: '#fff', fontWeight: '600' },
   loginRow:         { flexDirection: 'row', justifyContent: 'center' },
+  labelRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  generateBtn:      { flexDirection: 'row', alignItems: 'center', gap: rw(4) },
+  generateText:     { fontWeight: '500' },
 });

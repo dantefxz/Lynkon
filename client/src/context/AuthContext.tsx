@@ -8,6 +8,7 @@ interface UserProfile {
   name: string;
   avatar: string;
   email: string;
+  bio: string;
   isUnder16: boolean;
 }
 
@@ -21,6 +22,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUserName: (name: string) => void;
   updateUserAvatar: (avatar: string) => void;
+  updateUserBio: (bio: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -48,6 +50,7 @@ const applySession = (
     name:      serverUser.username  || 'Usuario',
     avatar:    avatarId,
     email:     serverUser.email     || '',
+    bio:       serverUser.bio       || '',
     isUnder16: serverUser.isUnder16 || false,
   });
   setIsAuthenticated(true);
@@ -76,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name:      payload.username  || 'Usuario',
             avatar:    payload.avatarId  || getProfileAvatar(payload.uid),
             email:     payload.email     || '',
+            bio:       payload.bio       || '',
             isUnder16: payload.isUnder16 || false,
           });
           setIsAuthenticated(true);
@@ -89,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 ...prev,
                 name:   profile.username || prev.name,
                 avatar: profile.avatarId || profile.avatar || prev.avatar,
+                bio:    profile.bio      || prev.bio || '',
               } : prev);
             }
           } catch (err: any) {
@@ -159,9 +164,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => (prev ? { ...prev, avatar } : prev));
   };
 
+  const updateUserBio = (bio: string) => {
+    setUser((prev) => (prev ? { ...prev, bio } : prev));
+  };
+
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, user, token, isLoading, login, register, logout, updateUserName, updateUserAvatar }}
+      value={{ isAuthenticated, user, token, isLoading, login, register, logout, updateUserName, updateUserAvatar, updateUserBio }}
     >
       {children}
     </AuthContext.Provider>

@@ -6,6 +6,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTranslation } from 'react-i18next';
 import { rw, rh, rf, rs } from '@/utils/responsive';
+import { SKILL_COLORS, SkillLevel } from '@/utils/skillStorage';
 import { useTheme } from '@/context/ThemeContext';
 import { getProfileAvatar } from '@/services/mockData';
 import { resolveAvatarSource } from '@/constants/avatars';
@@ -116,6 +117,7 @@ export function GameCard({
   completedAchievements,
   platform,
   width,
+  skillLevel,
   onPress,
 }: {
   id: string;
@@ -127,6 +129,7 @@ export function GameCard({
   completedAchievements?: number;
   platform?: string;
   width?: number;
+  skillLevel?: SkillLevel | null;
   onPress?: () => void;
 }) {
   const { colors } = useTheme();
@@ -145,6 +148,11 @@ export function GameCard({
       <Image source={{ uri: cover }} style={[gcStyles.cover, { width: cardW, height: cardW * 1.35 }]} resizeMode="cover" />
       <View style={gcStyles.info}>
         <Text style={[gcStyles.name, { color: colors.text }]} numberOfLines={2}>{name}</Text>
+        {skillLevel && (
+          <View style={[gcStyles.skillBadge, { backgroundColor: SKILL_COLORS[skillLevel] + '22', borderColor: SKILL_COLORS[skillLevel] }]}>
+            <Text style={[gcStyles.skillText, { color: SKILL_COLORS[skillLevel] }]}>{t(`game.skillLevel.${skillLevel}` as any)}</Text>
+          </View>
+        )}
         {totalHours !== undefined && (
           <Text style={[gcStyles.meta, { color: colors.textMuted }]}>{t('profile.hoursPlayed', { hours: totalHours })}</Text>
         )}
@@ -165,7 +173,9 @@ const gcStyles = StyleSheet.create({
   cover: {},
   info: { padding: rs.sm },
   name: { fontSize: rf(13), fontWeight: '600', marginBottom: rh(4) },
-  meta: { fontSize: rf(11), marginBottom: rh(6) },
+  meta:       { fontSize: rf(11), marginBottom: rh(6) },
+  skillBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: rw(20), paddingHorizontal: rw(7), paddingVertical: rh(2), marginBottom: rh(4) },
+  skillText:  { fontSize: rf(10), fontWeight: '700' },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: rw(6) },
   progressBg: { flex: 1, height: rh(4), borderRadius: rh(2), overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: rh(2) },

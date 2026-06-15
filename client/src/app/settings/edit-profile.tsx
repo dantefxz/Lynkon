@@ -15,25 +15,28 @@ import { AVATAR_IDS, normalizeAvatarId, resolveAvatarSource } from '@/constants/
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, updateUserName, updateUserAvatar } = useAuth();
+  const { user, updateUserName, updateUserAvatar, updateUserBio } = useAuth();
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const [name, setName] = useState(user?.name || '');
+  const [name, setName]   = useState(user?.name || '');
+  const [bio,  setBio]    = useState(user?.bio  || '');
   const [selectedAvatarId, setSelectedAvatarId] = useState(normalizeAvatarId(user?.avatar, user?.id || user?.name || ''));
   const [showPicker, setShowPicker] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]       = useState(false);
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      if (user?.id) await userApi.updateProfile(user.id, { username: name, avatarId: selectedAvatarId });
+      if (user?.id) await userApi.updateProfile(user.id, { username: name, avatarId: selectedAvatarId, bio });
       updateUserName(name);
       updateUserAvatar(selectedAvatarId);
+      updateUserBio(bio);
       Alert.alert(t('common.success'), t('editProfile.saved'));
       router.back();
     } catch {
       updateUserName(name);
       updateUserAvatar(selectedAvatarId);
+      updateUserBio(bio);
       router.back();
     } finally { setLoading(false); }
   };
@@ -52,6 +55,7 @@ export default function EditProfileScreen() {
         </View>
 
         <View style={[styles.content, { padding: rs.xl, gap: rh(24) }]}>
+          {/* Avatar */}
           <View style={styles.avatarSection}>
             <View style={[styles.avatarRing, { borderColor: colors.purple, width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}>
               <Image source={resolveAvatarSource(selectedAvatarId, user?.id || user?.name || '')} style={styles.avatar} />
@@ -80,6 +84,7 @@ export default function EditProfileScreen() {
             </View>
           )}
 
+          {/* Username */}
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>{t('editProfile.username')}</Text>
             <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -90,8 +95,32 @@ export default function EditProfileScreen() {
                 onChangeText={setName}
                 placeholder={t('editProfile.usernamePlaceholder')}
                 placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
+          </View>
+
+          {/* Bio */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>{t('editProfile.bio')}</Text>
+            <View style={[styles.bioRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+              <TextInput
+                style={[styles.bioInput, { color: colors.text, fontSize: rf(15) }]}
+                value={bio}
+                onChangeText={setBio}
+                placeholder={t('editProfile.bioHint')}
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={4}
+                maxLength={200}
+                textAlignVertical="top"
+                autoCorrect={false}
+              />
+            </View>
+            <Text style={[styles.charCount, { color: colors.textMuted, fontSize: rf(11) }]}>
+              {bio.length}/200
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -128,6 +157,9 @@ const styles = StyleSheet.create({
   inputRow:        { flexDirection: 'row', alignItems: 'center', borderRadius: rw(12), borderWidth: 1, paddingHorizontal: rs.md, paddingVertical: rh(4) },
   inputIcon:       { marginRight: rs.md },
   input:           { flex: 1, paddingVertical: rh(12) },
+  bioRow:          { borderRadius: rw(12), borderWidth: 1, paddingHorizontal: rs.md, paddingVertical: rh(10) },
+  bioInput:        { minHeight: rh(100) },
+  charCount:       { textAlign: 'right' },
   saveButton:      { paddingVertical: rh(16), borderRadius: rw(12), alignItems: 'center' },
   saveText:        { color: '#fff', fontWeight: '600' },
 });

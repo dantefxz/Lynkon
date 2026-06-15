@@ -54,8 +54,10 @@ export default {
       submit:       'Create account',
       haveAccount:  'Already have an account?',
       login:        'Sign in',
-      errorFields:  'Please fill in all fields',
-      errorPassword:'Password does not meet all requirements',
+      errorFields:         'Please fill in all fields',
+      errorPassword:       'Password does not meet all requirements',
+      generateUsername:    'Generate',
+      usernamePlaceholder: 'Optional — one will be generated for you',
       requirements: {
         minLength:  'At least 8 characters',
         minLetters: 'At least 6 letters',
@@ -196,6 +198,14 @@ export default {
       silver:   'S',
       gold:     'G',
       platinum: '✦',
+    },
+    skillLevel: {
+      title:        'My skill level',
+      hint:         'Optional — only visible to you',
+      beginner:     'Beginner',
+      intermediate: 'Intermediate',
+      advanced:     'Advanced',
+      expert:       'Expert',
     },
   },
 
