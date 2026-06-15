@@ -364,4 +364,6 @@ router.get('/:id/profile-games',            authenticate,                 ctrl.g
 router.post('/:id/profile-games',           authenticate, authorizeOwner, ctrl.addProfileGame);
 router.delete('/:id/profile-games/:gameId', authenticate, authorizeOwner, ctrl.removeProfileGame);
 
+router.get('/:id/platforms/:platform/games/:gameId/achievements', authenticate, ctrl.getUserGameAchievements);
+
 module.exports = router;

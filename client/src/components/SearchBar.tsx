@@ -28,18 +28,17 @@ export function SearchBar({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <TouchableOpacity
-        onPress={canSearch ? onSearch : undefined}
-        disabled={!canSearch}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <MaterialIcons
-          name="search"
-          size={rw(18)}
-          color={canSearch ? colors.purple : colors.textMuted}
-          style={styles.icon}
-        />
-      </TouchableOpacity>
+      {onSearch ? (
+        <TouchableOpacity
+          onPress={canSearch ? onSearch : undefined}
+          disabled={!canSearch}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <MaterialIcons name="search" size={rw(18)} color={canSearch ? colors.purple : colors.textMuted} style={styles.icon} />
+        </TouchableOpacity>
+      ) : (
+        <MaterialIcons name="search" size={rw(18)} color={colors.textMuted} style={styles.icon} />
+      )}
 
       <TextInput
         style={[styles.input, { color: colors.text }]}

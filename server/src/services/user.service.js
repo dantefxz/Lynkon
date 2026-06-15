@@ -1,4 +1,4 @@
-const { db, auth } = require('../config/firebase');
+const { db, auth, admin } = require('../config/firebase');
 const { serializeProfile } = require('../dtos/user.dto');
 const { normalizeAvatarId } = require('../utils/avatar.utils');
 
@@ -95,21 +95,50 @@ const getRecommendations = async (userId) => {
   if (userData.isUnder16)
     throw Object.assign(new Error('Recommendations available for users 16+ only'), { status: 403 });
 
+  const friendIds = new Set(userData.friends || []);
   const myGameIds = (userData.favoriteGames || []).map((g) => g.gameId);
-  if (!myGameIds.length) return [];
 
-  const recSnap = await db.collection('users')
-    .where('favoriteGames', 'array-contains-any', myGameIds.slice(0, 10))
-    .limit(20).get();
+  let results = [];
 
-  return recSnap.docs
-    .filter((d) => d.id !== userId)
-    .map((d) => {
-      const u = d.data();
-      const common = (u.favoriteGames || []).filter((g) => myGameIds.includes(g.gameId));
-      return { uid: u.uid, username: u.username, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid), commonGamesCount: common.length };
-    })
-    .sort((a, b) => b.commonGamesCount - a.commonGamesCount);
+  if (myGameIds.length) {
+    // Sync favoriteGameIds flat array (needed for array-contains-any Firestore query)
+    const stored = userData.favoriteGameIds || [];
+    const needsSync = stored.length !== myGameIds.length || myGameIds.some((id) => !stored.includes(id));
+    if (needsSync) {
+      await db.collection('users').doc(userId).update({ favoriteGameIds: myGameIds });
+    }
+
+    const recSnap = await db.collection('users')
+      .where('favoriteGameIds', 'array-contains-any', myGameIds.slice(0, 10))
+      .limit(30).get();
+
+    results = recSnap.docs
+      .filter((d) => d.id !== userId && !friendIds.has(d.id))
+      .map((d) => {
+        const u = d.data();
+        const userGameIds = u.favoriteGameIds || (u.favoriteGames || []).map((g) => g.gameId);
+        const common = userGameIds.filter((gid) => myGameIds.includes(gid));
+        return { uid: u.uid, username: u.username, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid), commonGamesCount: common.length };
+      })
+      .sort((a, b) => b.commonGamesCount - a.commonGamesCount);
+  }
+
+  // Fallback: if no game-based results, return recent users excluding friends
+  if (!results.length) {
+    const fallbackSnap = await db.collection('users')
+      .orderBy('updatedAt', 'desc')
+      .limit(20).get();
+
+    results = fallbackSnap.docs
+      .filter((d) => d.id !== userId && !friendIds.has(d.id))
+      .slice(0, 10)
+      .map((d) => {
+        const u = d.data();
+        return { uid: u.uid, username: u.username, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid), commonGamesCount: 0 };
+      });
+  }
+
+  return results;
 };
 
 
@@ -129,14 +158,17 @@ const addFavoriteGame = async (userId, game) => {
     throw Object.assign(new Error('Favorites limit reached (max 20 games)'), { status: 422 });
 
   const newEntry = {
-    gameId:   game.gameId,
-    name:     game.name,
-    platform: game.platform,
-    addedAt:  new Date().toISOString(),
+    gameId:        game.gameId,
+    name:          game.name,
+    platform:      game.platform,
+    cover:         game.cover || null,
+    playtimeHours: game.playtimeHours || 0,
+    addedAt:       new Date().toISOString(),
   };
 
   await db.collection('users').doc(userId).update({
     favoriteGames: [...favorites, newEntry],
+    favoriteGameIds: admin.firestore.FieldValue.arrayUnion(game.gameId),
   });
 
   return newEntry;
@@ -154,7 +186,10 @@ const removeFavoriteGame = async (userId, gameId, platform) => {
   if (updated.length === favorites.length)
     throw Object.assign(new Error('Game not found in favorites'), { status: 404 });
 
-  await db.collection('users').doc(userId).update({ favoriteGames: updated });
+  await db.collection('users').doc(userId).update({
+    favoriteGames: updated,
+    favoriteGameIds: admin.firestore.FieldValue.arrayRemove(gameId),
+  });
   return { removed: favorites.length - updated.length };
 };
 

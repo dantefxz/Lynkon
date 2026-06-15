@@ -6,7 +6,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { platformApi } from '@/services/api';
+import { platformApi, userApi } from '@/services/api';
 import { rw, rh, rf, rs, SCREEN_WIDTH } from '@/utils/responsive';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
@@ -43,7 +43,21 @@ export default function GameDetailScreen() {
   const { colors } = useTheme();
   const { t }      = useTranslation();
   const router    = useRouter();
-  const { gameId, platform: platformParam } = useLocalSearchParams<{ gameId: string; platform?: string }>();
+  const {
+    gameId,
+    platform: platformParam,
+    userId: viewingUserId,
+    name: nameParam,
+    cover: coverParam,
+    totalHours: totalHoursParam,
+  } = useLocalSearchParams<{
+    gameId: string;
+    platform?: string;
+    userId?: string;
+    name?: string;
+    cover?: string;
+    totalHours?: string;
+  }>();
 
   const [game,         setGame]         = useState<GameDetail | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -59,12 +73,45 @@ export default function GameDetailScreen() {
       if (!gameId) { setLoading(false); return; }
 
       try {
+        // ── Viewing another user's game ──────────────────────────────────────
+        if (viewingUserId && platformParam) {
+          if (active) {
+            setGame({
+              id:                    String(gameId),
+              name:                  nameParam ? decodeURIComponent(nameParam) : gameId,
+              cover:                 coverParam ? decodeURIComponent(coverParam) : '',
+              totalHours:            totalHoursParam ? Number(totalHoursParam) : 0,
+              totalAchievements:     0,
+              completedAchievements: 0,
+              platform:              platformParam,
+            });
+            setLoading(false);
+          }
+
+          setLoadingAchs(true);
+          try {
+            const achRes = await userApi.getUserGameAchievements(viewingUserId, platformParam, String(gameId));
+            if (active) {
+              const achievements: any[] = (achRes.data as any)?.achievements || [];
+              setAchievements(achievements);
+              setGame((prev) => prev ? {
+                ...prev,
+                totalAchievements:     achievements.length,
+                completedAchievements: achievements.filter((a) => a.unlocked).length,
+              } : prev);
+            }
+          } catch {} finally {
+            if (active) setLoadingAchs(false);
+          }
+          return;
+        }
+
+        // ── Own profile game ─────────────────────────────────────────────────
         const platRes  = await platformApi.getLinkedPlatforms();
         const linked: string[] = ((platRes.data as any)?.platforms || []).map(
           (p: any) => p.platform || p.name
         );
 
-        // If platform hint provided in params, try it first
         const ordered = platformParam
           ? [platformParam, ...linked.filter((p) => p !== platformParam)]
           : linked;
@@ -89,10 +136,9 @@ export default function GameDetailScreen() {
                 platform:              plat,
               });
 
-              // Load achievements in background
               setLoadingAchs(true);
               try {
-                const achRes = await (platformApi as any).getGameAchievements(plat, String(match.gameId || match.id));
+                const achRes = await platformApi.getGameAchievements(plat, String(match.gameId || match.id));
                 if (active) setAchievements((achRes.data as any)?.achievements || []);
               } catch {} finally {
                 if (active) setLoadingAchs(false);
@@ -110,7 +156,7 @@ export default function GameDetailScreen() {
 
     loadGame();
     return () => { active = false; };
-  }, [gameId, platformParam]);
+  }, [gameId, platformParam, viewingUserId]);
 
   useEffect(() => {
     if (gameId) getSkillLevel(gameId).then(setSkillLevelState);
@@ -206,38 +252,40 @@ export default function GameDetailScreen() {
             )}
           </View>
 
-          {/* Nivel de habilidad */}
-          <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.skillHeader}>
-              <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />
-              <Text style={[styles.skillTitle, { color: colors.text }]}>{t('game.skillLevel.title')}</Text>
-              {skillLevel && (
-                <View style={[styles.skillBadge, { backgroundColor: SKILL_COLORS[skillLevel] + '22', borderColor: SKILL_COLORS[skillLevel] }]}>
-                  <Text style={[styles.skillBadgeText, { color: SKILL_COLORS[skillLevel] }]}>
-                    {t(`game.skillLevel.${skillLevel}` as any)}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.skillChips}>
-              {SKILL_LEVELS.map((level) => {
-                const active = skillLevel === level;
-                const color  = SKILL_COLORS[level];
-                return (
-                  <TouchableOpacity
-                    key={level}
-                    style={[styles.skillChip, { borderColor: active ? color : colors.border, backgroundColor: active ? color + '22' : colors.cardAlt ?? colors.background }]}
-                    onPress={() => handleSkillLevel(level)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[styles.skillChipText, { color: active ? color : colors.textMuted, fontWeight: active ? '700' : '500' }]}>
-                      {t(`game.skillLevel.${level}` as any)}
+          {/* Nivel de habilidad — solo para el propio perfil */}
+          {!viewingUserId && (
+            <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.skillHeader}>
+                <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />
+                <Text style={[styles.skillTitle, { color: colors.text }]}>{t('game.skillLevel.title')}</Text>
+                {skillLevel && (
+                  <View style={[styles.skillBadge, { backgroundColor: SKILL_COLORS[skillLevel] + '22', borderColor: SKILL_COLORS[skillLevel] }]}>
+                    <Text style={[styles.skillBadgeText, { color: SKILL_COLORS[skillLevel] }]}>
+                      {t(`game.skillLevel.${skillLevel}` as any)}
                     </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                  </View>
+                )}
+              </View>
+              <View style={styles.skillChips}>
+                {SKILL_LEVELS.map((level) => {
+                  const active = skillLevel === level;
+                  const color  = SKILL_COLORS[level];
+                  return (
+                    <TouchableOpacity
+                      key={level}
+                      style={[styles.skillChip, { borderColor: active ? color : colors.border, backgroundColor: active ? color + '22' : colors.cardAlt ?? colors.background }]}
+                      onPress={() => handleSkillLevel(level)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[styles.skillChipText, { color: active ? color : colors.textMuted, fontWeight: active ? '700' : '500' }]}>
+                        {t(`game.skillLevel.${level}` as any)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Logros */}
           {loadingAchs ? (

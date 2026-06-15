@@ -160,7 +160,7 @@ export default {
     startConversation: '{{name}}さんとの会話を始めましょう',
     resultsFor:      '"{{query}}"の検索結果',
     noResultsFor:    '"{{query}}"の結果なし',
-    searchPrompt:    '検索アイコンを押してすべての結果を表示',
+    searchPrompt:    'ユーザーが見つかりませんでした',
     addFriendsHint:  'ユーザーを検索してフレンドに追加しましょう',
     notFriendsTitle: 'まだフレンドではありません',
     notFriendsMsg:   'チャットするには{{name}}さんをフレンドに追加してください。',

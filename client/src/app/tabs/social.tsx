@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Modal, Alert,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { friendApi, messageApi, userApi } from '@/services/api';
 import { getProfileAvatar } from '@/services/mockData';
 import { rw, rh, rf, rs } from '@/utils/responsive';
@@ -26,7 +27,6 @@ interface User {
 interface Message {
   id: string;
   userId: string;
-  userName: string;
   message: string;
   timestamp: string;
   isOwn: boolean;
@@ -35,6 +35,8 @@ interface Message {
 interface IncomingRequest {
   requestId: string;
   fromUserId: string;
+  username: string;
+  avatarId: string;
 }
 
 // ─── Bloqueo para menores de 16 ──────────────────────────────────────────────
@@ -56,12 +58,47 @@ function Under16Block() {
   );
 }
 
-// ─── Pantalla principal ───────────────────────────────────────────────────────
+// ─── Fila de solicitud con Aceptar / Rechazar ─────────────────────────────────
+function RequestRow({
+  request, onAccept, onDecline, onPress,
+}: {
+  request: IncomingRequest;
+  onAccept: () => void;
+  onDecline: () => void;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.requestRow, { backgroundColor: colors.card, borderColor: colors.purpleBorder }]}>
+      <PlayerCard
+        id={request.fromUserId}
+        name={request.username || request.fromUserId}
+        avatar={request.avatarId}
+        onPress={onPress}
+      />
+      <View style={styles.requestActions}>
+        <TouchableOpacity
+          style={[styles.acceptBtn, { backgroundColor: colors.purple }]}
+          onPress={onAccept}
+        >
+          <MaterialIcons name="check" size={rw(16)} color="#fff" />
+          <Text style={styles.acceptBtnText}>Aceptar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.declineBtn, { borderColor: colors.border }]}
+          onPress={onDecline}
+        >
+          <MaterialIcons name="close" size={rw(16)} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Pantalla principal ──────────────────────────────────────────────────────
 export default function SocialScreen() {
   const { user } = useAuth();
-
   if (user?.isUnder16) return <Under16Block />;
-
   return <SocialContent />;
 }
 
@@ -69,6 +106,8 @@ function SocialContent() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { user: currentUser } = useAuth();
+  const router = useRouter();
+
   const [friends, setFriends]                   = useState<User[]>([]);
   const [friendIds, setFriendIds]               = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions]           = useState<User[]>([]);
@@ -80,15 +119,17 @@ function SocialContent() {
   const [loading, setLoading]                   = useState(true);
   const [pendingRequests, setPendingRequests]   = useState<string[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
-  const [showSearchModal, setShowSearchModal]   = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
+  // ── Carga inicial ──────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
-        const [friendsRes, requestsRes] = await Promise.allSettled([
+        const [friendsRes, requestsRes, recsRes] = await Promise.allSettled([
           friendApi.getFriends(),
           friendApi.getFriendRequests(),
+          currentUser?.id ? userApi.getRecommendations(currentUser.id) : Promise.reject(),
         ]);
 
         if (friendsRes.status === 'fulfilled') {
@@ -96,7 +137,7 @@ function SocialContent() {
           const serverFriends: User[] = arr.map((f: any) => ({
             id:            f.uid || f.id || f.userId,
             name:          f.username || f.name,
-            avatar:        f.avatarId || f.avatar || getProfileAvatar(f.uid || f.id || f.userId),
+            avatar:        f.avatarId || f.avatar || getProfileAvatar(f.uid || f.id || ''),
             gamesInCommon: f.gamesInCommon || 0,
             isOnline:      f.isOnline || false,
           }));
@@ -106,42 +147,81 @@ function SocialContent() {
 
         if (requestsRes.status === 'fulfilled') {
           const arr = (requestsRes.value.data as any)?.requests || [];
-          const incoming: IncomingRequest[] = arr
-            .map((r: any) => ({ requestId: r.requestId, fromUserId: r.from?.uid || r.from?.id }))
-            .filter((r: IncomingRequest) => r.fromUserId);
-          setIncomingRequests(incoming);
+          setIncomingRequests(
+            arr
+              .map((r: any) => ({
+                requestId:  r.requestId,
+                fromUserId: r.from?.uid || r.from?.id || '',
+                username:   r.from?.username || '',
+                avatarId:   r.from?.avatarId || '',
+              }))
+              .filter((r: IncomingRequest) => r.fromUserId),
+          );
         }
 
-        setSuggestions([]);
+        if (recsRes.status === 'fulfilled') {
+          const arr = (recsRes.value.data as any)?.recommendations || recsRes.value.data || [];
+          setSuggestions(
+            (Array.isArray(arr) ? arr : []).map((r: any) => ({
+              id:            r.uid,
+              name:          r.username,
+              avatar:        r.avatarId || getProfileAvatar(r.uid),
+              gamesInCommon: r.commonGamesCount || 0,
+              isOnline:      false,
+            })),
+          );
+        }
       } catch {
         setFriends([]);
-        setSuggestions([]);
-      } finally { setLoading(false); }
+      } finally {
+        setLoading(false);
+      }
     };
     load();
-  }, []);
+  }, [currentUser?.id]);
 
-  const handleSearch = async (q: string) => {
+  // ── Polling en tiempo real cuando hay chat abierto ─────────────────────────
+  useEffect(() => {
+    if (!selectedUser) return;
+    const poll = setInterval(async () => {
+      try {
+        const res = await messageApi.getMessages(selectedUser.id);
+        const data: any[] = (res.data as any) || [];
+        if (!Array.isArray(data) || data.length === 0) return;
+        setMessages(data.map((m: any) => ({
+          id:        m.id || m.messageId,
+          userId:    m.fromUserId,
+          message:   m.content || m.text || m.message || '',
+          timestamp: m.sentAt || m.timestamp || m.createdAt || '',
+          isOwn:     m.fromUserId === currentUser?.id || m.isOwn || false,
+        })));
+      } catch {}
+    }, 3000);
+    return () => clearInterval(poll);
+  }, [selectedUser?.id, currentUser?.id]);
+
+  // ── Búsqueda con debounce (400ms) ────────────────────────────────────────
+  const handleSearch = (q: string) => {
     setSearchQuery(q);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
     if (q.length < 2) { setSearchResults([]); return; }
-    try {
-      const res = await userApi.searchUsers(q);
-      const arr = (res.data as any)?.users || [];
-      const filtered = arr.filter((u: any) => (u.uid || u.id) !== currentUser?.uid);
-      setSearchResults(filtered.map((u: any) => ({
-        id:            u.uid || u.id,
-        name:          u.username || u.name,
-        avatar:        u.avatarId || u.avatar || getProfileAvatar(u.uid || u.id),
-        gamesInCommon: 0,
-        isOnline:      false,
-      })));
-    } catch { setSearchResults([]); }
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await userApi.searchUsers(q);
+        const arr = (res.data as any)?.users || [];
+        const filtered = arr.filter((u: any) => (u.uid || u.id) !== currentUser?.id);
+        setSearchResults(filtered.map((u: any) => ({
+          id:            u.uid || u.id,
+          name:          u.username || u.name,
+          avatar:        u.avatarId || u.avatar || getProfileAvatar(u.uid || u.id),
+          gamesInCommon: 0,
+          isOnline:      false,
+        })));
+      } catch { setSearchResults([]); }
+    }, 400);
   };
 
-  const handleSubmitSearch = () => {
-    if (searchQuery.length >= 2) setShowSearchModal(true);
-  };
-
+  // ── Chat ───────────────────────────────────────────────────────────────────
   const openConversation = async (u: User) => {
     if (!friendIds.has(u.id)) {
       Alert.alert(
@@ -155,33 +235,35 @@ function SocialContent() {
     setMessages([]);
     try {
       const res = await messageApi.getMessages(u.id);
-      const serverMsgs: Message[] = ((res.data as any) || []).map((m: any) => ({
-        id:        m.id,
-        userId:    m.fromUserId,
-        userName:  m.fromUsername || u.name,
-        message:   m.content || m.message || m.text,
-        timestamp: m.timestamp || m.sentAt || m.createdAt,
-        isOwn:     m.isOwn || false,
-      }));
-      if (serverMsgs.length > 0) setMessages(serverMsgs);
+      const data: any[] = (res.data as any) || [];
+      if (Array.isArray(data)) {
+        setMessages(data.map((m: any) => ({
+          id:        m.id || m.messageId,
+          userId:    m.fromUserId,
+          message:   m.content || m.text || m.message || '',
+          timestamp: m.sentAt || m.timestamp || m.createdAt || '',
+          isOwn:     m.fromUserId === currentUser?.id || m.isOwn || false,
+        })));
+      }
     } catch {}
   };
 
   const handleSend = async () => {
     if (!messageText.trim() || !selectedUser) return;
+    const text = messageText.trim();
     const optimistic: Message = {
-      id:        Date.now().toString(),
-      userId:    'own',
-      userName:  t('social.actions.message'),
-      message:   messageText.trim(),
+      id:        `tmp_${Date.now()}`,
+      userId:    currentUser?.id || 'own',
+      message:   text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isOwn:     true,
     };
     setMessages((prev) => [...prev, optimistic]);
     setMessageText('');
-    try { await messageApi.sendMessage(selectedUser.id, optimistic.message); } catch {}
+    try { await messageApi.sendMessage(selectedUser.id, text); } catch {}
   };
 
+  // ── Amigos ─────────────────────────────────────────────────────────────────
   const handleAddFriend = async (userId: string) => {
     if (pendingRequests.includes(userId)) return;
     try {
@@ -190,96 +272,48 @@ function SocialContent() {
     } catch {}
   };
 
-  const handleAcceptRequest = async (requestId: string, fromUserId: string) => {
+  const handleAcceptRequest = async (requestId: string, fromUserId: string, username: string, avatarId: string) => {
     try {
       await friendApi.respondToRequest(requestId, true);
-      const accepted = searchResults.find((u) => u.id === fromUserId);
-      if (accepted) {
-        setFriends((prev) => [...prev, accepted]);
-        setFriendIds((prev) => new Set([...prev, fromUserId]));
-      }
+      const newFriend: User = { id: fromUserId, name: username, avatar: avatarId, gamesInCommon: 0, isOnline: false };
+      setFriends((prev) => [...prev, newFriend]);
+      setFriendIds((prev) => new Set([...prev, fromUserId]));
       setIncomingRequests((prev) => prev.filter((r) => r.requestId !== requestId));
     } catch {}
   };
 
-  const getUserAction = (
-    userId: string,
-    onChat?: () => void,
-  ): { label: string; onAction?: () => void; actionDisabled?: boolean } => {
+  const handleDeclineRequest = async (requestId: string) => {
+    try {
+      await friendApi.respondToRequest(requestId, false);
+      setIncomingRequests((prev) => prev.filter((r) => r.requestId !== requestId));
+    } catch {}
+  };
+
+  const getUserAction = (userId: string, onChat?: () => void) => {
     if (friendIds.has(userId)) return { label: t('social.actions.message'), onAction: onChat };
     const inc = incomingRequests.find((r) => r.fromUserId === userId);
-    if (inc) return { label: t('social.actions.accept'), onAction: () => handleAcceptRequest(inc.requestId, userId) };
+    if (inc) return { label: t('social.actions.accept'), onAction: () => handleAcceptRequest(inc.requestId, userId, inc.username, inc.avatarId) };
     if (pendingRequests.includes(userId)) return { label: t('social.actions.pending'), onAction: () => {}, actionDisabled: true };
     return { label: t('social.actions.add'), onAction: () => handleAddFriend(userId) };
   };
 
-  // ── Modal de resultados de búsqueda ───────────────────────────────────────
-  const searchModal = (
-    <Modal
-      visible={showSearchModal}
-      animationType="slide"
-      transparent
-      onRequestClose={() => setShowSearchModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={1}>
-              {t('social.resultsFor', { query: searchQuery })}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setShowSearchModal(false)}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <MaterialIcons name="close" size={rw(24)} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView contentContainerStyle={{ padding: rs.md, gap: rh(10) }}>
-            {searchResults.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <MaterialIcons name="search-off" size={rw(40)} color={colors.textMuted} />
-                <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('social.noResultsFor', { query: searchQuery })}</Text>
-              </View>
-            ) : (
-              searchResults.map((u) => {
-                const { label, onAction, actionDisabled } = getUserAction(
-                  u.id,
-                  () => { setShowSearchModal(false); openConversation(u); },
-                );
-                return (
-                  <PlayerCard
-                    key={u.id}
-                    {...u}
-                    actionLabel={label}
-                    onAction={onAction}
-                    actionDisabled={actionDisabled}
-                  />
-                );
-              })
-            )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
 
   // ── Vista de chat ──────────────────────────────────────────────────────────
   if (selectedUser) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        {searchModal}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={[styles.chatHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setSelectedUser(null)} style={styles.backBtn}>
               <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
             </TouchableOpacity>
-            <View style={styles.chatUserInfo}>
+            <TouchableOpacity style={styles.chatUserInfo} onPress={() => router.push(`/user/${selectedUser.id}`)}>
               <Text style={[styles.chatName, { color: colors.text }]}>{selectedUser.name}</Text>
               <Text style={[styles.chatStatus, { color: selectedUser.isOnline ? '#22C55E' : colors.textMuted }]}>
                 {selectedUser.isOnline ? t('social.online') : t('social.offline')}
               </Text>
-            </View>
+            </TouchableOpacity>
+            <MaterialIcons name="chevron-right" size={rw(18)} color={colors.textMuted} />
           </View>
 
           <ScrollView
@@ -330,14 +364,12 @@ function SocialContent() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {searchModal}
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={[styles.screenHeader, { backgroundColor: colors.cardAlt }]}>
           <Text style={[styles.screenTitle, { color: colors.text }]}>{t('social.title')}</Text>
           <SearchBar
             value={searchQuery}
             onChangeText={handleSearch}
-            onSearch={handleSubmitSearch}
             placeholder={t('social.search')}
           />
         </View>
@@ -348,25 +380,62 @@ function SocialContent() {
           </View>
         ) : (
           <>
-            {suggestions.length > 0 && searchQuery.length < 2 && (
+            {/* ── Solicitudes recibidas ── */}
+            {incomingRequests.length > 0 && searchQuery.length < 2 && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('social.suggestions')}</Text>
-                {suggestions.map((u) => {
-                  const { label, onAction, actionDisabled } = getUserAction(u.id, () => openConversation(u));
-                  return (
-                    <PlayerCard
-                      key={u.id}
-                      {...u}
-                      actionLabel={label}
-                      onAction={onAction}
-                      actionDisabled={actionDisabled}
-                      onPress={friendIds.has(u.id) ? () => openConversation(u) : undefined}
-                    />
-                  );
-                })}
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Solicitudes recibidas ({incomingRequests.length})
+                </Text>
+                {incomingRequests.map((req) => (
+                  <RequestRow
+                    key={req.requestId}
+                    request={req}
+                    onAccept={() => handleAcceptRequest(req.requestId, req.fromUserId, req.username, req.avatarId)}
+                    onDecline={() => handleDeclineRequest(req.requestId)}
+                    onPress={() => router.push(`/user/${req.fromUserId}`)}
+                  />
+                ))}
               </View>
             )}
 
+            {/* ── Recomendaciones ── */}
+            {searchQuery.length < 2 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Recomendaciones</Text>
+                  <MaterialIcons name="auto-awesome" size={rw(16)} color={colors.purple} />
+                </View>
+                <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                  {suggestions.length > 0 && suggestions.some((u) => u.gamesInCommon > 0)
+                    ? 'Jugadores con juegos favoritos en común'
+                    : 'Jugadores de la comunidad'}
+                </Text>
+                {suggestions.length === 0 ? (
+                  <View style={styles.emptyBox}>
+                    <MaterialIcons name="people-outline" size={rw(32)} color={colors.textMuted} />
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                      Todavía no hay recomendaciones
+                    </Text>
+                  </View>
+                ) : (
+                  suggestions.map((u) => {
+                    const { label, onAction, actionDisabled } = getUserAction(u.id, () => openConversation(u));
+                    return (
+                      <PlayerCard
+                        key={u.id}
+                        {...u}
+                        actionLabel={label}
+                        onAction={onAction}
+                        actionDisabled={actionDisabled}
+                        onPress={() => router.push(`/user/${u.id}`)}
+                      />
+                    );
+                  })
+                )}
+              </View>
+            )}
+
+            {/* ── Amigos / Resultados ── */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 {searchQuery.length >= 2
@@ -398,6 +467,7 @@ function SocialContent() {
                         actionLabel={label}
                         onAction={onAction}
                         actionDisabled={actionDisabled}
+                        onPress={() => router.push(`/user/${u.id}`)}
                       />
                     );
                   }
@@ -421,36 +491,37 @@ function SocialContent() {
 }
 
 const styles = StyleSheet.create({
-  container:       { flex: 1 },
-  // Under16
-  blockIconCircle: { width: rw(90), height: rw(90), borderRadius: rw(45), alignItems: 'center', justifyContent: 'center', marginBottom: rh(16) },
-  blockTitle:      { fontSize: rf(20), fontWeight: '700', textAlign: 'center', marginBottom: rh(8) },
-  blockSubtitle:   { fontSize: rf(14), textAlign: 'center', lineHeight: rh(22) },
-  // Social
-  screenHeader:    { padding: rs.md, paddingBottom: rh(20), gap: rh(14) },
-  screenTitle:     { fontSize: rf(24), fontWeight: '700' },
-  loading:         { height: rh(180), alignItems: 'center', justifyContent: 'center' },
-  section:         { paddingHorizontal: rs.md, marginBottom: rh(20), gap: rh(10) },
-  sectionTitle:    { fontSize: rf(16), fontWeight: '600' },
-  emptyBox:        { alignItems: 'center', paddingVertical: rh(28), gap: rh(10) },
-  emptyText:       { fontSize: rf(14), textAlign: 'center' },
+  container:        { flex: 1 },
+  blockIconCircle:  { width: rw(90), height: rw(90), borderRadius: rw(45), alignItems: 'center', justifyContent: 'center', marginBottom: rh(16) },
+  blockTitle:       { fontSize: rf(20), fontWeight: '700', textAlign: 'center', marginBottom: rh(8) },
+  blockSubtitle:    { fontSize: rf(14), textAlign: 'center', lineHeight: rh(22) },
+  screenHeader:     { padding: rs.md, paddingBottom: rh(20), gap: rh(14) },
+  screenTitle:      { fontSize: rf(24), fontWeight: '700' },
+  loading:          { height: rh(180), alignItems: 'center', justifyContent: 'center' },
+  section:          { paddingHorizontal: rs.md, marginBottom: rh(20), gap: rh(10) },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: rw(6) },
+  sectionTitle:     { fontSize: rf(16), fontWeight: '600' },
+  sectionSubtitle:  { fontSize: rf(12), marginTop: -rh(4) },
+  emptyBox:         { alignItems: 'center', paddingVertical: rh(28), gap: rh(10) },
+  emptyText:        { fontSize: rf(14), textAlign: 'center' },
+  // Solicitudes
+  requestRow:       { borderRadius: rw(14), borderWidth: 1, overflow: 'hidden' },
+  requestActions:   { flexDirection: 'row', alignItems: 'center', gap: rw(8), paddingHorizontal: rw(12), paddingBottom: rh(10) },
+  acceptBtn:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rw(6), paddingVertical: rh(8), borderRadius: rw(10) },
+  acceptBtnText:    { color: '#fff', fontSize: rf(13), fontWeight: '600' },
+  declineBtn:       { width: rw(36), height: rw(36), alignItems: 'center', justifyContent: 'center', borderRadius: rw(18), borderWidth: 1 },
   // Chat
-  chatHeader:      { flexDirection: 'row', alignItems: 'center', padding: rs.md, borderBottomWidth: 1, gap: rw(12) },
-  backBtn:         {},
-  chatUserInfo:    { flex: 1 },
-  chatName:        { fontSize: rf(16), fontWeight: '600' },
-  chatStatus:      { fontSize: rf(12) },
-  messagesArea:    { flex: 1 },
-  inputBar:        { flexDirection: 'row', alignItems: 'flex-end', padding: rs.md, borderTopWidth: 1, gap: rw(10) },
-  msgInput:        {
+  chatHeader:       { flexDirection: 'row', alignItems: 'center', padding: rs.md, borderBottomWidth: 1, gap: rw(12) },
+  backBtn:          {},
+  chatUserInfo:     { flex: 1 },
+  chatName:         { fontSize: rf(16), fontWeight: '600' },
+  chatStatus:       { fontSize: rf(12) },
+  messagesArea:     { flex: 1 },
+  inputBar:         { flexDirection: 'row', alignItems: 'flex-end', padding: rs.md, borderTopWidth: 1, gap: rw(10) },
+  msgInput:         {
     flex: 1,
     borderRadius: rw(20), borderWidth: 1, paddingHorizontal: rs.md,
     paddingVertical: rh(10), fontSize: rf(15), maxHeight: rh(100),
   },
-  sendBtn:         { width: rw(42), height: rw(42), borderRadius: rw(21), alignItems: 'center', justifyContent: 'center' },
-  // Modal
-  modalOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  modalContent:    { borderTopLeftRadius: rw(24), borderTopRightRadius: rw(24), maxHeight: '82%', paddingBottom: rh(24) },
-  modalHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: rs.md, borderBottomWidth: 1 },
-  modalTitle:      { fontSize: rf(16), fontWeight: '700', flex: 1, marginRight: rw(10) },
+  sendBtn:          { width: rw(42), height: rw(42), borderRadius: rw(21), alignItems: 'center', justifyContent: 'center' },
 });

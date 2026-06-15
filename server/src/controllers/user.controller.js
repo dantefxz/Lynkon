@@ -2,7 +2,12 @@ const {
   parseUpdateProfileDTO,
   parseUpdateSettingsDTO,
 } = require('../dtos/user.dto');
-const userService = require('../services/user.service');
+const userService  = require('../services/user.service');
+const { db }       = require('../config/firebase');
+const steamService = require('../services/steam.service');
+const psnService   = require('../services/psn.service');
+const xboxService  = require('../services/xbox.service');
+const SERVICE_MAP  = { steam: steamService, psn: psnService, xbox: xboxService };
 
 const getMyProfile = async (req, res, next) => {
   try {
@@ -119,7 +124,7 @@ const getFavorites = async (req, res, next) => {
 
 const addFavorite = async (req, res, next) => {
   try {
-    const { gameId, name, platform } = req.body;
+    const { gameId, name, platform, cover, playtimeHours } = req.body;
     const errors = [];
     if (!gameId)   errors.push('gameId is required');
     if (!name)     errors.push('name is required');
@@ -128,8 +133,27 @@ const addFavorite = async (req, res, next) => {
       errors.push("platform must be 'steam', 'psn' or 'xbox'");
     if (errors.length) return res.status(400).json({ errors });
 
-    const entry = await userService.addFavoriteGame(req.params.id, { gameId, name, platform });
+    const entry = await userService.addFavoriteGame(req.params.id, { gameId, name, platform, cover: cover || null, playtimeHours: playtimeHours || 0 });
     return res.status(201).json({ message: 'Game added to favorites', game: entry });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+const getUserGameAchievements = async (req, res, next) => {
+  try {
+    const { id, platform, gameId } = req.params;
+    if (!SERVICE_MAP[platform]) return res.status(400).json({ error: `Unsupported platform: ${platform}` });
+
+    const snap = await db.collection('users').doc(id).get();
+    if (!snap.exists) return res.status(404).json({ error: 'User not found' });
+
+    const linked = (snap.data().platforms || []).find((p) => p.platform === platform);
+    if (!linked) return res.status(404).json({ error: `User has no linked ${platform} account` });
+
+    const achievements = await SERVICE_MAP[platform].getGameAchievements(linked.platformUserId, gameId);
+    return res.status(200).json({ platform, gameId, achievements });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
@@ -197,4 +221,5 @@ module.exports = {
   deleteUser, searchUsers, getRecommendations,
   getFavorites, addFavorite, removeFavorite,
   getProfileGames, addProfileGame, removeProfileGame,
+  getUserGameAchievements,
 };

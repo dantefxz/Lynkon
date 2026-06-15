@@ -160,7 +160,7 @@ export default {
     startConversation: 'Start a conversation with {{name}}',
     resultsFor:      'Results for "{{query}}"',
     noResultsFor:    'No results for "{{query}}"',
-    searchPrompt:    'Press the search icon to see all results',
+    searchPrompt:    'No users found',
     addFriendsHint:  'Search for users to add them as friends',
     notFriendsTitle: 'Not friends yet',
     notFriendsMsg:   'Add {{name}} as a friend first to be able to chat.',

@@ -18,13 +18,15 @@ export interface ProfileHeaderProps {
   name: string;
   email?: string;
   avatar?: string;
+  bio?: string;
   stats: ProfileStat[];
   platforms?: string[];
   onSync?: () => void;
   syncing?: boolean;
+  onEditBio?: () => void;
 }
 
-export function ProfileHeader({ name, email, avatar, stats, platforms = [], onSync, syncing }: ProfileHeaderProps) {
+export function ProfileHeader({ name, email, avatar, bio, stats, platforms = [], onSync, syncing, onEditBio }: ProfileHeaderProps) {
   const { colors } = useTheme();
   const avatarSize = rw(72);
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
@@ -45,8 +47,27 @@ export function ProfileHeader({ name, email, avatar, stats, platforms = [], onSy
           <Image source={avatarSource} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
         </View>
         <View style={styles.userInfo}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, { color: colors.text, flexShrink: 1 }]} numberOfLines={1}>{name}</Text>
+            {onEditBio && (
+              <TouchableOpacity onPress={onEditBio} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <MaterialIcons name="edit" size={rw(14)} color={colors.purple} />
+              </TouchableOpacity>
+            )}
+          </View>
           {email ? <Text style={[styles.email, { color: colors.textMuted }]} numberOfLines={1}>{email}</Text> : null}
+          {(bio || onEditBio) ? (
+            <TouchableOpacity
+              onPress={onEditBio}
+              disabled={!onEditBio}
+              activeOpacity={onEditBio ? 0.7 : 1}
+              style={styles.bioRow}
+            >
+              <Text style={[styles.bio, { color: colors.textMuted, opacity: bio ? 1 : 0.5 }]} numberOfLines={2}>
+                {bio || 'Añadir descripción...'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
         {onSync && (
           <TouchableOpacity
@@ -98,9 +119,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55, shadowRadius: 10, elevation: 8,
   },
-  userInfo:       { flex: 1, gap: rh(3) },
+  userInfo:       { flex: 1, gap: rh(3), flexShrink: 1 },
+  nameRow:        { flexDirection: 'row', alignItems: 'center', gap: rw(6) },
+  bioRow:         { flexShrink: 1 },
+  bio:            { fontSize: rf(12), lineHeight: rh(16), flexShrink: 1 },
   syncBtn:        { padding: rw(8) },
-  name: { fontSize: rf(21), fontWeight: '700' },
+  name: { fontSize: rf(21), fontWeight: '700', flexShrink: 1 },
   email: { fontSize: rf(13) },
   statsRow: { flexDirection: 'row', gap: rw(10) },
   statCard: {

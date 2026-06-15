@@ -53,6 +53,10 @@ export const authApi = {
 export const userApi = {
   getMyProfile: () => api.get('/users/me/profile'),
 
+  getProfile: (userId: string) => api.get(`/users/${userId}/profile`),
+
+  getRecommendations: (userId: string) => api.get(`/users/${userId}/recommendations`),
+
   searchUsers: (q: string) => api.get('/users/search', { params: { q } }),
 
   updateProfile: (userId: string, data: { username?: string; avatarId?: string; bio?: string }) =>
@@ -65,8 +69,8 @@ export const userApi = {
   getFavorites: (userId: string) =>
     api.get(`/users/${userId}/favorites`),
 
-  addFavorite: (userId: string, gameId: string, name: string, platform: string) =>
-    api.post(`/users/${userId}/favorites`, { gameId, name, platform }),
+  addFavorite: (userId: string, gameId: string, name: string, platform: string, cover?: string | null, playtimeHours?: number) =>
+    api.post(`/users/${userId}/favorites`, { gameId, name, platform, cover, playtimeHours }),
 
   removeFavorite: (userId: string, gameId: string, platform?: string) =>
     api.delete(`/users/${userId}/favorites/${gameId}`, { params: platform ? { platform } : {} }),
@@ -80,6 +84,9 @@ export const userApi = {
 
   removeProfileGame: (userId: string, gameId: string, platform?: string) =>
     api.delete(`/users/${userId}/profile-games/${gameId}`, { params: platform ? { platform } : {} }),
+
+  getUserGameAchievements: (userId: string, platform: string, gameId: string) =>
+    api.get(`/users/${userId}/platforms/${platform}/games/${gameId}/achievements`),
 };
 
 // ─── Platforms ─────────────────────────────────────────
@@ -141,7 +148,7 @@ export const messageApi = {
   sendMessage: (toUserId: string, message: string) =>
     api.post('/messages/me', { toUserId, message }),
 
-  deleteConversation: (friendId: string) => api.delete('/messages/me'),
+  deleteConversation: () => api.delete('/messages/me'),
 
   markAsRead: (messageId: string) => api.patch(`/messages/me/${messageId}`),
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, Image, TouchableOpacity, TextInput,
   StyleSheet, ActivityIndicator, Switch,
@@ -10,6 +10,9 @@ import { SKILL_COLORS, SkillLevel } from '@/utils/skillStorage';
 import { useTheme } from '@/context/ThemeContext';
 import { getProfileAvatar } from '@/services/mockData';
 import { resolveAvatarSource } from '@/constants/avatars';
+import { PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
+
+export { ProfileHeader } from './ProfileHeader';
 
 // ─── AppButton ────────────────────────────────────────────────────────────────
 export function AppButton({
@@ -56,69 +59,10 @@ const btnStyles = StyleSheet.create({
   label: { fontSize: rf(16), fontWeight: '600' },
 });
 
-// ─── ProfileHeader ────────────────────────────────────────────────────────────
-export function ProfileHeader({
-  name,
-  email,
-  avatar,
-  stats = [],
-  platforms = [],
-}: {
-  name: string;
-  email?: string;
-  avatar?: string;
-  stats?: { icon: string; iconColor: string; value: string | number; label: string }[];
-  platforms?: string[];
-}) {
-  const { colors } = useTheme();
-  const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
-
-  return (
-    <View style={[phStyles.container, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-      <View style={[phStyles.avatarRing, { borderColor: colors.purple }]}>
-        <Image source={avatarSource} style={phStyles.avatar} />
-      </View>
-      <Text style={[phStyles.name, { color: colors.text }]}>{name}</Text>
-      {email ? <Text style={[phStyles.email, { color: colors.textMuted }]}>{email}</Text> : null}
-      {stats.length > 0 && (
-        <View style={phStyles.stats}>
-          {stats.map((s, i) => (
-            <View key={i} style={phStyles.statItem}>
-              <MaterialIcons name={s.icon as any} size={rw(20)} color={s.iconColor} />
-              <Text style={[phStyles.statValue, { color: colors.text }]}>{s.value}</Text>
-              <Text style={[phStyles.statLabel, { color: colors.textMuted }]}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-const phStyles = StyleSheet.create({
-  container: { alignItems: 'center', paddingVertical: rh(24), paddingHorizontal: rs.xl, borderBottomWidth: 1 },
-  avatarRing: { width: rw(88), height: rw(88), borderRadius: rw(44), borderWidth: 3, overflow: 'hidden', marginBottom: rh(12) },
-  avatar: { width: '100%', height: '100%' },
-  name: { fontSize: rf(20), fontWeight: '700', marginBottom: rh(4) },
-  email: { fontSize: rf(14), marginBottom: rh(16) },
-  stats: { flexDirection: 'row', gap: rw(24) },
-  statItem: { alignItems: 'center', gap: rh(4) },
-  statValue: { fontSize: rf(16), fontWeight: '700' },
-  statLabel: { fontSize: rf(12) },
-});
-
 // ─── GameCard ─────────────────────────────────────────────────────────────────
 export function GameCard({
-  id,
-  name,
-  cover,
-  rank,
-  totalHours,
-  totalAchievements,
-  completedAchievements,
-  platform,
-  width,
-  skillLevel,
-  onPress,
+  name, cover, totalHours, totalAchievements, completedAchievements,
+  platform, width, skillLevel, onPress, onRemove,
 }: {
   id: string;
   name: string;
@@ -131,21 +75,41 @@ export function GameCard({
   width?: number;
   skillLevel?: SkillLevel | null;
   onPress?: () => void;
+  onRemove?: () => void;
 }) {
   const { colors } = useTheme();
   const { t }      = useTranslation();
-  const cardW = width || rw(160);
+  const cardW      = width || rw(160);
+  const [imgError, setImgError] = useState(false);
   const completion =
     totalAchievements && completedAchievements !== undefined
       ? Math.round((completedAchievements / totalAchievements) * 100)
       : null;
+  const platformId   = platform ? normalizePlatformId(platform) : null;
+  const platformLogo = platformId ? PLATFORM_LOGOS[platformId] : null;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       style={[gcStyles.card, { width: cardW, backgroundColor: colors.card, borderColor: colors.cardBorder }]}
     >
-      <Image source={{ uri: cover }} style={[gcStyles.cover, { width: cardW, height: cardW * 1.35 }]} resizeMode="cover" />
+      {cover && !imgError ? (
+        <Image
+          source={{ uri: cover }}
+          style={[gcStyles.cover, { width: cardW, height: cardW * 1.35 }]}
+          resizeMode="cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <View style={[gcStyles.cover, gcStyles.coverPlaceholder, { width: cardW, height: cardW * 1.35, backgroundColor: colors.purpleMuted }]}>
+          <MaterialIcons name="videogame-asset" size={rw(36)} color={colors.purple} />
+        </View>
+      )}
+      {onRemove && (
+        <TouchableOpacity style={gcStyles.removeBadge} onPress={onRemove} hitSlop={{ top: 6, left: 6, bottom: 6, right: 6 }}>
+          <MaterialIcons name="close" size={rw(12)} color="#fff" />
+        </TouchableOpacity>
+      )}
       <View style={gcStyles.info}>
         <Text style={[gcStyles.name, { color: colors.text }]} numberOfLines={2}>{name}</Text>
         {skillLevel && (
@@ -153,33 +117,40 @@ export function GameCard({
             <Text style={[gcStyles.skillText, { color: SKILL_COLORS[skillLevel] }]}>{t(`game.skillLevel.${skillLevel}` as any)}</Text>
           </View>
         )}
-        {totalHours !== undefined && (
-          <Text style={[gcStyles.meta, { color: colors.textMuted }]}>{t('profile.hoursPlayed', { hours: totalHours })}</Text>
-        )}
         {completion !== null && (
-          <View style={gcStyles.progressRow}>
-            <View style={[gcStyles.progressBg, { backgroundColor: colors.cardBorder }]}>
-              <View style={[gcStyles.progressFill, { width: `${completion}%` as any, backgroundColor: colors.purple }]} />
-            </View>
-            <Text style={[gcStyles.progressLabel, { color: colors.textMuted }]}>{completion}%</Text>
+          <View style={[gcStyles.progressBg, { backgroundColor: colors.cardBorder }]}>
+            <View style={[gcStyles.progressFill, { width: `${completion}%` as any, backgroundColor: colors.purple }]} />
           </View>
+        )}
+        <View style={gcStyles.statsRow}>
+          <Text style={[gcStyles.meta, { color: colors.textMuted }]}>
+            {completion !== null
+              ? `${completedAchievements}/${totalAchievements} · ${completion}%`
+              : t('profile.hoursPlayed', { hours: totalHours })}
+          </Text>
+          {platformLogo && <Image source={platformLogo} style={gcStyles.platformLogo} resizeMode="contain" />}
+        </View>
+        {completion !== null && totalHours !== undefined && (
+          <Text style={[gcStyles.meta, { color: colors.textMuted }]}>{t('profile.hoursPlayed', { hours: totalHours })}</Text>
         )}
       </View>
     </TouchableOpacity>
   );
 }
 const gcStyles = StyleSheet.create({
-  card: { borderRadius: rw(12), borderWidth: 1, overflow: 'hidden', marginBottom: rh(8) },
-  cover: {},
-  info: { padding: rs.sm },
-  name: { fontSize: rf(13), fontWeight: '600', marginBottom: rh(4) },
-  meta:       { fontSize: rf(11), marginBottom: rh(6) },
-  skillBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: rw(20), paddingHorizontal: rw(7), paddingVertical: rh(2), marginBottom: rh(4) },
-  skillText:  { fontSize: rf(10), fontWeight: '700' },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: rw(6) },
-  progressBg: { flex: 1, height: rh(4), borderRadius: rh(2), overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: rh(2) },
-  progressLabel: { fontSize: rf(10), width: rw(28) },
+  card:          { borderRadius: rw(12), borderWidth: 1, overflow: 'hidden', marginBottom: rh(8) },
+  cover:         {},
+  coverPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  removeBadge:   { position: 'absolute', top: rw(8), left: rw(8), backgroundColor: 'rgba(0,0,0,0.65)', padding: rw(5), borderRadius: rw(7) },
+  info:          { padding: rs.sm, gap: rh(4) },
+  name:          { fontSize: rf(13), fontWeight: '600' },
+  skillBadge:    { alignSelf: 'flex-start', borderWidth: 1, borderRadius: rw(20), paddingHorizontal: rw(7), paddingVertical: rh(2) },
+  skillText:     { fontSize: rf(10), fontWeight: '700' },
+  statsRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  meta:          { fontSize: rf(11) },
+  platformLogo:  { width: rw(13), height: rw(13) },
+  progressBg:    { height: rh(4), borderRadius: rh(2), overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: rh(2) },
 });
 
 // ─── SettingsRow ──────────────────────────────────────────────────────────────
@@ -267,43 +238,60 @@ export function SettingsSwitchRow({
 
 // ─── PlayerCard ───────────────────────────────────────────────────────────────
 export function PlayerCard({
-  name,
-  avatar,
-  gamesInCommon,
-  isOnline,
-  onPress,
+  name, avatar, gamesInCommon, isOnline, onPress,
+  actionLabel, onAction, actionDisabled,
 }: {
+  id?: string;
   name: string;
   avatar?: string;
   gamesInCommon?: number;
   isOnline?: boolean;
   onPress?: () => void;
+  actionLabel?: string;
+  onAction?: () => void;
+  actionDisabled?: boolean;
 }) {
   const { colors } = useTheme();
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[pcStyles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+      style={[pcStyles.row, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
     >
       <View style={pcStyles.avatarWrap}>
         <Image source={avatarSource} style={pcStyles.avatar} />
         {isOnline && <View style={[pcStyles.dot, { backgroundColor: '#22C55E' }]} />}
       </View>
-      <Text style={[pcStyles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
-      {gamesInCommon !== undefined && (
-        <Text style={[pcStyles.meta, { color: colors.textMuted }]}>{gamesInCommon} en común</Text>
+      <View style={pcStyles.info}>
+        <Text style={[pcStyles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+        {gamesInCommon !== undefined && gamesInCommon > 0 && (
+          <Text style={[pcStyles.meta, { color: colors.textMuted }]}>
+            {gamesInCommon} juego{gamesInCommon !== 1 ? 's' : ''} en común
+          </Text>
+        )}
+      </View>
+      {actionLabel && onAction && (
+        <TouchableOpacity
+          onPress={onAction}
+          disabled={actionDisabled}
+          style={[pcStyles.actionBtn, { backgroundColor: actionDisabled ? colors.card : colors.purple, borderColor: actionDisabled ? colors.border : colors.purple }]}
+        >
+          <Text style={[pcStyles.actionText, { color: actionDisabled ? colors.textMuted : '#fff' }]}>{actionLabel}</Text>
+        </TouchableOpacity>
       )}
     </TouchableOpacity>
   );
 }
 const pcStyles = StyleSheet.create({
-  card: { alignItems: 'center', padding: rs.md, borderRadius: rw(12), borderWidth: 1, width: rw(100) },
-  avatarWrap: { position: 'relative', marginBottom: rh(8) },
-  avatar: { width: rw(48), height: rw(48), borderRadius: rw(24) },
-  dot: { position: 'absolute', bottom: 0, right: 0, width: rw(12), height: rw(12), borderRadius: rw(6) },
-  name: { fontSize: rf(13), fontWeight: '600', textAlign: 'center' },
-  meta: { fontSize: rf(11), textAlign: 'center' },
+  row:        { flexDirection: 'row', alignItems: 'center', padding: rs.md, borderRadius: rw(12), borderWidth: 1, gap: rw(12) },
+  avatarWrap: { position: 'relative' },
+  avatar:     { width: rw(44), height: rw(44), borderRadius: rw(22) },
+  dot:        { position: 'absolute', bottom: 0, right: 0, width: rw(11), height: rw(11), borderRadius: rw(6), borderWidth: 2, borderColor: '#fff' },
+  info:       { flex: 1, gap: rh(2) },
+  name:       { fontSize: rf(14), fontWeight: '600' },
+  meta:       { fontSize: rf(12) },
+  actionBtn:  { paddingHorizontal: rw(12), paddingVertical: rh(6), borderRadius: rw(16), borderWidth: 1 },
+  actionText: { fontSize: rf(12), fontWeight: '600' },
 });
 
 // ─── ChatRow ──────────────────────────────────────────────────────────────────

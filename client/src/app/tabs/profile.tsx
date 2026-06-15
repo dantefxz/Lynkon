@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, FlatList, ActivityIndicator,
   RefreshControl, StyleSheet, TouchableOpacity, Alert,
+  Modal, TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,7 +42,7 @@ const FAV_CARD_W = cardWidth(Math.min(COLS + 1, 3));
 
 export default function ProfileScreen() {
   const router     = useRouter();
-  const { user }   = useAuth();
+  const { user, updateUserName, updateUserBio } = useAuth();
   const { colors } = useTheme();
   const { t }      = useTranslation();
 
@@ -64,6 +65,30 @@ export default function ProfileScreen() {
   const [addProfileModalVisible, setAddProfileModalVisible] = useState(false);
   const [addFavModalVisible, setAddFavModalVisible]         = useState(false);
   const [editModalVisible, setEditModalVisible]             = useState(false);
+
+  // ── Edición inline de nombre y bio ────────────────────────────────────────────
+  const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [editName, setEditName]                     = useState('');
+  const [editBio, setEditBio]                       = useState('');
+  const [editSaving, setEditSaving]                 = useState(false);
+
+  const openEditProfile = () => {
+    setEditName(user?.name || '');
+    setEditBio(user?.bio || '');
+    setEditProfileVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+    setEditSaving(true);
+    try {
+      await userApi.updateProfile(user.id, { username: editName, bio: editBio });
+    } catch {}
+    updateUserName(editName);
+    updateUserBio(editBio);
+    setEditProfileVisible(false);
+    setEditSaving(false);
+  };
 
   // ── Carga principal ────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -175,7 +200,7 @@ export default function ProfileScreen() {
   const handleAddFavorite = async (game: Game) => {
     if (!user?.id) return;
     try {
-      await userApi.addFavorite(user.id, game.id, game.name, game.platform || 'steam');
+      await userApi.addFavorite(user.id, game.id, game.name, game.platform || 'steam', game.cover, game.totalHours);
       setFavoriteGames((prev) => (prev.find((g) => g.id === game.id) ? prev : [...prev, game]));
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.error || 'No se pudo agregar a favoritos');
@@ -252,6 +277,8 @@ export default function ProfileScreen() {
         <ProfileHeader
           name={user?.name || 'Gamer'}
           avatar={user?.avatar}
+          bio={user?.bio}
+          onEditBio={openEditProfile}
           stats={[
             { icon: 'sports-esports', iconColor: colors.purple, value: totalGames,        label: t('profile.gamesLabel') },
             { icon: 'schedule',       iconColor: '#60A5FA',      value: `${totalHours}h`, label: t('profile.hoursLabel')  },
@@ -448,6 +475,66 @@ export default function ProfileScreen() {
         onRemove={handleRemoveFavorite}
         onClose={() => setEditModalVisible(false)}
       />
+
+      {/* ── Modal editar nombre y bio ── */}
+      <Modal
+        visible={editProfileVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditProfileVisible(false)}
+      >
+        <View style={styles.epOverlay}>
+          <View style={[styles.epModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.epHeader}>
+              <Text style={[styles.epTitle, { color: colors.text }]}>Editar perfil</Text>
+              <TouchableOpacity onPress={() => setEditProfileVisible(false)}>
+                <MaterialIcons name="close" size={rw(22)} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.epLabel, { color: colors.purple }]}>Nombre</Text>
+            <View style={[styles.epInputRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <MaterialIcons name="person-outline" size={rw(17)} color={colors.textMuted} />
+              <TextInput
+                style={[styles.epInput, { color: colors.text }]}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Tu nombre"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <Text style={[styles.epLabel, { color: colors.purple }]}>Bio</Text>
+            <View style={[styles.epBioBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <TextInput
+                style={[styles.epBioInput, { color: colors.text }]}
+                value={editBio}
+                onChangeText={setEditBio}
+                placeholder="Añadir descripción..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+                textAlignVertical="top"
+                autoCorrect={false}
+              />
+            </View>
+            <Text style={[styles.epCharCount, { color: colors.textMuted }]}>{editBio.length}/200</Text>
+
+            <TouchableOpacity
+              style={[styles.epSaveBtn, { backgroundColor: colors.purple, opacity: editSaving ? 0.7 : 1 }]}
+              onPress={handleSaveProfile}
+              disabled={editSaving}
+            >
+              {editSaving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.epSaveBtnText}>Guardar</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -471,4 +558,17 @@ const styles = StyleSheet.create({
   emptySubtitle:   { fontSize: rf(14), textAlign: 'center', lineHeight: rh(20) },
   emptyBtn:        { flexDirection: 'row', alignItems: 'center', gap: rw(6), marginTop: rh(8), paddingHorizontal: rw(20), paddingVertical: rh(12), borderRadius: rw(12) },
   emptyBtnText:    { fontSize: rf(14), fontWeight: '600' },
+  // Edit profile modal
+  epOverlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  epModal:         { width: '88%', borderRadius: rw(20), borderWidth: 1, padding: rw(22), gap: rh(12) },
+  epHeader:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: rh(4) },
+  epTitle:         { fontSize: rf(17), fontWeight: '700' },
+  epLabel:         { fontSize: rf(12), fontWeight: '600' },
+  epInputRow:      { flexDirection: 'row', alignItems: 'center', gap: rw(10), borderRadius: rw(10), borderWidth: 1, paddingHorizontal: rw(12), paddingVertical: rh(2) },
+  epInput:         { flex: 1, fontSize: rf(15), paddingVertical: rh(10) },
+  epBioBox:        { borderRadius: rw(10), borderWidth: 1, paddingHorizontal: rw(12), paddingVertical: rh(8) },
+  epBioInput:      { fontSize: rf(14), minHeight: rh(70) },
+  epCharCount:     { fontSize: rf(11), textAlign: 'right', marginTop: -rh(6) },
+  epSaveBtn:       { borderRadius: rw(12), paddingVertical: rh(14), alignItems: 'center', marginTop: rh(4) },
+  epSaveBtnText:   { color: '#fff', fontSize: rf(15), fontWeight: '600' },
 });

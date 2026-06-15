@@ -66,13 +66,6 @@ export default function SettingsScreen() {
           </Text>
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingsRow
-              icon="person-outline"
-              label={t('settings.account.editProfile')}
-              value={user?.name || ''}
-              onPress={() => router.push('/settings/edit-profile')}
-              showDivider
-            />
-            <SettingsRow
               icon="lock-outline"
               label={t('settings.account.changePassword')}
               onPress={() => router.push('/settings/change-password')}
