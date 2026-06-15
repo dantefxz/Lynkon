@@ -6,27 +6,28 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { authApi } from '@/services/api';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 
-// ─── Paso 1: ingresar email ────────────────────────────────────────────────────
 function EmailStep({ onSent }: { onSent: (email: string) => void }) {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed) { setError('Ingresá tu email'); return; }
+    if (!trimmed) { setError(t('auth.forgotPassword.errorEmpty')); return; }
     setError('');
     setLoading(true);
     try {
       await authApi.forgotPassword(trimmed);
     } catch {
-      // El backend responde 200 por seguridad; ignoramos errores de red
+      // backend responds 200 for security; ignore network errors
     } finally {
       setLoading(false);
       onSent(trimmed);
@@ -39,14 +40,14 @@ function EmailStep({ onSent }: { onSent: (email: string) => void }) {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={rw(24)} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>Recuperar contraseña</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>{t('auth.forgotPassword.title')}</Text>
       </View>
       <View style={styles.form}>
         <Text style={{ color: colors.textMuted, fontSize: rf(14), lineHeight: rh(22) }}>
-          Ingresá tu email y te enviaremos un link para restablecer tu contraseña.
+          {t('auth.forgotPassword.description')}
         </Text>
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>Email</Text>
+          <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>{t('auth.forgotPassword.email')}</Text>
           <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <MaterialIcons name="mail-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
             <TextInput
@@ -69,17 +70,17 @@ function EmailStep({ onSent }: { onSent: (email: string) => void }) {
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={[styles.buttonText, { fontSize: rf(16) }]}>Enviar link</Text>}
+            : <Text style={[styles.buttonText, { fontSize: rf(16) }]}>{t('auth.forgotPassword.submit')}</Text>}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-// ─── Paso 2: confirmación ─────────────────────────────────────────────────────
 function SentStep({ email }: { email: string }) {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -87,7 +88,7 @@ function SentStep({ email }: { email: string }) {
         <TouchableOpacity onPress={() => router.replace('/auth/login')} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={rw(24)} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>Email enviado</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: rf(20) }]}>{t('auth.forgotPassword.sentTitle')}</Text>
       </View>
 
       <View style={[styles.form, { alignItems: 'center' }]}>
@@ -96,33 +97,31 @@ function SentStep({ email }: { email: string }) {
         </View>
 
         <Text style={[styles.sentTitle, { color: colors.text, fontSize: rf(20) }]}>
-          Revisá tu email
+          {t('auth.forgotPassword.sentHeader')}
         </Text>
 
         <View style={[styles.sentBanner, { backgroundColor: colors.purpleDim }]}>
           <MaterialIcons name="mail-outline" size={rw(18)} color={colors.purple} />
           <Text style={[styles.sentText, { color: colors.purple, fontSize: rf(13) }]}>
-            Enviamos un link a <Text style={{ fontWeight: '700' }}>{email}</Text>
+            {t('auth.forgotPassword.sentBanner')} <Text style={{ fontWeight: '700' }}>{email}</Text>
           </Text>
         </View>
 
         <Text style={{ color: colors.textMuted, fontSize: rf(13), textAlign: 'center', lineHeight: rh(20) }}>
-          Hacé click en el link del email para crear una nueva contraseña.
-          Si no lo ves, revisá la carpeta de spam.
+          {t('auth.forgotPassword.sentBody')}
         </Text>
 
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.purple }]}
           onPress={() => router.replace('/auth/login')}
         >
-          <Text style={[styles.buttonText, { fontSize: rf(16) }]}>Volver al login</Text>
+          <Text style={[styles.buttonText, { fontSize: rf(16) }]}>{t('auth.forgotPassword.backToLogin')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
 export default function ForgotPasswordScreen() {
   const [step, setStep] = useState<'email' | 'sent'>('email');
   const [email, setEmail] = useState('');

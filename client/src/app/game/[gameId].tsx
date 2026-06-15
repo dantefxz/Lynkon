@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { platformApi } from '@/services/api';
 import { rw, rh, rf, rs, SCREEN_WIDTH } from '@/utils/responsive';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
 
@@ -39,6 +40,7 @@ function formatDate(ts: number | string | null): string {
 
 export default function GameDetailScreen() {
   const { colors } = useTheme();
+  const { t }      = useTranslation();
   const router    = useRouter();
   const { gameId, platform: platformParam } = useLocalSearchParams<{ gameId: string; platform?: string }>();
 
@@ -126,7 +128,7 @@ export default function GameDetailScreen() {
         </TouchableOpacity>
         <View style={styles.center}>
           <MaterialIcons name="videogame-asset-off" size={rw(48)} color={colors.textMuted} />
-          <Text style={[styles.notFoundText, { color: colors.textMuted, marginTop: rh(12) }]}>Juego no encontrado</Text>
+          <Text style={[styles.notFoundText, { color: colors.textMuted, marginTop: rh(12) }]}>{t('game.notFound')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -174,19 +176,19 @@ export default function GameDetailScreen() {
             <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <MaterialIcons name="schedule" size={rw(20)} color={colors.purple} />
               <Text style={[styles.statValue, { color: colors.text }]}>{game.totalHours}h</Text>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Horas</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('game.section.hours')}</Text>
             </View>
             {game.totalAchievements > 0 && (
               <>
                 <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <MaterialIcons name="emoji-events" size={rw(20)} color="#F59E0B" />
                   <Text style={[styles.statValue, { color: colors.text }]}>{game.completedAchievements}/{game.totalAchievements}</Text>
-                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Logros</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('game.section.achievements')}</Text>
                 </View>
                 <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <MaterialIcons name="bar-chart" size={rw(20)} color={colors.purple} />
                   <Text style={[styles.statValue, { color: colors.text }]}>{totalPct}%</Text>
-                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Progreso</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('game.section.progress')}</Text>
                 </View>
               </>
             )}
@@ -196,13 +198,13 @@ export default function GameDetailScreen() {
           {loadingAchs ? (
             <View style={styles.achLoading}>
               <ActivityIndicator color={colors.purple} />
-              <Text style={[styles.achLoadingText, { color: colors.textMuted }]}>Cargando logros...</Text>
+              <Text style={[styles.achLoadingText, { color: colors.textMuted }]}>{t('game.achievements.loading')}</Text>
             </View>
           ) : achievements.length > 0 ? (
             <View style={[styles.achCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.achHeader}>
                 <Text style={[styles.achTitle, { color: colors.text }]}>
-                  Logros ({unlockedAchs.length}/{achievements.length})
+                  {t('game.achievements.title', { unlocked: unlockedAchs.length, total: achievements.length })}
                 </Text>
                 {lockedAchs.length > 0 && (
                   <TouchableOpacity
@@ -210,7 +212,7 @@ export default function GameDetailScreen() {
                     onPress={() => setShowLocked((v) => !v)}
                   >
                     <Text style={[styles.pillText, { color: colors.textMuted }]}>
-                      {showLocked ? 'Solo obtenidos' : 'Mostrar todos'}
+                      {showLocked ? t('game.achievements.onlyDone') : t('game.achievements.showAll')}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -218,7 +220,7 @@ export default function GameDetailScreen() {
 
               {displayedAchs.length === 0 ? (
                 <Text style={{ color: colors.textMuted, fontSize: rf(13), textAlign: 'center', paddingVertical: rh(12) }}>
-                  No tenés logros desbloqueados aún
+                  {t('game.achievements.empty')}
                 </Text>
               ) : (
                 displayedAchs.map((ach) => {

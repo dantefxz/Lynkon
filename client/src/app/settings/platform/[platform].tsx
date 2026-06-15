@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as ExpoLinking from 'expo-linking';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { platformApi } from '@/services/api';
 import { rw, rh, rf, rs } from '@/utils/responsive';
@@ -26,15 +27,15 @@ const USES_OAUTH: Record<PlatformId, boolean> = {
   psn:   false,
 };
 
-function timeAgo(isoDate: string): string {
+function timeAgo(isoDate: string, t: (key: any, opts?: any) => string): string {
   const diff = Date.now() - new Date(isoDate).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Hace un momento';
-  if (mins < 60) return `Hace ${mins} minuto${mins > 1 ? 's' : ''}`;
+  if (mins < 1) return t('platform.justNow');
+  if (mins < 60) return mins === 1 ? t('platform.minutesAgo', { count: mins }) : t('platform.minutesAgoPlural', { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `Hace ${hrs} hora${hrs > 1 ? 's' : ''}`;
+  if (hrs < 24) return hrs === 1 ? t('platform.hoursAgo', { count: hrs }) : t('platform.hoursAgoPlural', { count: hrs });
   const days = Math.floor(hrs / 24);
-  return `Hace ${days} día${days > 1 ? 's' : ''}`;
+  return days === 1 ? t('platform.daysAgo', { count: days }) : t('platform.daysAgoPlural', { count: days });
 }
 
 export default function PlatformGamesScreen() {
@@ -42,6 +43,7 @@ export default function PlatformGamesScreen() {
   const { platform } = useLocalSearchParams<{ platform: string }>();
   const platformId   = normalizePlatformId(platform);
   const { colors }   = useTheme();
+  const { t }        = useTranslation();
 
   const [games,        setGames]        = useState<any[]>([]);
   const [stats,        setStats]        = useState<any>(null);
@@ -114,12 +116,12 @@ export default function PlatformGamesScreen() {
         setLoading(true);
         load();
       } else {
-        const errMsg = parsed.queryParams?.error as string || 'No se pudo vincular la cuenta';
-        Alert.alert('Error al vincular', errMsg);
+        const errMsg = parsed.queryParams?.error as string || t('platform.notConnected');
+        Alert.alert(t('common.error'), errMsg);
       }
     });
     return () => subscription.remove();
-  }, [platformId, load]);
+  }, [platformId, load, t]);
 
   const displayGames = useMemo(() => {
     let result = games;
@@ -147,7 +149,7 @@ export default function PlatformGamesScreen() {
       const redirectUri = ExpoLinking.createURL('platform-linked');
       const res         = await (platformApi as any).initPlatformAuth(platformId, redirectUri);
       const authUrl: string = (res.data as any)?.authUrl;
-      if (!authUrl) throw new Error('No se recibió la URL de autenticación');
+      if (!authUrl) throw new Error('No auth URL received');
 
       linkingStarted.current = true;
 
@@ -161,8 +163,8 @@ export default function PlatformGamesScreen() {
         await Linking.openURL(authUrl);
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Error al iniciar autenticación';
-      Alert.alert('Error', msg);
+      const msg = err?.response?.data?.error || err?.message || t('common.error');
+      Alert.alert(t('common.error'), msg);
     } finally { setLinking(false); }
   };
 
@@ -177,8 +179,8 @@ export default function PlatformGamesScreen() {
       setLoading(true);
       await load();
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.response?.data?.errors?.[0] || 'No se pudo vincular la plataforma';
-      Alert.alert('Error al vincular', msg);
+      const msg = err?.response?.data?.error || err?.response?.data?.errors?.[0] || t('common.error');
+      Alert.alert(t('common.error'), msg);
     } finally { setLinking(false); }
   };
 
@@ -190,8 +192,8 @@ export default function PlatformGamesScreen() {
       setLoading(true);
       await load();
     } catch (err: any) {
-      const msg = err?.response?.data?.error || 'No se pudo sincronizar la plataforma';
-      Alert.alert('Error', msg);
+      const msg = err?.response?.data?.error || t('common.error');
+      Alert.alert(t('common.error'), msg);
     } finally {
       setSyncing(false);
     }
@@ -200,22 +202,22 @@ export default function PlatformGamesScreen() {
   const handleUnlink = () => {
     if (!platformId) return;
     Alert.alert(
-      `Desvincular ${PLATFORM_NAME_FULL[platformId] ?? platformId}`,
-      'Perderás el acceso a tus juegos y estadísticas de esta plataforma.',
+      t('platform.unlink', { name: platformLabel }),
+      t('platform.unlinkConfirmMsg'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Desvincular', style: 'destructive', onPress: async () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('platform.unlinkConfirm'), style: 'destructive', onPress: async () => {
           try {
             await platformApi.unlinkPlatform(platformId);
             setConnected(false); setStats(null); setGames([]); setLinkedAt(null);
-          } catch { Alert.alert('Error', 'No se pudo desvincular'); }
+          } catch { Alert.alert(t('common.error'), t('common.error')); }
         }},
       ]
     );
   };
 
   const platformLogo  = platformId ? PLATFORM_LOGOS[platformId]  : null;
-  const platformLabel = platformId ? (PLATFORM_NAME_FULL[platformId] ?? PLATFORM_LABELS[platformId]) : (platform || 'Plataforma');
+  const platformLabel = platformId ? (PLATFORM_NAME_FULL[platformId] ?? PLATFORM_LABELS[platformId]) : (platform || 'Platform');
   const usesOAuth     = platformId ? USES_OAUTH[platformId] : false;
 
   return (
@@ -234,7 +236,7 @@ export default function PlatformGamesScreen() {
               <View style={styles.statusRow}>
                 <View style={[styles.statusDot, { backgroundColor: connected ? '#22C55E' : colors.textMuted }]} />
                 <Text style={{ color: connected ? '#22C55E' : colors.textMuted, fontSize: rf(13) }}>
-                  {connected ? 'Conectado' : 'No conectado'}
+                  {connected ? t('platform.connected') : t('platform.notConnected')}
                 </Text>
               </View>
             )}
@@ -249,15 +251,15 @@ export default function PlatformGamesScreen() {
       ) : connected ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: rs.md, gap: rh(16) }}>
           <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            <Text style={[styles.infoCardTitle, { color: colors.text }]}>Información de la cuenta</Text>
+            <Text style={[styles.infoCardTitle, { color: colors.text }]}>{t('platform.accountInfo')}</Text>
             <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
             <View style={styles.infoRow}>
-              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Estado</Text>
-              <Text style={[styles.infoValue, { color: '#22C55E', fontWeight: '600' }]}>Conectado</Text>
+              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.status')}</Text>
+              <Text style={[styles.infoValue, { color: '#22C55E', fontWeight: '600' }]}>{t('platform.connected')}</Text>
             </View>
             {(stats?.totalGames !== undefined || stats?.gamesCount !== undefined || games.length > 0) && (
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Juegos sincronizados</Text>
+                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.gamesSync')}</Text>
                 <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>
                   {stats?.totalGames ?? stats?.gamesCount ?? games.length}
                 </Text>
@@ -265,21 +267,21 @@ export default function PlatformGamesScreen() {
             )}
             {stats?.totalHours !== undefined && (
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Horas jugadas</Text>
+                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.hoursPlayed')}</Text>
                 <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>{stats.totalHours}h</Text>
               </View>
             )}
             {linkedAt && (
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Última sincronización</Text>
-                <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>{timeAgo(linkedAt)}</Text>
+                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.lastSync')}</Text>
+                <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>{timeAgo(linkedAt, t)}</Text>
               </View>
             )}
           </View>
 
           <TouchableOpacity style={[styles.unlinkButton, { borderColor: '#EF4444' }]} onPress={handleUnlink}>
             <MaterialIcons name="link-off" size={rw(18)} color="#EF4444" />
-            <Text style={styles.unlinkText}>Desvincular {platformLabel}</Text>
+            <Text style={styles.unlinkText}>{t('platform.unlink', { name: platformLabel })}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -291,7 +293,7 @@ export default function PlatformGamesScreen() {
               ? <ActivityIndicator size="small" color="#fff" />
               : <>
                   <MaterialIcons name="refresh" size={rw(18)} color="#fff" />
-                  <Text style={styles.syncButtonText}>Recargar {platformLabel}</Text>
+                  <Text style={styles.syncButtonText}>{t('platform.reload', { name: platformLabel })}</Text>
                 </>}
           </TouchableOpacity>
 
@@ -301,7 +303,7 @@ export default function PlatformGamesScreen() {
                 <MaterialIcons name="search" size={rw(20)} color={colors.textMuted} />
                 <TextInput
                   style={[styles.searchInput, { color: colors.text }]}
-                  placeholder="Buscar juego..."
+                  placeholder={t('platform.searchGame')}
                   placeholderTextColor={colors.textMuted}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -322,7 +324,7 @@ export default function PlatformGamesScreen() {
                     onPress={() => setSortBy('playtime')}
                   >
                     <Text style={{ color: sortBy === 'playtime' ? '#fff' : colors.textMuted, fontSize: rf(13), fontWeight: '600' }}>
-                      Horas
+                      {t('platform.hoursPlayed')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -330,7 +332,7 @@ export default function PlatformGamesScreen() {
                     onPress={() => setSortBy('name')}
                   >
                     <Text style={{ color: sortBy === 'name' ? '#fff' : colors.textMuted, fontSize: rf(13), fontWeight: '600' }}>
-                      Nombre
+                      {t('platform.sortName')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -346,12 +348,14 @@ export default function PlatformGamesScreen() {
               </View>
 
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Juegos ({displayGames.length}{displayGames.length !== games.length ? ` de ${games.length}` : ''})
+                {displayGames.length !== games.length
+                  ? t('platform.gamesCountFiltered', { count: displayGames.length, total: games.length })
+                  : t('platform.gamesCount', { count: games.length })}
               </Text>
 
               {displayGames.length === 0 ? (
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: rh(8) }}>
-                  No se encontraron juegos
+                  {t('platform.noGamesFound')}
                 </Text>
               ) : (
                 displayGames.map((game: any, index: number) => {
@@ -384,7 +388,7 @@ export default function PlatformGamesScreen() {
                       <View style={styles.gameInfo}>
                         <Text style={[styles.gameName, { color: colors.text }]} numberOfLines={1}>{game.name || game.title}</Text>
                         <Text style={{ color: colors.textMuted, fontSize: rf(12), marginTop: rh(4) }}>
-                          {hours}h jugadas
+                          {t('platform.hoursPlayedShort', { hours })}
                         </Text>
                         {game.totalAchievements > 0 && (
                           <View style={{ marginTop: rh(6) }}>
@@ -392,7 +396,7 @@ export default function PlatformGamesScreen() {
                               <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: colors.purple }]} />
                             </View>
                             <Text style={{ color: colors.textMuted, fontSize: rf(11), marginTop: rh(2) }}>
-                              {game.completedAchievements}/{game.totalAchievements} logros
+                              {t('platform.achievements', { completed: game.completedAchievements, total: game.totalAchievements })}
                             </Text>
                           </View>
                         )}
@@ -413,9 +417,9 @@ export default function PlatformGamesScreen() {
               ? <Image source={platformLogo} style={{ width: rw(60), height: rw(60) }} resizeMode="contain" />
               : <MaterialIcons name="sports-esports" size={rw(56)} color={colors.purple} />}
           </View>
-          <Text style={[styles.connectTitle, { color: colors.text }]}>Conecta tu cuenta de {platformLabel}</Text>
+          <Text style={[styles.connectTitle, { color: colors.text }]}>{t('platform.connectTitle', { name: platformLabel })}</Text>
           <Text style={[styles.connectSubtitle, { color: colors.textMuted }]}>
-            Sincroniza tus juegos, horas jugadas y logros automáticamente
+            {t('platform.connectSubtitle')}
           </Text>
 
           {usesOAuth ? (
@@ -428,7 +432,7 @@ export default function PlatformGamesScreen() {
                 ? <ActivityIndicator color="#fff" size="small" />
                 : <>
                     <MaterialIcons name="open-in-browser" size={rw(18)} color="#fff" />
-                    <Text style={styles.connectButtonText}>Iniciar sesión con {platformLabel}</Text>
+                    <Text style={styles.connectButtonText}>{t('platform.loginWith', { name: platformLabel })}</Text>
                   </>}
             </TouchableOpacity>
           ) : (
@@ -437,7 +441,7 @@ export default function PlatformGamesScreen() {
               onPress={() => setModalVisible(true)}
             >
               <MaterialIcons name="link" size={rw(18)} color="#fff" />
-              <Text style={styles.connectButtonText}>Conectar {platformLabel}</Text>
+              <Text style={styles.connectButtonText}>{t('platform.connect', { name: platformLabel })}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -448,7 +452,7 @@ export default function PlatformGamesScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Conectar {platformLabel}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('platform.connect', { name: platformLabel })}</Text>
               <TouchableOpacity onPress={() => { setModalVisible(false); setCredential(''); setPsnHelpOpen(false); }}>
                 <MaterialIcons name="close" size={rw(22)} color={colors.textMuted} />
               </TouchableOpacity>
@@ -459,7 +463,7 @@ export default function PlatformGamesScreen() {
               onPress={() => setPsnHelpOpen((v) => !v)}
             >
               <MaterialIcons name="help-outline" size={rw(16)} color={colors.purple} />
-              <Text style={[styles.helpToggleText, { color: colors.purple }]}>¿Cómo obtengo el token?</Text>
+              <Text style={[styles.helpToggleText, { color: colors.purple }]}>{t('platform.psn.howToGetToken')}</Text>
               <MaterialIcons
                 name={psnHelpOpen ? 'expand-less' : 'expand-more'}
                 size={rw(18)} color={colors.purple}
@@ -469,32 +473,32 @@ export default function PlatformGamesScreen() {
             {psnHelpOpen && (
               <View style={[styles.helpBox, { backgroundColor: colors.background, borderColor: colors.cardBorder }]}>
                 <Text style={[styles.helpStep, { color: colors.textMuted }]}>
-                  1. Abrí un navegador e iniciá sesión en{' '}
+                  {t('platform.psn.step1')}{' '}
                   <Text style={{ color: colors.purple }}>my.playstation.com</Text>
                 </Text>
                 <Text style={[styles.helpStep, { color: colors.textMuted }]}>
-                  2. En la misma pestaña, navegá a:{'\n'}
+                  {t('platform.psn.step2')}{'\n'}
                   <Text style={{ color: colors.purple, fontSize: rf(11) }}>
                     ca.account.sony.com/api/v1/ssocookie
                   </Text>
                 </Text>
                 <Text style={[styles.helpStep, { color: colors.textMuted }]}>
-                  3. Copiá el valor del campo <Text style={{ fontWeight: '700' }}>npsso</Text> (64 caracteres)
+                  {t('platform.psn.step3')} <Text style={{ fontWeight: '700' }}>{t('platform.psn.step3b')}</Text> {t('platform.psn.step3c')}
                 </Text>
                 <TouchableOpacity
                   style={[styles.helpOpenBtn, { borderColor: colors.purple }]}
                   onPress={() => Linking.openURL('https://ca.account.sony.com/api/v1/ssocookie')}
                 >
                   <MaterialIcons name="open-in-browser" size={rw(14)} color={colors.purple} />
-                  <Text style={[styles.helpOpenBtnText, { color: colors.purple }]}>Abrir página del token</Text>
+                  <Text style={[styles.helpOpenBtnText, { color: colors.purple }]}>{t('platform.psn.openPage')}</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Token NPSSO (64 caracteres)</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>{t('platform.psn.tokenLabel')}</Text>
             <TextInput
               style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.cardBorder, color: colors.text }]}
-              placeholder="Pegá tu token NPSSO aquí"
+              placeholder={t('platform.psn.tokenPlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={credential}
               onChangeText={setCredential}
@@ -509,7 +513,7 @@ export default function PlatformGamesScreen() {
             >
               {linking
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.modalButtonText}>Vincular cuenta</Text>}
+                : <Text style={styles.modalButtonText}>{t('platform.psn.link')}</Text>}
             </TouchableOpacity>
           </View>
         </View>

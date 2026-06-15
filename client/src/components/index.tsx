@@ -4,6 +4,7 @@ import {
   StyleSheet, ActivityIndicator, Switch,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 import { useTheme } from '@/context/ThemeContext';
 import { getProfileAvatar } from '@/services/mockData';
@@ -129,6 +130,7 @@ export function GameCard({
   onPress?: () => void;
 }) {
   const { colors } = useTheme();
+  const { t }      = useTranslation();
   const cardW = width || rw(160);
   const completion =
     totalAchievements && completedAchievements !== undefined
@@ -144,7 +146,7 @@ export function GameCard({
       <View style={gcStyles.info}>
         <Text style={[gcStyles.name, { color: colors.text }]} numberOfLines={2}>{name}</Text>
         {totalHours !== undefined && (
-          <Text style={[gcStyles.meta, { color: colors.textMuted }]}>{totalHours}h jugadas</Text>
+          <Text style={[gcStyles.meta, { color: colors.textMuted }]}>{t('profile.hoursPlayed', { hours: totalHours })}</Text>
         )}
         {completion !== null && (
           <View style={gcStyles.progressRow}>

@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, Image } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
@@ -24,6 +25,7 @@ function AvatarTabIcon({ focused, avatar, colors, seed }: { focused: boolean; av
 export default function TabsLayout() {
   const { user } = useAuth();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -45,8 +47,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="social"
         options={{
-          title: 'Social',
-          tabBarIcon: ({ color, focused }) => (
+          title: t('tabs.social'),
+          tabBarIcon: ({ color }) => (
             <MaterialIcons name="forum" size={rw(24)} color={color} />
           ),
         }}
@@ -63,7 +65,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Inicio',
+          title: t('tabs.home'),
           tabBarIcon: ({ focused }) => (
             <AvatarTabIcon focused={focused} avatar={user?.avatar || ''} seed={user?.name || user?.id || ''} colors={colors} />
           ),
@@ -72,9 +74,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Ajustes',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons name={focused ? 'settings' : 'settings'} size={rw(24)} color={color} />
+          title: t('tabs.settings'),
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="settings" size={rw(24)} color={color} />
           ),
         }}
       />

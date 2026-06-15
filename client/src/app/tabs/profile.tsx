@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { platformApi, userApi } from '@/services/api';
@@ -41,6 +42,7 @@ export default function ProfileScreen() {
   const router     = useRouter();
   const { user }   = useAuth();
   const { colors } = useTheme();
+  const { t }      = useTranslation();
 
   // All games fetched from platforms (for search/add modal)
   const [allGames, setAllGames]           = useState<Game[]>([]);
@@ -243,11 +245,10 @@ export default function ProfileScreen() {
       >
         <ProfileHeader
           name={user?.name || 'Gamer'}
-          email={user?.email}
           avatar={user?.avatar}
           stats={[
-            { icon: 'sports-esports', iconColor: colors.purple, value: totalGames,        label: 'Juegos' },
-            { icon: 'schedule',       iconColor: '#60A5FA',      value: `${totalHours}h`, label: 'Horas'  },
+            { icon: 'sports-esports', iconColor: colors.purple, value: totalGames,        label: t('profile.gamesLabel') },
+            { icon: 'schedule',       iconColor: '#60A5FA',      value: `${totalHours}h`, label: t('profile.hoursLabel')  },
           ]}
           platforms={platforms}
           onSync={handleSync}
@@ -266,7 +267,7 @@ export default function ProfileScreen() {
                 <View style={styles.sectionTitleRow}>
                     <MaterialIcons name="star-outline" size={rw(17)} color="#F59E0B" />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Mis Favoritos{favoriteGames.length > 0 ? ` (${favoriteGames.length})` : ''}
+                    {t('profile.myFavorites')}{favoriteGames.length > 0 ? ` (${favoriteGames.length})` : ''}
                   </Text>
                 </View>
                 <View style={styles.sectionActions}>
@@ -276,7 +277,7 @@ export default function ProfileScreen() {
                     activeOpacity={0.8}
                   >
                     <MaterialIcons name="add" size={rw(14)} color={colors.text} />
-                    <Text style={[styles.pillText, { color: colors.text }]}>Añadir</Text>
+                    <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.add')}</Text>
                   </TouchableOpacity>
                   {favoriteGames.length > 0 && (
                     <TouchableOpacity
@@ -285,7 +286,7 @@ export default function ProfileScreen() {
                       activeOpacity={0.8}
                     >
                       <MaterialIcons name="edit" size={rw(13)} color={colors.text} />
-                      <Text style={[styles.pillText, { color: colors.text }]}>Editar</Text>
+                      <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.edit')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -315,7 +316,7 @@ export default function ProfileScreen() {
                 <View style={[styles.emptyFavs, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <MaterialIcons name="star-outline" size={rw(28)} color={colors.textMuted} />
                   <Text style={[styles.emptyFavsText, { color: colors.textMuted }]}>
-                    Añadí juegos favoritos para verlos acá
+                    {t('profile.noFavoritesHint')}
                   </Text>
                 </View>
               )}
@@ -327,7 +328,7 @@ export default function ProfileScreen() {
                 <View style={styles.sectionTitleRow}>
                   <MaterialIcons name="sports-esports" size={rw(17)} color={colors.purple} />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Mis Juegos{profileGames.length > 0 ? ` (${profileGames.length})` : ''}
+                    {t('profile.myGames')}{profileGames.length > 0 ? ` (${profileGames.length})` : ''}
                   </Text>
                 </View>
                 {platforms.length > 0 && (
@@ -341,7 +342,7 @@ export default function ProfileScreen() {
                       {syncing
                         ? <ActivityIndicator size="small" color={colors.purple} />
                         : <MaterialIcons name="refresh" size={rw(14)} color={colors.text} />}
-                      <Text style={[styles.pillText, { color: colors.text }]}>Recargar</Text>
+                      <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.reload')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -350,7 +351,7 @@ export default function ProfileScreen() {
                       activeOpacity={0.8}
                     >
                       <MaterialIcons name="add" size={rw(14)} color={colors.text} />
-                      <Text style={[styles.pillText, { color: colors.text }]}>Añadir</Text>
+                      <Text style={[styles.pillText, { color: colors.text }]}>{t('common.add')}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -362,12 +363,10 @@ export default function ProfileScreen() {
                     <MaterialIcons name="videogame-asset-off" size={rw(40)} color={colors.purple} />
                   </View>
                   <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                    {platforms.length === 0 ? 'Todavía no tenés juegos' : 'Agregá juegos a tu perfil'}
+                    {platforms.length === 0 ? t('profile.noGamesTitle') : t('profile.addGamesTitle')}
                   </Text>
                   <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                    {platforms.length === 0
-                      ? 'Vinculá una plataforma para ver tus juegos acá.'
-                      : 'Tocá "Añadir" para elegir qué juegos mostrar en tu perfil.'}
+                    {platforms.length === 0 ? t('profile.linkPlatformHint') : t('profile.addGamesHint')}
                   </Text>
                   {platforms.length === 0 && (
                     <TouchableOpacity
@@ -376,7 +375,7 @@ export default function ProfileScreen() {
                       activeOpacity={0.85}
                     >
                       <MaterialIcons name="link" size={rw(16)} color={colors.text} />
-                      <Text style={[styles.emptyBtnText, { color: colors.text }]}>Vincular plataforma</Text>
+                      <Text style={[styles.emptyBtnText, { color: colors.text }]}>{t('profile.linkPlatform')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -421,7 +420,7 @@ export default function ProfileScreen() {
       {/* Modal para favoritos */}
       <AddGameModal
         visible={addFavModalVisible}
-        title="Añadir Favorito"
+        title={t('profile.addFavorite')}
         platforms={platforms}
         allGames={allGames}
         visibleIds={new Set(favoriteGames.map((g) => g.id))}

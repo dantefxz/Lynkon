@@ -5,8 +5,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Animated, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { I18nextProvider } from 'react-i18next';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { LanguageProvider } from '@/context/LanguageContext';
+import i18n from '@/i18n';
 
 const SPLASH_MIN_MS = 2500;
 const SPLASH_FADE_MS = 600;
@@ -105,12 +108,16 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <StatusBarWrapper />
-            <RootGuard />
-          </AuthProvider>
-        </ThemeProvider>
+        <I18nextProvider i18n={i18n}>
+          <LanguageProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <StatusBarWrapper />
+                <RootGuard />
+              </AuthProvider>
+            </ThemeProvider>
+          </LanguageProvider>
+        </I18nextProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

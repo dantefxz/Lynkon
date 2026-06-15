@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
 import { PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
@@ -26,6 +27,7 @@ export function GameCard({
   width, onPress, onRemove,
 }: GameCardProps) {
   const { colors } = useTheme();
+  const { t }      = useTranslation();
   const pct = totalAchievements > 0
     ? Math.round((completedAchievements / totalAchievements) * 100)
     : 0;
@@ -72,14 +74,14 @@ export function GameCard({
           <Text style={[styles.stats, { color: colors.textMuted }]}>
             {totalAchievements > 0
               ? `${completedAchievements}/${totalAchievements} · ${pct}%`
-              : `${totalHours}h jugadas`}
+              : t('profile.hoursPlayed', { hours: totalHours })}
           </Text>
           {platformLogo && (
             <Image source={platformLogo} style={styles.platformLogo} resizeMode="contain" />
           )}
         </View>
         {totalAchievements > 0 && (
-          <Text style={[styles.hours, { color: colors.textMuted }]}>{totalHours}h jugadas</Text>
+          <Text style={[styles.hours, { color: colors.textMuted }]}>{t('profile.hoursPlayed', { hours: totalHours })}</Text>
         )}
       </View>
     </TouchableOpacity>

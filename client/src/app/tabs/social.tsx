@@ -10,6 +10,7 @@ import { TouchableOpacity } from 'react-native';
 import { friendApi, messageApi, userApi } from '@/services/api';
 import { getProfileAvatar } from '@/services/mockData';
 import { rw, rh, rf, rs } from '@/utils/responsive';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { PlayerCard, ChatRow, ChatBubble, SearchBar } from '@/components';
 import { useAuth } from '@/context/AuthContext';
@@ -39,16 +40,17 @@ interface IncomingRequest {
 // ─── Bloqueo para menores de 16 ──────────────────────────────────────────────
 function Under16Block() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: rw(32) }]}>
       <View style={[styles.blockIconCircle, { backgroundColor: colors.purpleMuted }]}>
         <MaterialIcons name="lock-outline" size={rw(48)} color={colors.purple} />
       </View>
       <Text style={[styles.blockTitle, { color: colors.text }]}>
-        Función no disponible
+        {t('social.under16.title')}
       </Text>
       <Text style={[styles.blockSubtitle, { color: colors.textMuted }]}>
-        Las funciones sociales (amigos y mensajes) no están disponibles para usuarios menores de 16 años.
+        {t('social.under16.message')}
       </Text>
     </SafeAreaView>
   );
@@ -65,6 +67,7 @@ export default function SocialScreen() {
 
 function SocialContent() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const [friends, setFriends]                   = useState<User[]>([]);
   const [friendIds, setFriendIds]               = useState<Set<string>>(new Set());
@@ -142,9 +145,9 @@ function SocialContent() {
   const openConversation = async (u: User) => {
     if (!friendIds.has(u.id)) {
       Alert.alert(
-        'No son amigos aún',
-        `Agregá a ${u.name} como amigo primero para poder chatear.`,
-        [{ text: 'Entendido' }],
+        t('social.notFriendsTitle'),
+        t('social.notFriendsMsg', { name: u.name }),
+        [{ text: t('social.understood') }],
       );
       return;
     }
@@ -169,7 +172,7 @@ function SocialContent() {
     const optimistic: Message = {
       id:        Date.now().toString(),
       userId:    'own',
-      userName:  'Yo',
+      userName:  t('social.actions.message'),
       message:   messageText.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isOwn:     true,
@@ -203,11 +206,11 @@ function SocialContent() {
     userId: string,
     onChat?: () => void,
   ): { label: string; onAction?: () => void; actionDisabled?: boolean } => {
-    if (friendIds.has(userId)) return { label: 'Mensaje', onAction: onChat };
+    if (friendIds.has(userId)) return { label: t('social.actions.message'), onAction: onChat };
     const inc = incomingRequests.find((r) => r.fromUserId === userId);
-    if (inc) return { label: 'Aceptar', onAction: () => handleAcceptRequest(inc.requestId, userId) };
-    if (pendingRequests.includes(userId)) return { label: 'Solicitud enviada', onAction: () => {}, actionDisabled: true };
-    return { label: '+ Agregar', onAction: () => handleAddFriend(userId) };
+    if (inc) return { label: t('social.actions.accept'), onAction: () => handleAcceptRequest(inc.requestId, userId) };
+    if (pendingRequests.includes(userId)) return { label: t('social.actions.pending'), onAction: () => {}, actionDisabled: true };
+    return { label: t('social.actions.add'), onAction: () => handleAddFriend(userId) };
   };
 
   // ── Modal de resultados de búsqueda ───────────────────────────────────────
@@ -222,7 +225,7 @@ function SocialContent() {
         <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={1}>
-              Resultados para "{searchQuery}"
+              {t('social.resultsFor', { query: searchQuery })}
             </Text>
             <TouchableOpacity
               onPress={() => setShowSearchModal(false)}
@@ -236,7 +239,7 @@ function SocialContent() {
             {searchResults.length === 0 ? (
               <View style={styles.emptyBox}>
                 <MaterialIcons name="search-off" size={rw(40)} color={colors.textMuted} />
-                <Text style={[styles.emptyText, { color: colors.textMuted }]}>Sin resultados para "{searchQuery}"</Text>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('social.noResultsFor', { query: searchQuery })}</Text>
               </View>
             ) : (
               searchResults.map((u) => {
@@ -274,7 +277,7 @@ function SocialContent() {
             <View style={styles.chatUserInfo}>
               <Text style={[styles.chatName, { color: colors.text }]}>{selectedUser.name}</Text>
               <Text style={[styles.chatStatus, { color: selectedUser.isOnline ? '#22C55E' : colors.textMuted }]}>
-                {selectedUser.isOnline ? 'En línea' : 'Desconectado'}
+                {selectedUser.isOnline ? t('social.online') : t('social.offline')}
               </Text>
             </View>
           </View>
@@ -287,7 +290,7 @@ function SocialContent() {
           >
             {messages.length === 0 && (
               <Text style={[styles.emptyText, { color: colors.textMuted, textAlign: 'center', marginTop: rh(40) }]}>
-                Comenzá la conversación con {selectedUser.name}
+                {t('social.startConversation', { name: selectedUser.name })}
               </Text>
             )}
             {messages.map((msg) => (
@@ -303,7 +306,7 @@ function SocialContent() {
           <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
             <TextInput
               style={[styles.msgInput, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
-              placeholder="Escribí un mensaje..."
+              placeholder={t('social.writeMessage')}
               placeholderTextColor={colors.textMuted}
               value={messageText}
               onChangeText={setMessageText}
@@ -330,12 +333,12 @@ function SocialContent() {
       {searchModal}
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={[styles.screenHeader, { backgroundColor: colors.cardAlt }]}>
-          <Text style={[styles.screenTitle, { color: colors.text }]}>Social</Text>
+          <Text style={[styles.screenTitle, { color: colors.text }]}>{t('social.title')}</Text>
           <SearchBar
             value={searchQuery}
             onChangeText={handleSearch}
             onSearch={handleSubmitSearch}
-            placeholder="Buscar usuarios..."
+            placeholder={t('social.search')}
           />
         </View>
 
@@ -347,7 +350,7 @@ function SocialContent() {
           <>
             {suggestions.length > 0 && searchQuery.length < 2 && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Sugerencias</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('social.suggestions')}</Text>
                 {suggestions.map((u) => {
                   const { label, onAction, actionDisabled } = getUserAction(u.id, () => openConversation(u));
                   return (
@@ -367,8 +370,8 @@ function SocialContent() {
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 {searchQuery.length >= 2
-                  ? 'Resultados'
-                  : `Amigos${friends.length > 0 ? ` (${friends.length})` : ''}`}
+                  ? t('social.results')
+                  : `${t('social.friends')}${friends.length > 0 ? ` (${friends.length})` : ''}`}
               </Text>
 
               {displayList.length === 0 ? (
@@ -380,8 +383,8 @@ function SocialContent() {
                   />
                   <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                     {searchQuery.length >= 2
-                      ? 'Presioná la lupa para ver todos los resultados'
-                      : 'Buscá usuarios para agregarlos como amigos'}
+                      ? t('social.searchPrompt')
+                      : t('social.addFriendsHint')}
                   </Text>
                 </View>
               ) : (

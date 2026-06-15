@@ -2,12 +2,14 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -17,7 +19,7 @@ export default function WelcomeScreen() {
           <Image source={require('../../../assets/Logo.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={[styles.title, { color: colors.text, fontSize: rf(36) }]}>Lynkon</Text>
           <Text style={[styles.subtitle, { color: colors.purple, fontSize: rf(16) }]}>
-            Tu plataforma de gaming unificada
+            {t('auth.welcome.subtitle')}
           </Text>
         </View>
         <View style={styles.buttonSection}>
@@ -26,18 +28,18 @@ export default function WelcomeScreen() {
             onPress={() => router.push('/auth/login')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.primaryButtonText, { fontSize: rf(16) }]}>Iniciar sesión</Text>
+            <Text style={[styles.primaryButtonText, { fontSize: rf(16) }]}>{t('auth.welcome.login')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.secondaryButton, { borderColor: colors.cardBorder, backgroundColor: colors.card }]}
             onPress={() => router.push('/auth/register')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.secondaryButtonText, { color: colors.text, fontSize: rf(16) }]}>Registrarse</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.text, fontSize: rf(16) }]}>{t('auth.welcome.register')}</Text>
           </TouchableOpacity>
         </View>
         <Text style={{ color: colors.textMuted, fontSize: rf(13) }}>
-          Conecta todas tus plataformas favoritas
+          {t('auth.welcome.connectPlatforms')}
         </Text>
       </View>
     </SafeAreaView>
