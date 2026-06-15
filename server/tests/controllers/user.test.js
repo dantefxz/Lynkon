@@ -2,8 +2,9 @@ const request = require('supertest');
 const app     = require('../../src/app');
 
 jest.mock('../../src/middleware/auth.middleware', () => ({
-  authenticate:   (req, _res, next) => { req.user = { uid: 'user123' }; next(); },
+  authenticate:   (req, _res, next) => { req.user = { uid: 'user123', isUnder16: false }; next(); },
   authorizeOwner: (_req, _res, next) => next(),
+  blockUnder16:   (_req, _res, next) => next(),
 }));
 
 const mockUser = {

@@ -92,8 +92,9 @@ describe('parseLinkPlatformDTO', () => {
     expect(errors.some((e) => e.includes('platform must be'))).toBe(true);
   });
   it('pasa con datos válidos', () => {
-    const { data } = parseLinkPlatformDTO({ platform: 'steam', token: 'steamToken123' });
+    const { data } = parseLinkPlatformDTO({ platform: 'steam', platformUserId: '76561198012345678' });
     expect(data.platform).toBe('steam');
+    expect(data.platformUserId).toBe('76561198012345678');
   });
 });
 
