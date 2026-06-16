@@ -125,6 +125,201 @@ function RequestRow({
   );
 }
 
+// ─── Chat view ───────────────────────────────────────────────────────────────
+function ChatView({
+  selectedUser, messages, messageText, chatMenuVisible, currentUserId,
+  onBack, onSend, onChangeText, onToggleMenu, onCloseMenu,
+  onRemoveFriendFromChat, onClearChat,
+}: {
+  selectedUser: User;
+  messages: Message[];
+  messageText: string;
+  chatMenuVisible: boolean;
+  currentUserId: string;
+  onBack: () => void;
+  onSend: () => void;
+  onChangeText: (t: string) => void;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+  onRemoveFriendFromChat: () => void;
+  onClearChat: () => void;
+}) {
+  const { colors }   = useTheme();
+  const { t, i18n }  = useTranslation();
+  const router        = useRouter();
+  const scrollRef     = useRef<ScrollView>(null);
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <View style={[styles.chatHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+            <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.chatUserInfo} onPress={() => router.push(`/user/${selectedUser.id}`)}>
+            <Text style={[styles.chatName, { color: colors.text }]}>{selectedUser.name}</Text>
+            <Text style={[styles.chatStatus, { color: selectedUser.isOnline ? '#22C55E' : colors.textMuted }]}>
+              {selectedUser.isOnline ? t('social.online') : t('social.offline')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onToggleMenu} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialIcons name="more-vert" size={rw(24)} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        {chatMenuVisible && (
+          <>
+            <TouchableOpacity style={styles.chatMenuBackdrop} onPress={onCloseMenu} activeOpacity={1} />
+            <View style={[styles.chatMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <TouchableOpacity
+                style={styles.chatMenuItem}
+                onPress={() => { onCloseMenu(); router.push(`/user/${selectedUser.id}`); }}
+              >
+                <MaterialIcons name="person" size={rw(18)} color={colors.purple} />
+                <Text style={[styles.chatMenuText, { color: colors.text }]}>{t('social.viewProfile')}</Text>
+              </TouchableOpacity>
+              <View style={[styles.chatMenuDivider, { backgroundColor: colors.border }]} />
+              <TouchableOpacity
+                style={styles.chatMenuItem}
+                onPress={() => { onCloseMenu(); onRemoveFriendFromChat(); }}
+              >
+                <MaterialIcons name="person-remove" size={rw(18)} color="#EF4444" />
+                <Text style={[styles.chatMenuText, { color: '#EF4444' }]}>{t('social.removeFriend')}</Text>
+              </TouchableOpacity>
+              <View style={[styles.chatMenuDivider, { backgroundColor: colors.border }]} />
+              <TouchableOpacity
+                style={styles.chatMenuItem}
+                onPress={() => { onCloseMenu(); onClearChat(); }}
+              >
+                <MaterialIcons name="delete-outline" size={rw(18)} color={colors.textMuted} />
+                <Text style={[styles.chatMenuText, { color: colors.textMuted }]}>{t('social.clearChat')}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        <ScrollView
+          ref={scrollRef}
+          style={[styles.messagesArea, { backgroundColor: colors.background }]}
+          contentContainerStyle={{ padding: rs.md, gap: rh(10) }}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        >
+          {messages.length === 0 && (
+            <Text style={[styles.emptyText, { color: colors.textMuted, textAlign: 'center', marginTop: rh(40) }]}>
+              {t('social.startConversation', { name: selectedUser.name })}
+            </Text>
+          )}
+          {messages.reduce<React.ReactNode[]>((acc, msg, i) => {
+            const day     = getMsgDay(msg.timestamp);
+            const prevDay = i > 0 ? getMsgDay(messages[i - 1].timestamp) : null;
+            if (day !== prevDay) {
+              acc.push(<Text key={`day-${day}`} style={[styles.dateSeparator, { color: colors.textMuted }]}>{formatDayLabel(msg.timestamp, i18n.language)}</Text>);
+            }
+            acc.push(<ChatBubble key={msg.id} message={msg.message} timestamp={formatMsgTime(msg.timestamp)} isOwn={msg.isOwn} />);
+            return acc;
+          }, [])}
+        </ScrollView>
+
+        <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+          <TextInput
+            style={[styles.msgInput, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
+            placeholder={t('social.writeMessage')}
+            placeholderTextColor={colors.textMuted}
+            value={messageText}
+            onChangeText={onChangeText}
+            multiline
+          />
+          <TouchableOpacity
+            style={[styles.sendBtn, { backgroundColor: messageText.trim() ? colors.purple : colors.textMuted }]}
+            onPress={onSend}
+            disabled={!messageText.trim()}
+          >
+            <MaterialIcons name="send" size={rw(18)} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+// ─── Social list sub-sections ─────────────────────────────────────────────────
+function SuggestionsSection({ suggestions, getUserAction, openConversation }: {
+  suggestions: User[];
+  getUserAction: (id: string, onChat?: () => void) => { label: string; onAction?: () => void; actionDisabled?: boolean };
+  openConversation: (u: User) => void;
+}) {
+  const { colors } = useTheme();
+  const { t }      = useTranslation();
+  const router     = useRouter();
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('social.recommendations')}</Text>
+        <MaterialIcons name="auto-awesome" size={rw(16)} color={colors.purple} />
+      </View>
+      <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+        {suggestions.length > 0 && suggestions.some((u) => u.gamesInCommon > 0)
+          ? t('social.recommendationsGames')
+          : t('social.recommendationsCommunity')}
+      </Text>
+      {suggestions.length === 0 ? (
+        <View style={styles.emptyBox}>
+          <MaterialIcons name="people-outline" size={rw(32)} color={colors.textMuted} />
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('social.noRecommendations')}</Text>
+        </View>
+      ) : (
+        suggestions.map((u) => {
+          const { label, onAction, actionDisabled } = getUserAction(u.id, () => openConversation(u));
+          return (
+            <PlayerCard key={u.id} {...u} actionLabel={label} onAction={onAction} actionDisabled={actionDisabled} onPress={() => router.push(`/user/${u.id}`)} />
+          );
+        })
+      )}
+    </View>
+  );
+}
+
+function FriendsSection({ displayList, searchQuery, friends, unreadCounts, getUserAction, openConversation, handleRemoveFriend }: {
+  displayList: User[];
+  searchQuery: string;
+  friends: User[];
+  unreadCounts: Record<string, number>;
+  getUserAction: (id: string, onChat?: () => void) => { label: string; onAction?: () => void; actionDisabled?: boolean };
+  openConversation: (u: User) => void;
+  handleRemoveFriend: (id: string, name: string) => void;
+}) {
+  const { colors } = useTheme();
+  const { t }      = useTranslation();
+  const router     = useRouter();
+  const isSearch   = searchQuery.length >= 2;
+  const title      = isSearch ? t('social.results') : `${t('social.friends')}${friends.length > 0 ? ` (${friends.length})` : ''}`;
+
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+      {displayList.length === 0 ? (
+        <View style={styles.emptyBox}>
+          <MaterialIcons name={isSearch ? 'search-off' : 'people-outline'} size={rw(36)} color={colors.textMuted} />
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+            {isSearch ? t('social.searchPrompt') : t('social.addFriendsHint')}
+          </Text>
+        </View>
+      ) : (
+        displayList.map((u) => {
+          if (isSearch) {
+            const { label, onAction, actionDisabled } = getUserAction(u.id, () => openConversation(u));
+            return <PlayerCard key={u.id} {...u} actionLabel={label} onAction={onAction} actionDisabled={actionDisabled} onPress={() => router.push(`/user/${u.id}`)} />;
+          }
+          return (
+            <ChatRow key={u.id} name={u.name} avatar={u.avatar} isOnline={u.isOnline} unreadCount={unreadCounts[u.id] || 0} onPress={() => openConversation(u)} onRemove={() => handleRemoveFriend(u.id, u.name)} />
+          );
+        })
+      )}
+    </View>
+  );
+}
+
 // ─── Pantalla principal ──────────────────────────────────────────────────────
 export default function SocialScreen() {
   const { user } = useAuth();
@@ -153,7 +348,6 @@ function SocialContent() {
   const [unreadCounts, setUnreadCounts]         = useState<Record<string, number>>({});
   const { setUnreadConvCount }                  = useUnread();
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scrollRef     = useRef<ScrollView>(null);
   const isFirstLoad   = useRef(true);
   const navigation    = useNavigation();
 
@@ -445,141 +639,48 @@ function SocialContent() {
   };
 
 
-  // ── Vista de chat ──────────────────────────────────────────────────────────
+  const handleRemoveFriendFromChat = () => {
+    if (!selectedUser) return;
+    Alert.alert(
+      t('social.removeFriendTitle'),
+      t('social.removeFriendMsg', { name: selectedUser.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('social.removeFriend'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await friendApi.removeFriend(selectedUser.id);
+              setFriends((prev) => prev.filter((f) => f.id !== selectedUser.id));
+              setFriendIds((prev) => { const next = new Set(prev); next.delete(selectedUser.id); return next; });
+              setSelectedUser(null);
+            } catch {}
+          },
+        },
+      ],
+    );
+  };
+
   if (selectedUser) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={[styles.chatHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-            <TouchableOpacity onPress={() => setSelectedUser(null)} style={styles.backBtn}>
-              <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.chatUserInfo} onPress={() => router.push(`/user/${selectedUser.id}`)}>
-              <Text style={[styles.chatName, { color: colors.text }]}>{selectedUser.name}</Text>
-              <Text style={[styles.chatStatus, { color: selectedUser.isOnline ? '#22C55E' : colors.textMuted }]}>
-                {selectedUser.isOnline ? t('social.online') : t('social.offline')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setChatMenuVisible((v) => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <MaterialIcons name="more-vert" size={rw(24)} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {chatMenuVisible && (
-            <>
-              <TouchableOpacity
-                style={styles.chatMenuBackdrop}
-                onPress={() => setChatMenuVisible(false)}
-                activeOpacity={1}
-              />
-              <View style={[styles.chatMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <TouchableOpacity
-                  style={styles.chatMenuItem}
-                  onPress={() => { setChatMenuVisible(false); router.push(`/user/${selectedUser.id}`); }}
-                >
-                  <MaterialIcons name="person" size={rw(18)} color={colors.purple} />
-                  <Text style={[styles.chatMenuText, { color: colors.text }]}>{t('social.viewProfile')}</Text>
-                </TouchableOpacity>
-                <View style={[styles.chatMenuDivider, { backgroundColor: colors.border }]} />
-                <TouchableOpacity
-                  style={styles.chatMenuItem}
-                  onPress={() => {
-                    setChatMenuVisible(false);
-                    Alert.alert(
-                      t('social.removeFriendTitle'),
-                      t('social.removeFriendMsg', { name: selectedUser.name }),
-                      [
-                        { text: t('common.cancel'), style: 'cancel' },
-                        {
-                          text: t('social.removeFriend'),
-                          style: 'destructive',
-                          onPress: async () => {
-                            try {
-                              await friendApi.removeFriend(selectedUser.id);
-                              setFriends((prev) => prev.filter((f) => f.id !== selectedUser.id));
-                              setFriendIds((prev) => { const next = new Set(prev); next.delete(selectedUser.id); return next; });
-                              setSelectedUser(null);
-                            } catch {}
-                          },
-                        },
-                      ],
-                    );
-                  }}
-                >
-                  <MaterialIcons name="person-remove" size={rw(18)} color="#EF4444" />
-                  <Text style={[styles.chatMenuText, { color: '#EF4444' }]}>{t('social.removeFriend')}</Text>
-                </TouchableOpacity>
-                <View style={[styles.chatMenuDivider, { backgroundColor: colors.border }]} />
-                <TouchableOpacity
-                  style={styles.chatMenuItem}
-                  onPress={() => { setChatMenuVisible(false); handleClearChat(); }}
-                >
-                  <MaterialIcons name="delete-outline" size={rw(18)} color={colors.textMuted} />
-                  <Text style={[styles.chatMenuText, { color: colors.textMuted }]}>{t('social.clearChat')}</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-
-          <ScrollView
-            ref={scrollRef}
-            style={[styles.messagesArea, { backgroundColor: colors.background }]}
-            contentContainerStyle={{ padding: rs.md, gap: rh(10) }}
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-          >
-            {messages.length === 0 && (
-              <Text style={[styles.emptyText, { color: colors.textMuted, textAlign: 'center', marginTop: rh(40) }]}>
-                {t('social.startConversation', { name: selectedUser.name })}
-              </Text>
-            )}
-            {messages.reduce<React.ReactNode[]>((acc, msg, i) => {
-              const day     = getMsgDay(msg.timestamp);
-              const prevDay = i > 0 ? getMsgDay(messages[i - 1].timestamp) : null;
-              if (day !== prevDay) {
-                acc.push(
-                  <Text
-                    key={`day-${day}`}
-                    style={[styles.dateSeparator, { color: colors.textMuted }]}
-                  >
-                    {formatDayLabel(msg.timestamp, i18n.language)}
-                  </Text>,
-                );
-              }
-              acc.push(
-                <ChatBubble
-                  key={msg.id}
-                  message={msg.message}
-                  timestamp={formatMsgTime(msg.timestamp)}
-                  isOwn={msg.isOwn}
-                />,
-              );
-              return acc;
-            }, [])}
-          </ScrollView>
-
-          <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-            <TextInput
-              style={[styles.msgInput, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
-              placeholder={t('social.writeMessage')}
-              placeholderTextColor={colors.textMuted}
-              value={messageText}
-              onChangeText={setMessageText}
-              multiline
-            />
-            <TouchableOpacity
-              style={[styles.sendBtn, { backgroundColor: messageText.trim() ? colors.purple : colors.textMuted }]}
-              onPress={handleSend}
-              disabled={!messageText.trim()}
-            >
-              <MaterialIcons name="send" size={rw(18)} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+      <ChatView
+        selectedUser={selectedUser}
+        messages={messages}
+        messageText={messageText}
+        chatMenuVisible={chatMenuVisible}
+        currentUserId={currentUser?.id || ''}
+        onBack={() => setSelectedUser(null)}
+        onSend={handleSend}
+        onChangeText={setMessageText}
+        onToggleMenu={() => setChatMenuVisible((v) => !v)}
+        onCloseMenu={() => setChatMenuVisible(false)}
+        onRemoveFriendFromChat={handleRemoveFriendFromChat}
+        onClearChat={handleClearChat}
+      />
     );
   }
 
-  // ── Vista social principal ─────────────────────────────────────────────────
   const displayList = searchQuery.length >= 2 ? searchResults : friends;
 
   return (
@@ -587,20 +688,13 @@ function SocialContent() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={[styles.screenHeader, { backgroundColor: colors.cardAlt }]}>
           <Text style={[styles.screenTitle, { color: colors.text }]}>{t('social.title')}</Text>
-          <SearchBar
-            value={searchQuery}
-            onChangeText={handleSearch}
-            placeholder={t('social.search')}
-          />
+          <SearchBar value={searchQuery} onChangeText={handleSearch} placeholder={t('social.search')} />
         </View>
 
         {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={colors.purple} />
-          </View>
+          <View style={styles.loading}><ActivityIndicator color={colors.purple} /></View>
         ) : (
           <>
-            {/* ── Solicitudes recibidas ── */}
             {incomingRequests.length > 0 && searchQuery.length < 2 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -617,94 +711,22 @@ function SocialContent() {
                 ))}
               </View>
             )}
-
-            {/* ── Recomendaciones ── */}
             {searchQuery.length < 2 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('social.recommendations')}</Text>
-                  <MaterialIcons name="auto-awesome" size={rw(16)} color={colors.purple} />
-                </View>
-                <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
-                  {suggestions.length > 0 && suggestions.some((u) => u.gamesInCommon > 0)
-                    ? t('social.recommendationsGames')
-                    : t('social.recommendationsCommunity')}
-                </Text>
-                {suggestions.length === 0 ? (
-                  <View style={styles.emptyBox}>
-                    <MaterialIcons name="people-outline" size={rw(32)} color={colors.textMuted} />
-                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                      {t('social.noRecommendations')}
-                    </Text>
-                  </View>
-                ) : (
-                  suggestions.map((u) => {
-                    const { label, onAction, actionDisabled } = getUserAction(u.id, () => openConversation(u));
-                    return (
-                      <PlayerCard
-                        key={u.id}
-                        {...u}
-                        actionLabel={label}
-                        onAction={onAction}
-                        actionDisabled={actionDisabled}
-                        onPress={() => router.push(`/user/${u.id}`)}
-                      />
-                    );
-                  })
-                )}
-              </View>
+              <SuggestionsSection
+                suggestions={suggestions}
+                getUserAction={getUserAction}
+                openConversation={openConversation}
+              />
             )}
-
-            {/* ── Amigos / Resultados ── */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {searchQuery.length >= 2
-                  ? t('social.results')
-                  : `${t('social.friends')}${friends.length > 0 ? ` (${friends.length})` : ''}`}
-              </Text>
-
-              {displayList.length === 0 ? (
-                <View style={styles.emptyBox}>
-                  <MaterialIcons
-                    name={searchQuery.length >= 2 ? 'search-off' : 'people-outline'}
-                    size={rw(36)}
-                    color={colors.textMuted}
-                  />
-                  <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                    {searchQuery.length >= 2
-                      ? t('social.searchPrompt')
-                      : t('social.addFriendsHint')}
-                  </Text>
-                </View>
-              ) : (
-                displayList.map((u) => {
-                  if (searchQuery.length >= 2) {
-                    const { label, onAction, actionDisabled } = getUserAction(u.id, () => openConversation(u));
-                    return (
-                      <PlayerCard
-                        key={u.id}
-                        {...u}
-                        actionLabel={label}
-                        onAction={onAction}
-                        actionDisabled={actionDisabled}
-                        onPress={() => router.push(`/user/${u.id}`)}
-                      />
-                    );
-                  }
-                  return (
-                    <ChatRow
-                      key={u.id}
-                      name={u.name}
-                      avatar={u.avatar}
-                      isOnline={u.isOnline}
-                      unreadCount={unreadCounts[u.id] || 0}
-                      onPress={() => openConversation(u)}
-                      onRemove={() => handleRemoveFriend(u.id, u.name)}
-                    />
-                  );
-                })
-              )}
-            </View>
+            <FriendsSection
+              displayList={displayList}
+              searchQuery={searchQuery}
+              friends={friends}
+              unreadCounts={unreadCounts}
+              getUserAction={getUserAction}
+              openConversation={openConversation}
+              handleRemoveFriend={handleRemoveFriend}
+            />
           </>
         )}
       </ScrollView>

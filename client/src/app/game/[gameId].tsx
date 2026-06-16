@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Image,
-  ActivityIndicator, TouchableOpacity, FlatList,
+  ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,9 +40,151 @@ function formatDate(ts: number | string | null, locale?: string): string {
   return d.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+// ── Sub-components (independent cognitive complexity) ──────────────────────────
+
+function SkillBadge({ level }: { level: SkillLevel }) {
+  const { t } = useTranslation();
+  return (
+    <View style={[styles.skillBadge, { backgroundColor: SKILL_COLORS[level] + '22', borderColor: SKILL_COLORS[level] }]}>
+      <Text style={[styles.skillBadgeText, { color: SKILL_COLORS[level] }]}>
+        {t(`game.skillLevel.${level}` as any)}
+      </Text>
+    </View>
+  );
+}
+
+function SkillSection({ viewingUserId, skillLevel, onSkillSelect }: {
+  viewingUserId?: string;
+  skillLevel: SkillLevel | null;
+  onSkillSelect: (level: SkillLevel) => void;
+}) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+
+  if (viewingUserId) {
+    if (!skillLevel) return null;
+    return (
+      <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.skillHeader}>
+          <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />
+          <Text style={[styles.skillTitle, { color: colors.text }]}>{t('game.skillLevel.title')}</Text>
+          <SkillBadge level={skillLevel} />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.skillHeader}>
+        <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />
+        <Text style={[styles.skillTitle, { color: colors.text }]}>{t('game.skillLevel.title')}</Text>
+        {skillLevel && <SkillBadge level={skillLevel} />}
+      </View>
+      <View style={styles.skillChips}>
+        {SKILL_LEVELS.map((level) => {
+          const active = skillLevel === level;
+          const color  = SKILL_COLORS[level];
+          return (
+            <TouchableOpacity
+              key={level}
+              style={[styles.skillChip, { borderColor: active ? color : colors.border, backgroundColor: active ? color + '22' : colors.cardAlt ?? colors.background }]}
+              onPress={() => onSkillSelect(level)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.skillChipText, { color: active ? color : colors.textMuted, fontWeight: active ? '700' : '500' }]}>
+                {t(`game.skillLevel.${level}` as any)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function AchievementRow({ ach }: { ach: Achievement }) {
+  const { colors } = useTheme();
+  const { i18n } = useTranslation();
+  const iconUri = ach.unlocked ? ach.icon : (ach.iconLocked || ach.icon);
+
+  return (
+    <View style={[styles.achRow, { borderBottomColor: colors.border, opacity: ach.unlocked ? 1 : 0.45 }]}>
+      {iconUri ? (
+        <Image source={{ uri: iconUri }} style={styles.achIcon} />
+      ) : (
+        <View style={[styles.achIconPlaceholder, { backgroundColor: colors.purpleMuted }]}>
+          <MaterialIcons name="emoji-events" size={rw(18)} color={ach.unlocked ? '#F59E0B' : colors.textMuted} />
+        </View>
+      )}
+      <View style={styles.achInfo}>
+        <Text style={[styles.achName, { color: colors.text }]} numberOfLines={1}>{ach.name}</Text>
+        {ach.description ? (
+          <Text style={[styles.achDesc, { color: colors.textMuted }]} numberOfLines={2}>{ach.description}</Text>
+        ) : null}
+        {ach.unlocked && ach.unlockedAt ? (
+          <Text style={[styles.achDate, { color: colors.purple }]}>{formatDate(ach.unlockedAt, i18n.language)}</Text>
+        ) : null}
+      </View>
+      {ach.unlocked && <MaterialIcons name="check-circle-outline" size={rw(18)} color="#22C55E" />}
+    </View>
+  );
+}
+
+function AchievementsSection({ loading: loadingAchs, achievements }: {
+  loading: boolean;
+  achievements: Achievement[];
+}) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const [showLocked, setShowLocked] = useState(false);
+
+  if (loadingAchs) {
+    return (
+      <View style={styles.achLoading}>
+        <ActivityIndicator color={colors.purple} />
+        <Text style={[styles.achLoadingText, { color: colors.textMuted }]}>{t('game.achievements.loading')}</Text>
+      </View>
+    );
+  }
+
+  if (achievements.length === 0) return null;
+
+  const unlockedAchs  = achievements.filter((a) => a.unlocked);
+  const lockedAchs    = achievements.filter((a) => !a.unlocked);
+  const displayedAchs = showLocked ? achievements : unlockedAchs;
+
+  return (
+    <View style={[styles.achCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.achHeader}>
+        <Text style={[styles.achTitle, { color: colors.text }]}>
+          {t('game.achievements.title', { unlocked: unlockedAchs.length, total: achievements.length })}
+        </Text>
+        {lockedAchs.length > 0 && (
+          <TouchableOpacity style={[styles.pill, { borderColor: colors.border }]} onPress={() => setShowLocked((v) => !v)}>
+            <Text style={[styles.pillText, { color: colors.textMuted }]}>
+              {showLocked ? t('game.achievements.onlyDone') : t('game.achievements.showAll')}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {displayedAchs.length === 0 ? (
+        <Text style={{ color: colors.textMuted, fontSize: rf(13), textAlign: 'center', paddingVertical: rh(12) }}>
+          {t('game.achievements.empty')}
+        </Text>
+      ) : (
+        displayedAchs.map((ach) => <AchievementRow key={ach.apiname} ach={ach} />)
+      )}
+    </View>
+  );
+}
+
+// ── Main screen ────────────────────────────────────────────────────────────────
+
 export default function GameDetailScreen() {
   const { colors } = useTheme();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const router    = useRouter();
   const {
@@ -63,11 +205,10 @@ export default function GameDetailScreen() {
     skillLevel?: string;
   }>();
 
-  const [game,         setGame]         = useState<GameDetail | null>(null);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [loadingAchs,  setLoadingAchs]  = useState(false);
-  const [showLocked,   setShowLocked]   = useState(false);
+  const [game,         setGame]           = useState<GameDetail | null>(null);
+  const [achievements, setAchievements]   = useState<Achievement[]>([]);
+  const [loading,      setLoading]        = useState(true);
+  const [loadingAchs,  setLoadingAchs]    = useState(false);
   const [skillLevel,   setSkillLevelState] = useState<SkillLevel | null>(null);
 
   useEffect(() => {
@@ -77,7 +218,6 @@ export default function GameDetailScreen() {
       if (!gameId) { setLoading(false); return; }
 
       try {
-        // ── Viewing another user's game ──────────────────────────────────────
         if (viewingUserId && platformParam) {
           if (active) {
             setGame({
@@ -96,12 +236,12 @@ export default function GameDetailScreen() {
           try {
             const achRes = await userApi.getUserGameAchievements(viewingUserId, platformParam, String(gameId));
             if (active) {
-              const achievements: any[] = (achRes.data as any)?.achievements || [];
-              setAchievements(achievements);
+              const achs: any[] = (achRes.data as any)?.achievements || [];
+              setAchievements(achs);
               setGame((prev) => prev ? {
                 ...prev,
-                totalAchievements:     achievements.length,
-                completedAchievements: achievements.filter((a) => a.unlocked).length,
+                totalAchievements:     achs.length,
+                completedAchievements: achs.filter((a) => a.unlocked).length,
               } : prev);
             }
           } catch {} finally {
@@ -110,12 +250,8 @@ export default function GameDetailScreen() {
           return;
         }
 
-        // ── Own profile game ─────────────────────────────────────────────────
         const platRes  = await platformApi.getLinkedPlatforms();
-        const linked: string[] = ((platRes.data as any)?.platforms || []).map(
-          (p: any) => p.platform || p.name
-        );
-
+        const linked: string[] = ((platRes.data as any)?.platforms || []).map((p: any) => p.platform || p.name);
         const ordered = platformParam
           ? [platformParam, ...linked.filter((p) => p !== platformParam)]
           : linked;
@@ -213,20 +349,14 @@ export default function GameDetailScreen() {
   const platformId = normalizePlatformId(game.platform);
   const platLogo   = platformId ? PLATFORM_LOGOS[platformId] : null;
 
-  const unlockedAchs = achievements.filter((a) => a.unlocked);
-  const lockedAchs   = achievements.filter((a) => !a.unlocked);
-  const displayedAchs = showLocked ? achievements : unlockedAchs;
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Portada */}
         <View style={[styles.coverContainer, { height: coverH }]}>
-          {game.cover ? (
-            <Image source={{ uri: game.cover }} style={styles.cover} resizeMode="cover" />
-          ) : (
-            <View style={[styles.cover, { backgroundColor: colors.card }]} />
-          )}
+          {game.cover
+            ? <Image source={{ uri: game.cover }} style={styles.cover} resizeMode="cover" />
+            : <View style={[styles.cover, { backgroundColor: colors.card }]} />
+          }
           <View style={styles.coverOverlay} />
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <MaterialIcons name="arrow-back" size={rw(22)} color="#fff" />
@@ -236,14 +366,14 @@ export default function GameDetailScreen() {
             <View style={styles.platformRow}>
               {platLogo
                 ? <Image source={platLogo} style={styles.platformLogo} resizeMode="contain" />
-                : <MaterialIcons name="sports-esports" size={rw(16)} color="#fff" />}
+                : <MaterialIcons name="sports-esports" size={rw(16)} color="#fff" />
+              }
               <Text style={styles.platformLabel}>{game.platform}</Text>
             </View>
           </View>
         </View>
 
         <View style={{ padding: rs.md, gap: rh(16) }}>
-          {/* Stats */}
           <View style={styles.statsRow}>
             {game.totalHours > 0 && (
               <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -268,116 +398,13 @@ export default function GameDetailScreen() {
             )}
           </View>
 
-          {/* Nivel de habilidad — editable propio, read-only ajeno */}
-          {viewingUserId ? (
-            skillLevel ? (
-              <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.skillHeader}>
-                  <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />
-                  <Text style={[styles.skillTitle, { color: colors.text }]}>{t('game.skillLevel.title')}</Text>
-                  <View style={[styles.skillBadge, { backgroundColor: SKILL_COLORS[skillLevel] + '22', borderColor: SKILL_COLORS[skillLevel] }]}>
-                    <Text style={[styles.skillBadgeText, { color: SKILL_COLORS[skillLevel] }]}>
-                      {t(`game.skillLevel.${skillLevel}` as any)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            ) : null
-          ) : (
-            <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.skillHeader}>
-                <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />
-                <Text style={[styles.skillTitle, { color: colors.text }]}>{t('game.skillLevel.title')}</Text>
-                {skillLevel && (
-                  <View style={[styles.skillBadge, { backgroundColor: SKILL_COLORS[skillLevel] + '22', borderColor: SKILL_COLORS[skillLevel] }]}>
-                    <Text style={[styles.skillBadgeText, { color: SKILL_COLORS[skillLevel] }]}>
-                      {t(`game.skillLevel.${skillLevel}` as any)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.skillChips}>
-                {SKILL_LEVELS.map((level) => {
-                  const active = skillLevel === level;
-                  const color  = SKILL_COLORS[level];
-                  return (
-                    <TouchableOpacity
-                      key={level}
-                      style={[styles.skillChip, { borderColor: active ? color : colors.border, backgroundColor: active ? color + '22' : colors.cardAlt ?? colors.background }]}
-                      onPress={() => handleSkillLevel(level)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[styles.skillChipText, { color: active ? color : colors.textMuted, fontWeight: active ? '700' : '500' }]}>
-                        {t(`game.skillLevel.${level}` as any)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
+          <SkillSection
+            viewingUserId={viewingUserId}
+            skillLevel={skillLevel}
+            onSkillSelect={handleSkillLevel}
+          />
 
-          {/* Logros */}
-          {loadingAchs ? (
-            <View style={styles.achLoading}>
-              <ActivityIndicator color={colors.purple} />
-              <Text style={[styles.achLoadingText, { color: colors.textMuted }]}>{t('game.achievements.loading')}</Text>
-            </View>
-          ) : achievements.length > 0 ? (
-            <View style={[styles.achCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.achHeader}>
-                <Text style={[styles.achTitle, { color: colors.text }]}>
-                  {t('game.achievements.title', { unlocked: unlockedAchs.length, total: achievements.length })}
-                </Text>
-                {lockedAchs.length > 0 && (
-                  <TouchableOpacity
-                    style={[styles.pill, { borderColor: colors.border }]}
-                    onPress={() => setShowLocked((v) => !v)}
-                  >
-                    <Text style={[styles.pillText, { color: colors.textMuted }]}>
-                      {showLocked ? t('game.achievements.onlyDone') : t('game.achievements.showAll')}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {displayedAchs.length === 0 ? (
-                <Text style={{ color: colors.textMuted, fontSize: rf(13), textAlign: 'center', paddingVertical: rh(12) }}>
-                  {t('game.achievements.empty')}
-                </Text>
-              ) : (
-                displayedAchs.map((ach) => {
-                  const iconUri = ach.unlocked ? ach.icon : (ach.iconLocked || ach.icon);
-                  return (
-                    <View
-                      key={ach.apiname}
-                      style={[styles.achRow, { borderBottomColor: colors.border, opacity: ach.unlocked ? 1 : 0.45 }]}
-                    >
-                      {iconUri ? (
-                        <Image source={{ uri: iconUri }} style={styles.achIcon} />
-                      ) : (
-                        <View style={[styles.achIconPlaceholder, { backgroundColor: colors.purpleMuted }]}>
-                          <MaterialIcons name="emoji-events" size={rw(18)} color={ach.unlocked ? '#F59E0B' : colors.textMuted} />
-                        </View>
-                      )}
-                      <View style={styles.achInfo}>
-                        <Text style={[styles.achName, { color: colors.text }]} numberOfLines={1}>{ach.name}</Text>
-                        {ach.description ? (
-                          <Text style={[styles.achDesc, { color: colors.textMuted }]} numberOfLines={2}>{ach.description}</Text>
-                        ) : null}
-                        {ach.unlocked && ach.unlockedAt ? (
-                          <Text style={[styles.achDate, { color: colors.purple }]}>{formatDate(ach.unlockedAt, i18n.language)}</Text>
-                        ) : null}
-                      </View>
-                      {ach.unlocked && (
-                        <MaterialIcons name="check-circle-outline" size={rw(18)} color="#22C55E" />
-                      )}
-                    </View>
-                  );
-                })
-              )}
-            </View>
-          ) : null}
+          <AchievementsSection loading={loadingAchs} achievements={achievements} />
         </View>
       </ScrollView>
     </SafeAreaView>

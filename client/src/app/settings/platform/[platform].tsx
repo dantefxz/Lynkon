@@ -15,16 +15,17 @@ import { PLATFORM_LABELS, PLATFORM_LOGOS, normalizePlatformId } from '@/constant
 import type { PlatformId } from '@/constants/platforms';
 
 const PLATFORM_NAME_FULL: Record<PlatformId, string> = {
-  steam: 'Steam',
-  psn:   'PlayStation Network',
-  xbox:  'Xbox Network',
+  steam:       'Steam',
+  psn:         'PlayStation Network',
+  playstation: 'PlayStation Network',
+  xbox:        'Xbox Network',
 };
 
-// PSN uses manual NPSSO token — Sony has no public OAuth API
 const USES_OAUTH: Record<PlatformId, boolean> = {
-  steam: true,
-  xbox:  true,
-  psn:   false,
+  steam:       true,
+  xbox:        true,
+  psn:         false,
+  playstation: false,
 };
 
 function timeAgo(isoDate: string, t: (key: any, opts?: any) => string): string {
@@ -37,6 +38,387 @@ function timeAgo(isoDate: string, t: (key: any, opts?: any) => string): string {
   const days = Math.floor(hrs / 24);
   return days === 1 ? t('platform.daysAgo', { count: days }) : t('platform.daysAgoPlural', { count: days });
 }
+
+// ── Sub-components (independent cognitive complexity) ──────────────────────────
+
+function PlatformHeader({ platformLogo, platformLabel, loading, connected, onBack }: {
+  platformLogo: any;
+  platformLabel: string;
+  loading: boolean;
+  connected: boolean;
+  onBack: () => void;
+}) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const dotColor   = connected ? '#22C55E' : colors.textMuted;
+  const statusText = connected ? t('platform.connected') : t('platform.notConnected');
+
+  return (
+    <View style={[styles.header, { backgroundColor: colors.backgroundGrad, borderBottomColor: colors.cardBorder }]}>
+      <TouchableOpacity onPress={onBack} style={styles.backButton}>
+        <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
+      </TouchableOpacity>
+      <View style={styles.platformInfo}>
+        {platformLogo
+          ? <Image source={platformLogo} style={{ width: rw(36), height: rw(36) }} resizeMode="contain" />
+          : <MaterialIcons name="sports-esports" size={rw(30)} color={colors.purple} />}
+        <View>
+          <Text style={[styles.platformName, { color: colors.text }]}>{platformLabel}</Text>
+          {!loading && (
+            <View style={styles.statusRow}>
+              <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
+              <Text style={{ color: dotColor, fontSize: rf(13) }}>{statusText}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function GameCard({ game, index, platformId }: { game: any; index: number; platformId: PlatformId | null }) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const router   = useRouter();
+  const pct      = game.totalAchievements
+    ? Math.round((game.completedAchievements / game.totalAchievements) * 100) : 0;
+  const imageUri = game.cover || game.imageUrl || game.iconUrl || null;
+  const hours    = game.totalHours ?? game.playtime ?? game.playtimeHours ?? 0;
+  const gid      = game.gameId || game.id || String(index);
+
+  return (
+    <TouchableOpacity
+      style={[styles.gameRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+      onPress={() => router.push(`/game/${gid}?platform=${platformId}`)}
+      activeOpacity={0.75}
+    >
+      <View style={styles.gameCoverWrapper}>
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.gameCover} resizeMode="cover" />
+        ) : (
+          <View style={[styles.gameCoverPlaceholder, { backgroundColor: colors.purpleDim }]}>
+            <MaterialIcons name="sports-esports" size={rw(24)} color={colors.purple} />
+          </View>
+        )}
+        {pct === 100 && game.totalAchievements > 0 && (
+          <View style={styles.trophyBadge}>
+            <MaterialIcons name="emoji-events" size={rw(11)} color="#000" />
+          </View>
+        )}
+      </View>
+      <View style={styles.gameInfo}>
+        <Text style={[styles.gameName, { color: colors.text }]} numberOfLines={1}>{game.name || game.title}</Text>
+        <Text style={{ color: colors.textMuted, fontSize: rf(12), marginTop: rh(4) }}>
+          {t('platform.hoursPlayedShort', { hours })}
+        </Text>
+        {game.totalAchievements > 0 && (
+          <View style={{ marginTop: rh(6) }}>
+            <View style={[styles.progressBar, { backgroundColor: colors.purpleDim }]}>
+              <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: colors.purple }]} />
+            </View>
+            <Text style={{ color: colors.textMuted, fontSize: rf(11), marginTop: rh(2) }}>
+              {t('platform.achievements', { completed: game.completedAchievements, total: game.totalAchievements })}
+            </Text>
+          </View>
+        )}
+      </View>
+      <MaterialIcons name="chevron-right" size={rw(18)} color={colors.textMuted} />
+    </TouchableOpacity>
+  );
+}
+
+function ConnectedView({ games, stats, linkedAt, syncing, platformLabel, platformId, onSync, onUnlink }: {
+  games: any[];
+  stats: any;
+  linkedAt: string | null;
+  syncing: boolean;
+  platformLabel: string;
+  platformId: PlatformId | null;
+  onSync: () => void;
+  onUnlink: () => void;
+}) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy,      setSortBy]      = useState<'playtime' | 'name'>('playtime');
+  const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('desc');
+
+  const displayGames = useMemo(() => {
+    let result = games;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((g: any) => (g.name || g.title || '').toLowerCase().includes(q));
+    }
+    return [...result].sort((a: any, b: any) => {
+      if (sortBy === 'name') {
+        const na = (a.name || a.title || '').toLowerCase();
+        const nb = (b.name || b.title || '').toLowerCase();
+        return sortDir === 'asc' ? na.localeCompare(nb) : nb.localeCompare(na);
+      }
+      const ha = a.totalHours ?? a.playtime ?? a.playtimeHours ?? 0;
+      const hb = b.totalHours ?? b.playtime ?? b.playtimeHours ?? 0;
+      return sortDir === 'asc' ? ha - hb : hb - ha;
+    });
+  }, [games, searchQuery, sortBy, sortDir]);
+
+  const gamesCountLabel = displayGames.length !== games.length
+    ? t('platform.gamesCountFiltered', { count: displayGames.length, total: games.length })
+    : t('platform.gamesCount', { count: games.length });
+
+  return (
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: rs.md, gap: rh(16) }}>
+      <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <Text style={[styles.infoCardTitle, { color: colors.text }]}>{t('platform.accountInfo')}</Text>
+        <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
+        <View style={styles.infoRow}>
+          <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.status')}</Text>
+          <Text style={[styles.infoValue, { color: '#22C55E', fontWeight: '600' }]}>{t('platform.connected')}</Text>
+        </View>
+        {(stats?.totalGames !== undefined || stats?.gamesCount !== undefined || games.length > 0) && (
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.gamesSync')}</Text>
+            <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>
+              {stats?.totalGames ?? stats?.gamesCount ?? games.length}
+            </Text>
+          </View>
+        )}
+        {stats?.totalHours !== undefined && (
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.hoursPlayed')}</Text>
+            <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>{stats.totalHours}h</Text>
+          </View>
+        )}
+        {linkedAt && (
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.lastSync')}</Text>
+            <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>{timeAgo(linkedAt, t)}</Text>
+          </View>
+        )}
+      </View>
+
+      <TouchableOpacity style={[styles.unlinkButton, { borderColor: '#EF4444' }]} onPress={onUnlink}>
+        <MaterialIcons name="link-off" size={rw(18)} color="#EF4444" />
+        <Text style={styles.unlinkText}>{t('platform.unlink', { name: platformLabel })}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.syncButton, { backgroundColor: colors.purple, opacity: syncing ? 0.7 : 1 }]}
+        onPress={onSync}
+        disabled={syncing}
+      >
+        {syncing
+          ? <ActivityIndicator size="small" color="#fff" />
+          : <>
+              <MaterialIcons name="refresh" size={rw(18)} color="#fff" />
+              <Text style={styles.syncButtonText}>{t('platform.reload', { name: platformLabel })}</Text>
+            </>}
+      </TouchableOpacity>
+
+      {games.length > 0 && (
+        <>
+          <View style={[styles.searchContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <MaterialIcons name="search" size={rw(20)} color={colors.textMuted} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder={t('platform.searchGame')}
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <MaterialIcons name="close" size={rw(18)} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.sortRow}>
+            <View style={styles.sortGroup}>
+              <TouchableOpacity
+                style={[styles.sortChip, { backgroundColor: sortBy === 'playtime' ? colors.purple : colors.purpleDim }]}
+                onPress={() => setSortBy('playtime')}
+              >
+                <Text style={{ color: sortBy === 'playtime' ? '#fff' : colors.textMuted, fontSize: rf(13), fontWeight: '600' }}>
+                  {t('platform.hoursPlayed')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sortChip, { backgroundColor: sortBy === 'name' ? colors.purple : colors.purpleDim }]}
+                onPress={() => setSortBy('name')}
+              >
+                <Text style={{ color: sortBy === 'name' ? '#fff' : colors.textMuted, fontSize: rf(13), fontWeight: '600' }}>
+                  {t('platform.sortName')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[styles.sortDirBtn, { borderColor: colors.cardBorder }]}
+              onPress={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')}
+            >
+              <MaterialIcons
+                name={sortDir === 'asc' ? 'arrow-upward' : 'arrow-downward'}
+                size={rw(18)} color={colors.purple}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{gamesCountLabel}</Text>
+
+          {displayGames.length === 0 ? (
+            <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: rh(8) }}>
+              {t('platform.noGamesFound')}
+            </Text>
+          ) : (
+            displayGames.map((game: any, index: number) => (
+              <GameCard
+                key={game.gameId || game.id || String(index)}
+                game={game}
+                index={index}
+                platformId={platformId}
+              />
+            ))
+          )}
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+function ConnectView({ platformLogo, platformLabel, usesOAuth, linking, onOAuthLink, onOpenPsnModal }: {
+  platformLogo: any;
+  platformLabel: string;
+  usesOAuth: boolean;
+  linking: boolean;
+  onOAuthLink: () => void;
+  onOpenPsnModal: () => void;
+}) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.connectContainer}>
+      <View style={[styles.connectIconCircle, { backgroundColor: colors.purpleDim }]}>
+        {platformLogo
+          ? <Image source={platformLogo} style={{ width: rw(60), height: rw(60) }} resizeMode="contain" />
+          : <MaterialIcons name="sports-esports" size={rw(56)} color={colors.purple} />}
+      </View>
+      <Text style={[styles.connectTitle, { color: colors.text }]}>{t('platform.connectTitle', { name: platformLabel })}</Text>
+      <Text style={[styles.connectSubtitle, { color: colors.textMuted }]}>{t('platform.connectSubtitle')}</Text>
+
+      {usesOAuth ? (
+        <TouchableOpacity
+          style={[styles.connectButton, { backgroundColor: colors.purple, opacity: linking ? 0.7 : 1 }]}
+          onPress={onOAuthLink}
+          disabled={linking}
+        >
+          {linking
+            ? <ActivityIndicator color="#fff" size="small" />
+            : <>
+                <MaterialIcons name="open-in-browser" size={rw(18)} color="#fff" />
+                <Text style={styles.connectButtonText}>{t('platform.loginWith', { name: platformLabel })}</Text>
+              </>}
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={[styles.connectButton, { backgroundColor: colors.purple }]} onPress={onOpenPsnModal}>
+          <MaterialIcons name="link" size={rw(18)} color="#fff" />
+          <Text style={styles.connectButtonText}>{t('platform.connect', { name: platformLabel })}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+function PsnModal({ visible, linking, platformLabel, onClose, onLink }: {
+  visible: boolean;
+  linking: boolean;
+  platformLabel: string;
+  onClose: () => void;
+  onLink: (credential: string) => void;
+}) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const [credential,  setCredential]  = useState('');
+  const [psnHelpOpen, setPsnHelpOpen] = useState(false);
+
+  useEffect(() => {
+    if (!visible) { setCredential(''); setPsnHelpOpen(false); }
+  }, [visible]);
+
+  const handleClose = () => { setCredential(''); setPsnHelpOpen(false); onClose(); };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('platform.connect', { name: platformLabel })}</Text>
+            <TouchableOpacity onPress={handleClose}>
+              <MaterialIcons name="close" size={rw(22)} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.helpToggle, { borderColor: colors.cardBorder }]}
+            onPress={() => setPsnHelpOpen((v) => !v)}
+          >
+            <MaterialIcons name="help-outline" size={rw(16)} color={colors.purple} />
+            <Text style={[styles.helpToggleText, { color: colors.purple }]}>{t('platform.psn.howToGetToken')}</Text>
+            <MaterialIcons name={psnHelpOpen ? 'expand-less' : 'expand-more'} size={rw(18)} color={colors.purple} />
+          </TouchableOpacity>
+
+          {psnHelpOpen && (
+            <View style={[styles.helpBox, { backgroundColor: colors.background, borderColor: colors.cardBorder }]}>
+              <Text style={[styles.helpStep, { color: colors.textMuted }]}>
+                {t('platform.psn.step1')}{' '}
+                <Text style={{ color: colors.purple }}>my.playstation.com</Text>
+              </Text>
+              <Text style={[styles.helpStep, { color: colors.textMuted }]}>
+                {t('platform.psn.step2')}{'\n'}
+                <Text style={{ color: colors.purple, fontSize: rf(11) }}>ca.account.sony.com/api/v1/ssocookie</Text>
+              </Text>
+              <Text style={[styles.helpStep, { color: colors.textMuted }]}>
+                {t('platform.psn.step3')} <Text style={{ fontWeight: '700' }}>{t('platform.psn.step3b')}</Text> {t('platform.psn.step3c')}
+              </Text>
+              <TouchableOpacity
+                style={[styles.helpOpenBtn, { borderColor: colors.purple }]}
+                onPress={() => Linking.openURL('https://ca.account.sony.com/api/v1/ssocookie')}
+              >
+                <MaterialIcons name="open-in-browser" size={rw(14)} color={colors.purple} />
+                <Text style={[styles.helpOpenBtnText, { color: colors.purple }]}>{t('platform.psn.openPage')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <Text style={[styles.modalLabel, { color: colors.textMuted }]}>{t('platform.psn.tokenLabel')}</Text>
+          <TextInput
+            style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.cardBorder, color: colors.text }]}
+            placeholder={t('platform.psn.tokenPlaceholder')}
+            placeholderTextColor={colors.textMuted}
+            value={credential}
+            onChangeText={setCredential}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+          />
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: colors.purple, opacity: (!credential.trim() || linking) ? 0.6 : 1 }]}
+            onPress={() => onLink(credential.trim())}
+            disabled={!credential.trim() || linking}
+          >
+            {linking
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.modalButtonText}>{t('platform.psn.link')}</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Main screen ────────────────────────────────────────────────────────────────
 
 export default function PlatformGamesScreen() {
   const router       = useRouter();
@@ -53,12 +435,6 @@ export default function PlatformGamesScreen() {
   const [syncing,      setSyncing]      = useState(false);
   const [linking,      setLinking]      = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [credential,   setCredential]   = useState('');
-  const [psnHelpOpen,  setPsnHelpOpen]  = useState(false);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy,      setSortBy]      = useState<'playtime' | 'name'>('playtime');
-  const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('desc');
   const linkingStarted = useRef(false);
 
   const load = useCallback(async () => {
@@ -92,7 +468,6 @@ export default function PlatformGamesScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Reload when app returns to foreground after OAuth browser
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active' && linkingStarted.current) {
@@ -104,14 +479,13 @@ export default function PlatformGamesScreen() {
     return () => sub.remove();
   }, [load]);
 
-  // Listen for deep link after OAuth redirect
   useEffect(() => {
     const subscription = ExpoLinking.addEventListener('url', ({ url }) => {
-      const parsed = ExpoLinking.parse(url);
+      const parsed        = ExpoLinking.parse(url);
       if (parsed.path !== 'platform-linked') return;
-      const linkedPlatform = parsed.queryParams?.platform as string;
-      const success        = parsed.queryParams?.success === 'true';
-      if (linkedPlatform !== platformId) return;
+      const linkedPlat    = parsed.queryParams?.platform as string;
+      const success       = parsed.queryParams?.success === 'true';
+      if (linkedPlat !== platformId) return;
       if (success) {
         setLoading(true);
         load();
@@ -123,59 +497,30 @@ export default function PlatformGamesScreen() {
     return () => subscription.remove();
   }, [platformId, load, t]);
 
-  const displayGames = useMemo(() => {
-    let result = games;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((g: any) => (g.name || g.title || '').toLowerCase().includes(q));
-    }
-    return [...result].sort((a: any, b: any) => {
-      if (sortBy === 'name') {
-        const na = (a.name || a.title || '').toLowerCase();
-        const nb = (b.name || b.title || '').toLowerCase();
-        return sortDir === 'asc' ? na.localeCompare(nb) : nb.localeCompare(na);
-      }
-      const ha = a.totalHours ?? a.playtime ?? a.playtimeHours ?? 0;
-      const hb = b.totalHours ?? b.playtime ?? b.playtimeHours ?? 0;
-      return sortDir === 'asc' ? ha - hb : hb - ha;
-    });
-  }, [games, searchQuery, sortBy, sortDir]);
-
-  // ── OAuth flow (Steam / Xbox) ──────────────────────────────────────────────
   const handleOAuthLink = async () => {
     if (!platformId || !USES_OAUTH[platformId]) return;
     setLinking(true);
     try {
-      const redirectUri = ExpoLinking.createURL('platform-linked');
-      const res         = await (platformApi as any).initPlatformAuth(platformId, redirectUri);
+      const redirectUri     = ExpoLinking.createURL('platform-linked');
+      const res             = await (platformApi as any).initPlatformAuth(platformId, redirectUri);
       const authUrl: string = (res.data as any)?.authUrl;
       if (!authUrl) throw new Error('No auth URL received');
-
       linkingStarted.current = true;
-
       if (platformId === 'steam') {
-        try {
-          await Linking.openURL(`steam://openurl/${authUrl}`);
-        } catch {
-          await Linking.openURL(authUrl);
-        }
+        try { await Linking.openURL(`steam://openurl/${authUrl}`); } catch { await Linking.openURL(authUrl); }
       } else {
         await Linking.openURL(authUrl);
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || t('common.error');
-      Alert.alert(t('common.error'), msg);
+      Alert.alert(t('common.error'), err?.response?.data?.error || err?.message || t('common.error'));
     } finally { setLinking(false); }
   };
 
-  // ── PSN manual token flow ─────────────────────────────────────────────────
-  const handlePsnLink = async () => {
-    if (!credential.trim()) return;
+  const handlePsnLink = async (credential: string) => {
     setLinking(true);
     try {
-      await platformApi.linkPlatform('psn', credential.trim());
+      await platformApi.linkPlatform('psn', credential);
       setModalVisible(false);
-      setCredential('');
       setLoading(true);
       await load();
     } catch (err: any) {
@@ -192,11 +537,8 @@ export default function PlatformGamesScreen() {
       setLoading(true);
       await load();
     } catch (err: any) {
-      const msg = err?.response?.data?.error || t('common.error');
-      Alert.alert(t('common.error'), msg);
-    } finally {
-      setSyncing(false);
-    }
+      Alert.alert(t('common.error'), err?.response?.data?.error || t('common.error'));
+    } finally { setSyncing(false); }
   };
 
   const handleUnlink = () => {
@@ -222,302 +564,47 @@ export default function PlatformGamesScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.backgroundGrad, borderBottomColor: colors.cardBorder }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
-        </TouchableOpacity>
-        <View style={styles.platformInfo}>
-          {platformLogo
-            ? <Image source={platformLogo} style={{ width: rw(36), height: rw(36) }} resizeMode="contain" />
-            : <MaterialIcons name="sports-esports" size={rw(30)} color={colors.purple} />}
-          <View>
-            <Text style={[styles.platformName, { color: colors.text }]}>{platformLabel}</Text>
-            {!loading && (
-              <View style={styles.statusRow}>
-                <View style={[styles.statusDot, { backgroundColor: connected ? '#22C55E' : colors.textMuted }]} />
-                <Text style={{ color: connected ? '#22C55E' : colors.textMuted, fontSize: rf(13) }}>
-                  {connected ? t('platform.connected') : t('platform.notConnected')}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
+      <PlatformHeader
+        platformLogo={platformLogo}
+        platformLabel={platformLabel}
+        loading={loading}
+        connected={connected}
+        onBack={() => router.back()}
+      />
 
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.purple} />
         </View>
       ) : connected ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: rs.md, gap: rh(16) }}>
-          <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            <Text style={[styles.infoCardTitle, { color: colors.text }]}>{t('platform.accountInfo')}</Text>
-            <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
-            <View style={styles.infoRow}>
-              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.status')}</Text>
-              <Text style={[styles.infoValue, { color: '#22C55E', fontWeight: '600' }]}>{t('platform.connected')}</Text>
-            </View>
-            {(stats?.totalGames !== undefined || stats?.gamesCount !== undefined || games.length > 0) && (
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.gamesSync')}</Text>
-                <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>
-                  {stats?.totalGames ?? stats?.gamesCount ?? games.length}
-                </Text>
-              </View>
-            )}
-            {stats?.totalHours !== undefined && (
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.hoursPlayed')}</Text>
-                <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>{stats.totalHours}h</Text>
-              </View>
-            )}
-            {linkedAt && (
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.lastSync')}</Text>
-                <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>{timeAgo(linkedAt, t)}</Text>
-              </View>
-            )}
-          </View>
-
-          <TouchableOpacity style={[styles.unlinkButton, { borderColor: '#EF4444' }]} onPress={handleUnlink}>
-            <MaterialIcons name="link-off" size={rw(18)} color="#EF4444" />
-            <Text style={styles.unlinkText}>{t('platform.unlink', { name: platformLabel })}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.syncButton, { backgroundColor: colors.purple, opacity: syncing ? 0.7 : 1 }]}
-            onPress={handleSync}
-            disabled={syncing}
-          >
-            {syncing
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <>
-                  <MaterialIcons name="refresh" size={rw(18)} color="#fff" />
-                  <Text style={styles.syncButtonText}>{t('platform.reload', { name: platformLabel })}</Text>
-                </>}
-          </TouchableOpacity>
-
-          {games.length > 0 && (
-            <>
-              <View style={[styles.searchContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <MaterialIcons name="search" size={rw(20)} color={colors.textMuted} />
-                <TextInput
-                  style={[styles.searchInput, { color: colors.text }]}
-                  placeholder={t('platform.searchGame')}
-                  placeholderTextColor={colors.textMuted}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <MaterialIcons name="close" size={rw(18)} color={colors.textMuted} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <View style={styles.sortRow}>
-                <View style={styles.sortGroup}>
-                  <TouchableOpacity
-                    style={[styles.sortChip, { backgroundColor: sortBy === 'playtime' ? colors.purple : colors.purpleDim }]}
-                    onPress={() => setSortBy('playtime')}
-                  >
-                    <Text style={{ color: sortBy === 'playtime' ? '#fff' : colors.textMuted, fontSize: rf(13), fontWeight: '600' }}>
-                      {t('platform.hoursPlayed')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.sortChip, { backgroundColor: sortBy === 'name' ? colors.purple : colors.purpleDim }]}
-                    onPress={() => setSortBy('name')}
-                  >
-                    <Text style={{ color: sortBy === 'name' ? '#fff' : colors.textMuted, fontSize: rf(13), fontWeight: '600' }}>
-                      {t('platform.sortName')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity
-                  style={[styles.sortDirBtn, { borderColor: colors.cardBorder }]}
-                  onPress={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')}
-                >
-                  <MaterialIcons
-                    name={sortDir === 'asc' ? 'arrow-upward' : 'arrow-downward'}
-                    size={rw(18)} color={colors.purple}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {displayGames.length !== games.length
-                  ? t('platform.gamesCountFiltered', { count: displayGames.length, total: games.length })
-                  : t('platform.gamesCount', { count: games.length })}
-              </Text>
-
-              {displayGames.length === 0 ? (
-                <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: rh(8) }}>
-                  {t('platform.noGamesFound')}
-                </Text>
-              ) : (
-                displayGames.map((game: any, index: number) => {
-                  const pct      = game.totalAchievements
-                    ? Math.round((game.completedAchievements / game.totalAchievements) * 100) : 0;
-                  const imageUri = game.cover || game.imageUrl || game.iconUrl || null;
-                  const hours    = game.totalHours ?? game.playtime ?? game.playtimeHours ?? 0;
-                  const gid      = game.gameId || game.id || String(index);
-                  return (
-                    <TouchableOpacity
-                      key={gid}
-                      style={[styles.gameRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                      onPress={() => router.push(`/game/${gid}?platform=${platformId}`)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={styles.gameCoverWrapper}>
-                        {imageUri ? (
-                          <Image source={{ uri: imageUri }} style={styles.gameCover} resizeMode="cover" />
-                        ) : (
-                          <View style={[styles.gameCoverPlaceholder, { backgroundColor: colors.purpleDim }]}>
-                            <MaterialIcons name="sports-esports" size={rw(24)} color={colors.purple} />
-                          </View>
-                        )}
-                        {pct === 100 && game.totalAchievements > 0 && (
-                          <View style={styles.trophyBadge}>
-                            <MaterialIcons name="emoji-events" size={rw(11)} color="#000" />
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.gameInfo}>
-                        <Text style={[styles.gameName, { color: colors.text }]} numberOfLines={1}>{game.name || game.title}</Text>
-                        <Text style={{ color: colors.textMuted, fontSize: rf(12), marginTop: rh(4) }}>
-                          {t('platform.hoursPlayedShort', { hours })}
-                        </Text>
-                        {game.totalAchievements > 0 && (
-                          <View style={{ marginTop: rh(6) }}>
-                            <View style={[styles.progressBar, { backgroundColor: colors.purpleDim }]}>
-                              <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: colors.purple }]} />
-                            </View>
-                            <Text style={{ color: colors.textMuted, fontSize: rf(11), marginTop: rh(2) }}>
-                              {t('platform.achievements', { completed: game.completedAchievements, total: game.totalAchievements })}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <MaterialIcons name="chevron-right" size={rw(18)} color={colors.textMuted} />
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </>
-          )}
-
-        </ScrollView>
+        <ConnectedView
+          games={games}
+          stats={stats}
+          linkedAt={linkedAt}
+          syncing={syncing}
+          platformLabel={platformLabel}
+          platformId={platformId}
+          onSync={handleSync}
+          onUnlink={handleUnlink}
+        />
       ) : (
-        <View style={styles.connectContainer}>
-          <View style={[styles.connectIconCircle, { backgroundColor: colors.purpleDim }]}>
-            {platformLogo
-              ? <Image source={platformLogo} style={{ width: rw(60), height: rw(60) }} resizeMode="contain" />
-              : <MaterialIcons name="sports-esports" size={rw(56)} color={colors.purple} />}
-          </View>
-          <Text style={[styles.connectTitle, { color: colors.text }]}>{t('platform.connectTitle', { name: platformLabel })}</Text>
-          <Text style={[styles.connectSubtitle, { color: colors.textMuted }]}>
-            {t('platform.connectSubtitle')}
-          </Text>
-
-          {usesOAuth ? (
-            <TouchableOpacity
-              style={[styles.connectButton, { backgroundColor: colors.purple, opacity: linking ? 0.7 : 1 }]}
-              onPress={handleOAuthLink}
-              disabled={linking}
-            >
-              {linking
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <>
-                    <MaterialIcons name="open-in-browser" size={rw(18)} color="#fff" />
-                    <Text style={styles.connectButtonText}>{t('platform.loginWith', { name: platformLabel })}</Text>
-                  </>}
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.connectButton, { backgroundColor: colors.purple }]}
-              onPress={() => setModalVisible(true)}
-            >
-              <MaterialIcons name="link" size={rw(18)} color="#fff" />
-              <Text style={styles.connectButtonText}>{t('platform.connect', { name: platformLabel })}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <ConnectView
+          platformLogo={platformLogo}
+          platformLabel={platformLabel}
+          usesOAuth={usesOAuth}
+          linking={linking}
+          onOAuthLink={handleOAuthLink}
+          onOpenPsnModal={() => setModalVisible(true)}
+        />
       )}
 
-      {/* PSN NPSSO modal */}
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('platform.connect', { name: platformLabel })}</Text>
-              <TouchableOpacity onPress={() => { setModalVisible(false); setCredential(''); setPsnHelpOpen(false); }}>
-                <MaterialIcons name="close" size={rw(22)} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.helpToggle, { borderColor: colors.cardBorder }]}
-              onPress={() => setPsnHelpOpen((v) => !v)}
-            >
-              <MaterialIcons name="help-outline" size={rw(16)} color={colors.purple} />
-              <Text style={[styles.helpToggleText, { color: colors.purple }]}>{t('platform.psn.howToGetToken')}</Text>
-              <MaterialIcons
-                name={psnHelpOpen ? 'expand-less' : 'expand-more'}
-                size={rw(18)} color={colors.purple}
-              />
-            </TouchableOpacity>
-
-            {psnHelpOpen && (
-              <View style={[styles.helpBox, { backgroundColor: colors.background, borderColor: colors.cardBorder }]}>
-                <Text style={[styles.helpStep, { color: colors.textMuted }]}>
-                  {t('platform.psn.step1')}{' '}
-                  <Text style={{ color: colors.purple }}>my.playstation.com</Text>
-                </Text>
-                <Text style={[styles.helpStep, { color: colors.textMuted }]}>
-                  {t('platform.psn.step2')}{'\n'}
-                  <Text style={{ color: colors.purple, fontSize: rf(11) }}>
-                    ca.account.sony.com/api/v1/ssocookie
-                  </Text>
-                </Text>
-                <Text style={[styles.helpStep, { color: colors.textMuted }]}>
-                  {t('platform.psn.step3')} <Text style={{ fontWeight: '700' }}>{t('platform.psn.step3b')}</Text> {t('platform.psn.step3c')}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.helpOpenBtn, { borderColor: colors.purple }]}
-                  onPress={() => Linking.openURL('https://ca.account.sony.com/api/v1/ssocookie')}
-                >
-                  <MaterialIcons name="open-in-browser" size={rw(14)} color={colors.purple} />
-                  <Text style={[styles.helpOpenBtnText, { color: colors.purple }]}>{t('platform.psn.openPage')}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>{t('platform.psn.tokenLabel')}</Text>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.cardBorder, color: colors.text }]}
-              placeholder={t('platform.psn.tokenPlaceholder')}
-              placeholderTextColor={colors.textMuted}
-              value={credential}
-              onChangeText={setCredential}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-            />
-            <TouchableOpacity
-              style={[styles.modalButton, { backgroundColor: colors.purple, opacity: (!credential.trim() || linking) ? 0.6 : 1 }]}
-              onPress={handlePsnLink}
-              disabled={!credential.trim() || linking}
-            >
-              {linking
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.modalButtonText}>{t('platform.psn.link')}</Text>}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <PsnModal
+        visible={modalVisible}
+        linking={linking}
+        platformLabel={platformLabel}
+        onClose={() => setModalVisible(false)}
+        onLink={handlePsnLink}
+      />
     </SafeAreaView>
   );
 }

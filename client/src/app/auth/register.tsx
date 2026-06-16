@@ -32,32 +32,42 @@ function usePasswordValidation(password: string) {
       ...rule,
       passed: rule.check(password),
     }));
-    const allPassed = results.every((r) => r.passed);
-    return { results, allPassed };
+    return { results, allPassed: results.every((r) => r.passed) };
   }, [password]);
 }
 
 function formatDisplay(date: Date): string {
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd   = String(date.getDate()).padStart(2, '0');
+  const mm   = String(date.getMonth() + 1).padStart(2, '0');
   const yyyy = date.getFullYear();
   return `${dd}/${mm}/${yyyy}`;
 }
 
 function formatISO(date: Date): string {
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd   = String(date.getDate()).padStart(2, '0');
+  const mm   = String(date.getMonth() + 1).padStart(2, '0');
   const yyyy = date.getFullYear();
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function getProgressColor(passed: number, total: number): string {
+  if (passed === total) return '#22C55E';
+  if (passed >= 2) return '#EAB308';
+  return '#EF4444';
+}
+
+function getPasswordBorderColor(touched: boolean, ok: boolean, defaultColor: string): string {
+  if (!touched) return defaultColor;
+  return ok ? '#22C55E' : '#EF4444';
+}
+
+// ── Sub-components (independent cognitive complexity) ──────────────────────────
+
 function RuleRow({ labelKey, passed, touched }: { labelKey: string; passed: boolean; touched: boolean }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-
   const color = !touched ? colors.textMuted : passed ? '#22C55E' : '#EF4444';
   const icon  = !touched ? 'radio-button-unchecked' : passed ? 'check-circle-outline' : 'cancel';
-
   return (
     <View style={ruleStyles.row}>
       <MaterialIcons name={icon as any} size={rw(15)} color={color} />
@@ -71,25 +81,146 @@ const ruleStyles = StyleSheet.create({
   label: { fontSize: rf(12) },
 });
 
+function DateField({ selectedDate, showDatePicker, onOpen, onDateChange, onConfirmIOS }: {
+  selectedDate: Date | null;
+  showDatePicker: boolean;
+  onOpen: () => void;
+  onDateChange: (event: DateTimePickerEvent, date?: Date) => void;
+  onConfirmIOS: () => void;
+}) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const borderColor = selectedDate ? colors.purple    : colors.cardBorder;
+  const iconColor   = selectedDate ? colors.purple    : colors.textMuted;
+  const textColor   = selectedDate ? colors.text      : colors.textMuted;
+  const label       = selectedDate ? formatDisplay(selectedDate) : t('auth.register.selectDate');
+
+  return (
+    <View style={styles.field}>
+      <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
+        {t('auth.register.birthDate')}
+      </Text>
+      <TouchableOpacity
+        style={[styles.inputRow, { backgroundColor: colors.card, borderColor }]}
+        onPress={onOpen}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons name="calendar-today" size={rw(20)} color={iconColor} style={styles.inputIcon} />
+        <Text style={[styles.input, { color: textColor, fontSize: rf(15), paddingVertical: rh(12) }]}>
+          {label}
+        </Text>
+        <MaterialIcons name="chevron-right" size={rw(20)} color={colors.textMuted} />
+      </TouchableOpacity>
+
+      {showDatePicker && (
+        <>
+          <DateTimePicker
+            value={selectedDate ?? new Date(2000, 0, 1)}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+            onChange={onDateChange}
+            maximumDate={new Date()}
+            minimumDate={new Date(1900, 0, 1)}
+            locale="es-AR"
+          />
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity
+              style={[styles.iosConfirmButton, { backgroundColor: colors.purple }]}
+              onPress={onConfirmIOS}
+            >
+              <Text style={[styles.iosConfirmText, { fontSize: rf(15) }]}>{t('common.done')}</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </View>
+  );
+}
+
+function PasswordField({
+  password, onChangePassword, showPassword, onTogglePassword,
+  passwordTouched, passwordBorderColor, passwordOk, passwordRules, passedCount,
+}: {
+  password: string;
+  onChangePassword: (v: string) => void;
+  showPassword: boolean;
+  onTogglePassword: () => void;
+  passwordTouched: boolean;
+  passwordBorderColor: string;
+  passwordOk: boolean;
+  passwordRules: Array<PasswordRule & { passed: boolean }>;
+  passedCount: number;
+}) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const lockIconColor = passwordTouched ? passwordBorderColor : colors.purple;
+  const eyeIcon       = showPassword ? 'visibility-off' : 'visibility';
+
+  return (
+    <View style={styles.field}>
+      <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
+        {t('auth.register.password')}
+      </Text>
+      <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: passwordBorderColor, borderWidth: passwordTouched ? 1.5 : 1 }]}>
+        <MaterialIcons name="lock-outline" size={rw(20)} color={lockIconColor} style={styles.inputIcon} />
+        <TextInput
+          style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
+          placeholder="••••••••"
+          placeholderTextColor={colors.textMuted}
+          value={password}
+          onChangeText={onChangePassword}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TouchableOpacity onPress={onTogglePassword} style={styles.eyeButton}>
+          <MaterialIcons name={eyeIcon as any} size={rw(20)} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
+
+      {passwordTouched && (
+        <View style={[styles.rulesCard, { backgroundColor: colors.card, borderColor: passwordOk ? '#22C55E33' : colors.cardBorder }]}>
+          <View style={[styles.progressTrack, { backgroundColor: colors.purpleMuted }]}>
+            <View
+              style={[styles.progressFill, {
+                width: `${(passedCount / PASSWORD_RULES.length) * 100}%`,
+                backgroundColor: getProgressColor(passedCount, PASSWORD_RULES.length),
+              }]}
+            />
+          </View>
+          <View style={styles.rulesList}>
+            {passwordRules.map((rule) => (
+              <RuleRow key={rule.key} labelKey={rule.labelKey} passed={rule.passed} touched={passwordTouched} />
+            ))}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── Main screen ────────────────────────────────────────────────────────────────
+
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
   const { colors } = useTheme();
   const { t } = useTranslation();
 
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [username, setUsername]           = useState('');
+  const [email, setEmail]                 = useState('');
+  const [password, setPassword]           = useState('');
+  const [selectedDate, setSelectedDate]   = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword]   = useState(false);
+  const [loading, setLoading]             = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
   const { results: passwordRules, allPassed: passwordOk } = usePasswordValidation(password);
-
-  const birthDate = selectedDate ? formatISO(selectedDate) : '';
-  const allFieldsFilled = email.trim() && selectedDate !== null && passwordOk;
+  const birthDate        = selectedDate ? formatISO(selectedDate) : '';
+  const allFieldsFilled  = email.trim() && selectedDate !== null && passwordOk;
+  const passwordBorderColor = getPasswordBorderColor(passwordTouched, passwordOk, colors.cardBorder);
+  const passedCount      = passwordRules.filter((r) => r.passed).length;
 
   const onDateChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
@@ -100,7 +231,10 @@ export default function RegisterScreen() {
     }
   };
 
-  const handleConfirmIOS = () => setShowDatePicker(false);
+  const handlePasswordChange = (v: string) => {
+    setPassword(v);
+    if (!passwordTouched && v.length > 0) setPasswordTouched(true);
+  };
 
   const handleRegister = async () => {
     if (!email.trim() || !password.trim() || !birthDate) {
@@ -127,13 +261,6 @@ export default function RegisterScreen() {
     }
   };
 
-  const textFields = [
-    { labelKey: 'auth.register.email', value: email, setter: setEmail, icon: 'mail-outline', placeholder: t('auth.register.emailPlaceholder'), type: 'email-address' },
-  ];
-
-  const passwordBorderColor = !passwordTouched ? colors.cardBorder : passwordOk ? '#22C55E' : '#EF4444';
-  const passedCount = passwordRules.filter((r) => r.passed).length;
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -148,7 +275,6 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.form}>
-            {/* Username con botón de generar */}
             <View style={styles.field}>
               <View style={styles.labelRow}>
                 <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
@@ -175,105 +301,44 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            {textFields.map(({ labelKey, value, setter, icon, placeholder, type }) => (
-              <View key={labelKey} style={styles.field}>
-                <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
-                  {t(labelKey as any)}
-                </Text>
-                <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                  <MaterialIcons name={icon as any} size={rw(20)} color={colors.purple} style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
-                    placeholder={placeholder}
-                    placeholderTextColor={colors.textMuted}
-                    value={value}
-                    onChangeText={setter}
-                    keyboardType={type as any}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
-              </View>
-            ))}
-
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
-                {t('auth.register.birthDate')}
+                {t('auth.register.email')}
               </Text>
-              <TouchableOpacity
-                style={[styles.inputRow, { backgroundColor: colors.card, borderColor: selectedDate ? colors.purple : colors.cardBorder }]}
-                onPress={() => setShowDatePicker(true)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="calendar-today" size={rw(20)} color={selectedDate ? colors.purple : colors.textMuted} style={styles.inputIcon} />
-                <Text style={[styles.input, { color: selectedDate ? colors.text : colors.textMuted, fontSize: rf(15), paddingVertical: rh(12) }]}>
-                  {selectedDate ? formatDisplay(selectedDate) : t('auth.register.selectDate')}
-                </Text>
-                <MaterialIcons name="chevron-right" size={rw(20)} color={colors.textMuted} />
-              </TouchableOpacity>
-
-              {showDatePicker && (
-                <>
-                  <DateTimePicker
-                    value={selectedDate ?? new Date(2000, 0, 1)}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                    onChange={onDateChange}
-                    maximumDate={new Date()}
-                    minimumDate={new Date(1900, 0, 1)}
-                    locale="es-AR"
-                  />
-                  {Platform.OS === 'ios' && (
-                    <TouchableOpacity
-                      style={[styles.iosConfirmButton, { backgroundColor: colors.purple }]}
-                      onPress={handleConfirmIOS}
-                    >
-                      <Text style={[styles.iosConfirmText, { fontSize: rf(15) }]}>{t('common.done')}</Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-            </View>
-
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.purple, fontSize: rf(14) }]}>
-                {t('auth.register.password')}
-              </Text>
-              <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: passwordBorderColor, borderWidth: passwordTouched ? 1.5 : 1 }]}>
-                <MaterialIcons name="lock-outline" size={rw(20)} color={passwordTouched ? passwordBorderColor : colors.purple} style={styles.inputIcon} />
+              <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <MaterialIcons name="mail-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
-                  placeholder="••••••••"
+                  placeholder={t('auth.register.emailPlaceholder')}
                   placeholderTextColor={colors.textMuted}
-                  value={password}
-                  onChangeText={(v) => { setPassword(v); if (!passwordTouched && v.length > 0) setPasswordTouched(true); }}
-                  secureTextEntry={!showPassword}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                  <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={rw(20)} color={colors.textMuted} />
-                </TouchableOpacity>
               </View>
-
-              {passwordTouched && (
-                <View style={[styles.rulesCard, { backgroundColor: colors.card, borderColor: passwordOk ? '#22C55E33' : colors.cardBorder }]}>
-                  <View style={[styles.progressTrack, { backgroundColor: colors.purpleMuted }]}>
-                    <View
-                      style={[styles.progressFill, {
-                        width: `${(passedCount / PASSWORD_RULES.length) * 100}%`,
-                        backgroundColor: passedCount === PASSWORD_RULES.length ? '#22C55E' : passedCount >= 2 ? '#EAB308' : '#EF4444',
-                      }]}
-                    />
-                  </View>
-                  <View style={styles.rulesList}>
-                    {passwordRules.map((rule) => (
-                      <RuleRow key={rule.key} labelKey={rule.labelKey} passed={rule.passed} touched={passwordTouched} />
-                    ))}
-                  </View>
-                </View>
-              )}
             </View>
+
+            <DateField
+              selectedDate={selectedDate}
+              showDatePicker={showDatePicker}
+              onOpen={() => setShowDatePicker(true)}
+              onDateChange={onDateChange}
+              onConfirmIOS={() => setShowDatePicker(false)}
+            />
+
+            <PasswordField
+              password={password}
+              onChangePassword={handlePasswordChange}
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword(!showPassword)}
+              passwordTouched={passwordTouched}
+              passwordBorderColor={passwordBorderColor}
+              passwordOk={passwordOk}
+              passwordRules={passwordRules}
+              passedCount={passedCount}
+            />
 
             <TouchableOpacity
               style={[styles.submitButton, {
@@ -286,7 +351,10 @@ export default function RegisterScreen() {
               disabled={loading}
               activeOpacity={0.8}
             >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.submitText, { fontSize: rf(16) }]}>{t('auth.register.submit')}</Text>}
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={[styles.submitText, { fontSize: rf(16) }]}>{t('auth.register.submit')}</Text>
+              }
             </TouchableOpacity>
 
             <View style={styles.loginRow}>

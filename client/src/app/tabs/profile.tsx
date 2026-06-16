@@ -37,9 +37,184 @@ interface ProfileGame {
   playtimeHours: number;
 }
 
-const COLS     = gridColumns();
-const CARD_W   = cardWidth(COLS);
+const COLS       = gridColumns();
+const CARD_W     = cardWidth(COLS);
 const FAV_CARD_W = cardWidth(Math.min(COLS + 1, 3));
+
+// ── Sub-components (independent cognitive complexity) ──────────────────────────
+
+function FavoritesSection({ favoriteGames, achievementCounts, skillLevels, onAddFav, onEditFav }: {
+  favoriteGames: Game[];
+  achievementCounts: Record<string, { total: number; completed: number }>;
+  skillLevels: Record<string, SkillLevel>;
+  onAddFav: () => void;
+  onEditFav: () => void;
+}) {
+  const { colors } = useTheme();
+  const { t }      = useTranslation();
+  const router     = useRouter();
+  const titleCount = favoriteGames.length > 0 ? ` (${favoriteGames.length})` : '';
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <MaterialIcons name="star-outline" size={rw(17)} color="#F59E0B" />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t('profile.myFavorites')}{titleCount}
+          </Text>
+        </View>
+        <View style={styles.sectionActions}>
+          <TouchableOpacity
+            style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
+            onPress={onAddFav}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="add" size={rw(14)} color={colors.text} />
+            <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.add')}</Text>
+          </TouchableOpacity>
+          {favoriteGames.length > 0 && (
+            <TouchableOpacity
+              style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
+              onPress={onEditFav}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="edit" size={rw(13)} color={colors.text} />
+              <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.edit')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {favoriteGames.length > 0 ? (
+        <FlatList
+          data={favoriteGames}
+          horizontal
+          keyExtractor={(item) => item.id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: rs.md, gap: rw(12) }}
+          renderItem={({ item }) => {
+            const ach = achievementCounts[`${item.platform}_${item.id}`];
+            return (
+              <GameCard
+                {...item}
+                totalAchievements={ach?.total ?? item.totalAchievements}
+                completedAchievements={ach?.completed ?? item.completedAchievements}
+                width={FAV_CARD_W}
+                skillLevel={skillLevels[item.id] ?? null}
+                onPress={() => router.push(`/game/${item.id}`)}
+              />
+            );
+          }}
+        />
+      ) : (
+        <View style={[styles.emptyFavs, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <MaterialIcons name="star-outline" size={rw(28)} color={colors.textMuted} />
+          <Text style={[styles.emptyFavsText, { color: colors.textMuted }]}>{t('profile.noFavoritesHint')}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function GamesSection({ profileGames, platforms, achievementCounts, skillLevels, syncing, onSync, onAdd, onRemove }: {
+  profileGames: ProfileGame[];
+  platforms: string[];
+  achievementCounts: Record<string, { total: number; completed: number }>;
+  skillLevels: Record<string, SkillLevel>;
+  syncing: boolean;
+  onSync: () => void;
+  onAdd: () => void;
+  onRemove: (gameId: string, platform: string) => void;
+}) {
+  const { colors } = useTheme();
+  const { t }      = useTranslation();
+  const router     = useRouter();
+  const titleCount = profileGames.length > 0 ? ` (${profileGames.length})` : '';
+  const emptyTitle = platforms.length === 0 ? t('profile.noGamesTitle')      : t('profile.addGamesTitle');
+  const emptyHint  = platforms.length === 0 ? t('profile.linkPlatformHint')  : t('profile.addGamesHint');
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <MaterialIcons name="sports-esports" size={rw(17)} color={colors.purple} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t('profile.myGames')}{titleCount}
+          </Text>
+        </View>
+        {platforms.length > 0 && (
+          <View style={styles.sectionActions}>
+            <TouchableOpacity
+              style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
+              onPress={onSync}
+              activeOpacity={0.8}
+              disabled={syncing}
+            >
+              {syncing
+                ? <ActivityIndicator size="small" color={colors.purple} />
+                : <MaterialIcons name="refresh" size={rw(14)} color={colors.text} />}
+              <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.reload')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
+              onPress={onAdd}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="add" size={rw(14)} color={colors.text} />
+              <Text style={[styles.pillText, { color: colors.text }]}>{t('common.add')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {profileGames.length === 0 ? (
+        <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.emptyIcon, { backgroundColor: colors.purpleMuted }]}>
+            <MaterialIcons name="videogame-asset-off" size={rw(40)} color={colors.purple} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>{emptyTitle}</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>{emptyHint}</Text>
+          {platforms.length === 0 && (
+            <TouchableOpacity
+              style={[styles.emptyBtn, { backgroundColor: colors.purple }]}
+              onPress={() => router.push('/tabs/settings')}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons name="link" size={rw(16)} color={colors.text} />
+              <Text style={[styles.emptyBtnText, { color: colors.text }]}>{t('profile.linkPlatform')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <View style={[styles.grid, { paddingHorizontal: rs.md, gap: rw(12) }]}>
+          {profileGames.map((pg) => {
+            const achKey = `${pg.platform}_${pg.gameId}`;
+            const ach    = achievementCounts[achKey];
+            return (
+              <GameCard
+                key={achKey}
+                id={pg.gameId}
+                name={pg.name}
+                cover={pg.cover || ''}
+                totalHours={pg.playtimeHours}
+                totalAchievements={ach?.total ?? 0}
+                completedAchievements={ach?.completed ?? 0}
+                platform={pg.platform}
+                width={CARD_W}
+                skillLevel={skillLevels[pg.gameId] ?? null}
+                onPress={() => router.push(`/game/${pg.gameId}?platform=${pg.platform}`)}
+                onRemove={() => onRemove(pg.gameId, pg.platform)}
+              />
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── Main screen ────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
   const router     = useRouter();
@@ -180,12 +355,10 @@ export default function ProfileScreen() {
       platformApi.getGameAchievements(platform, gameId)
         .then((achRes) => {
           const achievements: any[] = (achRes.data as any)?.achievements || [];
+          const completed = achievements.filter((a: any) => a.unlocked).length;
           setAchievementCounts((prev) => ({
             ...prev,
-            [`${platform}_${gameId}`]: {
-              total:     achievements.length,
-              completed: achievements.filter((a) => a.unlocked).length,
-            },
+            [`${platform}_${gameId}`]: { total: achievements.length, completed },
           }));
         })
         .catch(() => {});
@@ -309,150 +482,23 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <>
-            {/* ── Mis Favoritos ── */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                    <MaterialIcons name="star-outline" size={rw(17)} color="#F59E0B" />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    {t('profile.myFavorites')}{favoriteGames.length > 0 ? ` (${favoriteGames.length})` : ''}
-                  </Text>
-                </View>
-                <View style={styles.sectionActions}>
-                  <TouchableOpacity
-                    style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
-                    onPress={() => setAddFavModalVisible(true)}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialIcons name="add" size={rw(14)} color={colors.text} />
-                    <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.add')}</Text>
-                  </TouchableOpacity>
-                  {favoriteGames.length > 0 && (
-                    <TouchableOpacity
-                      style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
-                      onPress={() => setEditModalVisible(true)}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialIcons name="edit" size={rw(13)} color={colors.text} />
-                      <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.edit')}</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-
-              {favoriteGames.length > 0 ? (
-                <FlatList
-                  data={favoriteGames}
-                  horizontal
-                  keyExtractor={(item) => item.id}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: rs.md, gap: rw(12) }}
-                  renderItem={({ item }) => {
-                    const ach = achievementCounts[`${item.platform}_${item.id}`];
-                    return (
-                      <GameCard
-                        {...item}
-                        totalAchievements={ach?.total ?? item.totalAchievements}
-                        completedAchievements={ach?.completed ?? item.completedAchievements}
-                        width={FAV_CARD_W}
-                        skillLevel={skillLevels[item.id] ?? null}
-                        onPress={() => router.push(`/game/${item.id}`)}
-                      />
-                    );
-                  }}
-                />
-              ) : (
-                <View style={[styles.emptyFavs, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <MaterialIcons name="star-outline" size={rw(28)} color={colors.textMuted} />
-                  <Text style={[styles.emptyFavsText, { color: colors.textMuted }]}>
-                    {t('profile.noFavoritesHint')}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* ── Mis Juegos ── */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                  <MaterialIcons name="sports-esports" size={rw(17)} color={colors.purple} />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    {t('profile.myGames')}{profileGames.length > 0 ? ` (${profileGames.length})` : ''}
-                  </Text>
-                </View>
-                {platforms.length > 0 && (
-                  <View style={styles.sectionActions}>
-                    <TouchableOpacity
-                      style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
-                      onPress={handleSync}
-                      activeOpacity={0.8}
-                      disabled={syncing}
-                    >
-                      {syncing
-                        ? <ActivityIndicator size="small" color={colors.purple} />
-                        : <MaterialIcons name="refresh" size={rw(14)} color={colors.text} />}
-                      <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.reload')}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
-                      onPress={() => setAddProfileModalVisible(true)}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialIcons name="add" size={rw(14)} color={colors.text} />
-                      <Text style={[styles.pillText, { color: colors.text }]}>{t('common.add')}</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-
-              {profileGames.length === 0 ? (
-                <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <View style={[styles.emptyIcon, { backgroundColor: colors.purpleMuted }]}>
-                    <MaterialIcons name="videogame-asset-off" size={rw(40)} color={colors.purple} />
-                  </View>
-                  <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                    {platforms.length === 0 ? t('profile.noGamesTitle') : t('profile.addGamesTitle')}
-                  </Text>
-                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                    {platforms.length === 0 ? t('profile.linkPlatformHint') : t('profile.addGamesHint')}
-                  </Text>
-                  {platforms.length === 0 && (
-                    <TouchableOpacity
-                      style={[styles.emptyBtn, { backgroundColor: colors.purple }]}
-                      onPress={() => router.push('/tabs/settings')}
-                      activeOpacity={0.85}
-                    >
-                      <MaterialIcons name="link" size={rw(16)} color={colors.text} />
-                      <Text style={[styles.emptyBtnText, { color: colors.text }]}>{t('profile.linkPlatform')}</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ) : (
-                <View style={[styles.grid, { paddingHorizontal: rs.md, gap: rw(12) }]}>
-                  {profileGames.map((pg) => {
-                    const achKey = `${pg.platform}_${pg.gameId}`;
-                    const ach    = achievementCounts[achKey];
-                    return (
-                      <GameCard
-                        key={achKey}
-                        id={pg.gameId}
-                        name={pg.name}
-                        cover={pg.cover || ''}
-                        totalHours={pg.playtimeHours}
-                        totalAchievements={ach?.total ?? 0}
-                        completedAchievements={ach?.completed ?? 0}
-                        platform={pg.platform}
-                        width={CARD_W}
-                        skillLevel={skillLevels[pg.gameId] ?? null}
-                        onPress={() => router.push(`/game/${pg.gameId}?platform=${pg.platform}`)}
-                        onRemove={() => handleRemoveProfileGame(pg.gameId, pg.platform)}
-                      />
-                    );
-                  })}
-                </View>
-              )}
-            </View>
+            <FavoritesSection
+              favoriteGames={favoriteGames}
+              achievementCounts={achievementCounts}
+              skillLevels={skillLevels}
+              onAddFav={() => setAddFavModalVisible(true)}
+              onEditFav={() => setEditModalVisible(true)}
+            />
+            <GamesSection
+              profileGames={profileGames}
+              platforms={platforms}
+              achievementCounts={achievementCounts}
+              skillLevels={skillLevels}
+              syncing={syncing}
+              onSync={handleSync}
+              onAdd={() => setAddProfileModalVisible(true)}
+              onRemove={handleRemoveProfileGame}
+            />
           </>
         )}
       </ScrollView>

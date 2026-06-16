@@ -13,32 +13,34 @@ const mockUser = {
   email: 'test@test.com', isUnder16: false, birthDate: '2000-01-01', friends: [],
 };
 
-jest.mock('../../src/config/firebase', () => ({
-  auth: { deleteUser: jest.fn().mockResolvedValue(true) },
-  db: {
-    collection: (col) => ({
-      doc: (id) => ({
-        get:    jest.fn().mockResolvedValue({ exists: true, data: () => mockUser }),
-        update: jest.fn().mockResolvedValue(true),
-        delete: jest.fn().mockResolvedValue(true),
-        collection: () => ({
-          doc: () => ({
-            get:    jest.fn().mockResolvedValue({ exists: true, data: () => ({ notifications: true, privacy: 'public' }) }),
-            set:    jest.fn().mockResolvedValue(true),
-            update: jest.fn().mockResolvedValue(true),
-            delete: jest.fn().mockResolvedValue(true),
-          }),
+jest.mock('../../src/config/firebase', () => {
+  const settingsData = { notifications: true, privacy: 'public' };
+  const makeSettingsDoc = () => ({
+    get:    jest.fn().mockResolvedValue({ exists: true, data: () => settingsData }),
+    set:    jest.fn().mockResolvedValue(true),
+    update: jest.fn().mockResolvedValue(true),
+    delete: jest.fn().mockResolvedValue(true),
+  });
+  return {
+    auth: { deleteUser: jest.fn().mockResolvedValue(true) },
+    db: {
+      collection: (col) => ({
+        doc: (id) => ({
+          get:    jest.fn().mockResolvedValue({ exists: true, data: () => mockUser }),
+          update: jest.fn().mockResolvedValue(true),
+          delete: jest.fn().mockResolvedValue(true),
+          collection: () => ({ doc: makeSettingsDoc }),
+        }),
+        where: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        get:   jest.fn().mockResolvedValue({
+          docs: [{ id: 'user456', data: () => ({ uid: 'user456', username: 'OtherGamer', avatarId: null }) }],
         }),
       }),
-      where: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get:   jest.fn().mockResolvedValue({
-        docs: [{ id: 'user456', data: () => ({ uid: 'user456', username: 'OtherGamer', avatarId: null }) }],
-      }),
-    }),
-  },
-  admin: { apps: ['initialized'] },
-}));
+    },
+    admin: { apps: ['initialized'] },
+  };
+});
 
 describe('GET /api/users/:id/profile', () => {
   it('200 devuelve el perfil', async () => {

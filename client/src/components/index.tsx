@@ -420,6 +420,12 @@ const sbStyles = StyleSheet.create({
 });
 
 // ─── InfoCard ─────────────────────────────────────────────────────────────────
+function InfoIcon({ emoji, icon, iconColor, purple }: { emoji?: string; icon?: string; iconColor?: string; purple: string }) {
+  if (emoji) return <Text style={{ fontSize: rf(22) }}>{emoji}</Text>;
+  if (icon) return <MaterialIcons name={icon as any} size={rw(22)} color={iconColor || purple} />;
+  return null;
+}
+
 export function InfoCard({
   title,
   miniTitle,
@@ -447,11 +453,7 @@ export function InfoCard({
     return (
       <View style={[icStyles.cardH, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={[icStyles.iconCircle, { backgroundColor: iconBg || colors.purpleDim }]}>
-          {emoji
-            ? <Text style={{ fontSize: rf(22) }}>{emoji}</Text>
-            : icon
-            ? <MaterialIcons name={icon as any} size={rw(22)} color={iconColor || colors.purple} />
-            : null}
+          <InfoIcon emoji={emoji} icon={icon} iconColor={iconColor} purple={colors.purple} />
         </View>
         <View style={icStyles.hText}>
           <Text style={[icStyles.hTitle, { color: colors.text }]}>{title}</Text>
@@ -466,11 +468,7 @@ export function InfoCard({
     <View style={[icStyles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
       {miniTitle ? <Text style={[icStyles.miniTitle, { color: colors.textMuted }]}>{miniTitle}</Text> : null}
       <View style={[icStyles.iconCircle, { backgroundColor: iconBg || colors.purpleDim }]}>
-        {emoji
-          ? <Text style={{ fontSize: rf(22) }}>{emoji}</Text>
-          : icon
-          ? <MaterialIcons name={icon as any} size={rw(22)} color={iconColor || colors.purple} />
-          : null}
+        <InfoIcon emoji={emoji} icon={icon} iconColor={iconColor} purple={colors.purple} />
       </View>
       {value !== undefined ? <Text style={[icStyles.value, { color: colors.text }]}>{value}</Text> : null}
       <Text style={[icStyles.title, { color: colors.textMuted }]}>{title}</Text>

@@ -56,6 +56,53 @@ const applySession = (
   setIsAuthenticated(true);
 };
 
+const doSilentLogin = async (
+  email: string,
+  password: string,
+  setToken: (t: string) => void,
+  setUser: (u: UserProfile) => void,
+  setIsAuthenticated: (v: boolean) => void,
+) => {
+  const res = await authApi.login(email, password);
+  const { idToken, user: su } = res.data;
+  await AsyncStorage.setItem('authToken', idToken);
+  applySession(idToken, su, setToken, setUser, setIsAuthenticated);
+};
+
+const applyFreshProfile = (
+  profile: any,
+  setUser: React.Dispatch<React.SetStateAction<UserProfile | null>>,
+) => {
+  setUser((prev) => prev ? {
+    ...prev,
+    name:   profile.username || prev.name,
+    avatar: profile.avatarId || profile.avatar || prev.avatar,
+    bio:    profile.bio !== undefined ? profile.bio : (prev.bio || ''),
+  } : prev);
+};
+
+const refreshOrReauth = async (
+  savedEmail: string | null,
+  savedPassword: string | null,
+  setToken: (t: string) => void,
+  setUser: React.Dispatch<React.SetStateAction<UserProfile | null>>,
+  setIsAuthenticated: (v: boolean) => void,
+) => {
+  try {
+    const profileRes = await userApi.getMyProfile();
+    const profile = (profileRes.data as any)?.profile;
+    if (profile) applyFreshProfile(profile, setUser);
+  } catch (err: any) {
+    if (err?.response?.status === 401 && savedEmail && savedPassword) {
+      try {
+        await doSilentLogin(savedEmail, savedPassword, setToken, setUser, setIsAuthenticated);
+      } catch {
+        setIsAuthenticated(false);
+      }
+    }
+  }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -72,50 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (storedToken) {
           const payload = decodeJwt(storedToken);
           if (!payload?.uid) throw new Error('token inválido');
-
           setToken(storedToken);
-          setUser({
-            id:        payload.uid,
-            name:      payload.username  || 'Usuario',
-            avatar:    payload.avatarId  || getProfileAvatar(payload.uid),
-            email:     payload.email     || '',
-            bio:       payload.bio       || '',
-            isUnder16: payload.isUnder16 || false,
-          });
+          setUser({ id: payload.uid, name: payload.username || 'Usuario', avatar: payload.avatarId || getProfileAvatar(payload.uid), email: payload.email || '', bio: payload.bio || '', isUnder16: payload.isUnder16 || false });
           setIsAuthenticated(true);
-
-          // fetch fresh profile to get current avatar and username
-          try {
-            const profileRes = await userApi.getMyProfile();
-            const profile = (profileRes.data as any)?.profile;
-            if (profile) {
-              setUser((prev) => prev ? {
-                ...prev,
-                name:   profile.username || prev.name,
-                avatar: profile.avatarId || profile.avatar || prev.avatar,
-                bio:    profile.bio !== undefined ? profile.bio : (prev.bio || ''),
-              } : prev);
-            }
-          } catch (err: any) {
-            // token expired — try silent re-auth with saved credentials
-            if (err?.response?.status === 401 && savedEmail && savedPassword) {
-              try {
-                const res = await authApi.login(savedEmail, savedPassword);
-                const { idToken, user: su } = res.data;
-                await AsyncStorage.setItem('authToken', idToken);
-                applySession(idToken, su, setToken, setUser, setIsAuthenticated);
-              } catch {
-                setIsAuthenticated(false);
-              }
-            }
-          }
+          await refreshOrReauth(savedEmail, savedPassword, setToken, setUser, setIsAuthenticated);
         } else if (savedEmail && savedPassword) {
-          // no token but credentials saved — silent login
           try {
-            const res = await authApi.login(savedEmail, savedPassword);
-            const { idToken, user: su } = res.data;
-            await AsyncStorage.setItem('authToken', idToken);
-            applySession(idToken, su, setToken, setUser, setIsAuthenticated);
+            await doSilentLogin(savedEmail, savedPassword, setToken, setUser, setIsAuthenticated);
           } catch {}
         }
       } catch {

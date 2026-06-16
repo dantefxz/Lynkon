@@ -20,6 +20,126 @@ const COLS       = gridColumns();
 const CARD_W     = cardWidth(COLS);
 const FAV_CARD_W = cardWidth(Math.min(COLS + 1, 3));
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function UserFavoritesSection({ favoriteGames, achievementCounts, skillTags, userId }: {
+  favoriteGames: FavGame[];
+  achievementCounts: Record<string, { total: number; completed: number }>;
+  skillTags: Record<string, SkillLevel>;
+  userId: string;
+}) {
+  const { colors } = useTheme();
+  const { t }      = useTranslation();
+  const router     = useRouter();
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <MaterialIcons name="star-outline" size={rw(17)} color="#F59E0B" />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t('profile.favorites')}{favoriteGames.length > 0 ? ` (${favoriteGames.length})` : ''}
+          </Text>
+        </View>
+      </View>
+      {favoriteGames.length > 0 ? (
+        <FlatList
+          data={favoriteGames}
+          horizontal
+          keyExtractor={(item) => `${item.platform}_${item.gameId}`}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: rs.md, gap: rw(12) }}
+          renderItem={({ item }) => {
+            const achKey = `${item.platform}_${item.gameId}`;
+            const ach = achievementCounts[achKey];
+            const hours = item.playtimeHours || 0;
+            const cover = resolveCover(item.platform, item.gameId, item.cover);
+            return (
+              <GameCard
+                id={item.gameId}
+                name={item.name}
+                cover={cover}
+                totalHours={hours}
+                totalAchievements={ach?.total ?? 0}
+                completedAchievements={ach?.completed ?? 0}
+                platform={item.platform}
+                width={FAV_CARD_W}
+                skillLevel={skillTags[item.gameId] ?? null}
+                onPress={() => router.push(
+                  `/game/${item.gameId}?platform=${item.platform}&userId=${userId}&name=${encodeURIComponent(item.name)}&cover=${encodeURIComponent(cover)}&totalHours=${hours}&skillLevel=${skillTags[item.gameId] || ''}`
+                )}
+              />
+            );
+          }}
+        />
+      ) : (
+        <View style={[styles.emptyFavs, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <MaterialIcons name="star-outline" size={rw(28)} color={colors.textMuted} />
+          <Text style={[styles.emptyFavsText, { color: colors.textMuted }]}>{t('userProfile.noFavorites')}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function UserGamesSection({ profileGames, achievementCounts, skillTags, userId }: {
+  profileGames: ProfileGame[];
+  achievementCounts: Record<string, { total: number; completed: number }>;
+  skillTags: Record<string, SkillLevel>;
+  userId: string;
+}) {
+  const { colors } = useTheme();
+  const { t }      = useTranslation();
+  const router     = useRouter();
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <MaterialIcons name="sports-esports" size={rw(17)} color={colors.purple} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t('profile.gamesLabel')}{profileGames.length > 0 ? ` (${profileGames.length})` : ''}
+          </Text>
+        </View>
+      </View>
+      {profileGames.length === 0 ? (
+        <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.emptyIcon, { backgroundColor: colors.purpleMuted }]}>
+            <MaterialIcons name="videogame-asset-off" size={rw(40)} color={colors.purple} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('userProfile.noGames')}</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>{t('userProfile.noGamesSubtitle')}</Text>
+        </View>
+      ) : (
+        <View style={[styles.grid, { paddingHorizontal: rs.md, gap: rw(12) }]}>
+          {profileGames.map((pg) => {
+            const achKey = `${pg.platform}_${pg.gameId}`;
+            const ach = achievementCounts[achKey];
+            const cover = resolveCover(pg.platform, pg.gameId, pg.cover);
+            return (
+              <GameCard
+                key={achKey}
+                id={pg.gameId}
+                name={pg.name}
+                cover={cover}
+                totalHours={pg.playtimeHours}
+                totalAchievements={ach?.total ?? 0}
+                completedAchievements={ach?.completed ?? 0}
+                platform={pg.platform}
+                width={CARD_W}
+                skillLevel={skillTags[pg.gameId] ?? null}
+                onPress={() => router.push(
+                  `/game/${pg.gameId}?platform=${pg.platform}&userId=${userId}&name=${encodeURIComponent(pg.name)}&cover=${encodeURIComponent(cover)}&totalHours=${pg.playtimeHours}&skillLevel=${skillTags[pg.gameId] || ''}`
+                )}
+              />
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function resolveCover(platform: string, gameId: string, stored?: string | null): string {
   if (stored) return stored;
   if (platform?.toLowerCase() === 'steam') return `https://cdn.akamai.steamstatic.com/steam/apps/${gameId}/header.jpg`;
@@ -118,12 +238,10 @@ export default function UserProfileScreen() {
           userApi.getUserGameAchievements(userId, platform, gameId)
             .then((achRes) => {
               const achievements: any[] = (achRes.data as any)?.achievements || [];
+              const completed = achievements.filter((a: any) => a.unlocked).length;
               setAchievementCounts((prev) => ({
                 ...prev,
-                [`${platform}_${gameId}`]: {
-                  total:     achievements.length,
-                  completed: achievements.filter((a) => a.unlocked).length,
-                },
+                [`${platform}_${gameId}`]: { total: achievements.length, completed },
               }));
             })
             .catch(() => {});
@@ -294,98 +412,18 @@ export default function UserProfileScreen() {
           syncing={refreshing}
         />
 
-        {/* ── Favoritos (horizontal FlatList, igual que perfil propio) ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <MaterialIcons name="star-outline" size={rw(17)} color="#F59E0B" />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {t('profile.favorites')}{profile.favoriteGames.length > 0 ? ` (${profile.favoriteGames.length})` : ''}
-              </Text>
-            </View>
-          </View>
-          {profile.favoriteGames.length > 0 ? (
-            <FlatList
-              data={profile.favoriteGames}
-              horizontal
-              keyExtractor={(item) => `${item.platform}_${item.gameId}`}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: rs.md, gap: rw(12) }}
-              renderItem={({ item }) => {
-                const achKey = `${item.platform}_${item.gameId}`;
-                const ach = achievementCounts[achKey];
-                const pg    = profileGames.find((g) => g.gameId === item.gameId && g.platform === item.platform);
-                const hours = item.playtimeHours || pg?.playtimeHours || 0;
-                return (
-                  <GameCard
-                    id={item.gameId}
-                    name={item.name}
-                    cover={resolveCover(item.platform, item.gameId, item.cover)}
-                    totalHours={hours}
-                    totalAchievements={ach?.total ?? 0}
-                    completedAchievements={ach?.completed ?? 0}
-                    platform={item.platform}
-                    width={FAV_CARD_W}
-                    skillLevel={profile.skillTags[item.gameId] ?? null}
-                    onPress={() => router.push(
-                      `/game/${item.gameId}?platform=${item.platform}&userId=${userId}&name=${encodeURIComponent(item.name)}&cover=${encodeURIComponent(resolveCover(item.platform, item.gameId, item.cover))}&totalHours=${hours}&skillLevel=${profile.skillTags[item.gameId] || ''}`
-                    )}
-                  />
-                );
-              }}
-            />
-          ) : (
-            <View style={[styles.emptyFavs, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <MaterialIcons name="star-outline" size={rw(28)} color={colors.textMuted} />
-              <Text style={[styles.emptyFavsText, { color: colors.textMuted }]}>{t('userProfile.noFavorites')}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* ── Juegos del perfil ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <MaterialIcons name="sports-esports" size={rw(17)} color={colors.purple} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {t('profile.gamesLabel')}{profileGames.length > 0 ? ` (${profileGames.length})` : ''}
-              </Text>
-            </View>
-          </View>
-          {profileGames.length === 0 ? (
-            <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.emptyIcon, { backgroundColor: colors.purpleMuted }]}>
-                <MaterialIcons name="videogame-asset-off" size={rw(40)} color={colors.purple} />
-              </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('userProfile.noGames')}</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>{t('userProfile.noGamesSubtitle')}</Text>
-            </View>
-          ) : (
-            <View style={[styles.grid, { paddingHorizontal: rs.md, gap: rw(12) }]}>
-              {profileGames.map((pg) => {
-                const achKey = `${pg.platform}_${pg.gameId}`;
-                const ach = achievementCounts[achKey];
-                return (
-                  <GameCard
-                    key={achKey}
-                    id={pg.gameId}
-                    name={pg.name}
-                    cover={resolveCover(pg.platform, pg.gameId, pg.cover)}
-                    totalHours={pg.playtimeHours}
-                    totalAchievements={ach?.total ?? 0}
-                    completedAchievements={ach?.completed ?? 0}
-                    platform={pg.platform}
-                    width={CARD_W}
-                    skillLevel={profile.skillTags[pg.gameId] ?? null}
-                    onPress={() => router.push(
-                      `/game/${pg.gameId}?platform=${pg.platform}&userId=${userId}&name=${encodeURIComponent(pg.name)}&cover=${encodeURIComponent(resolveCover(pg.platform, pg.gameId, pg.cover))}&totalHours=${pg.playtimeHours}&skillLevel=${profile.skillTags[pg.gameId] || ''}`
-                    )}
-                  />
-                );
-              })}
-            </View>
-          )}
-        </View>
+        <UserFavoritesSection
+          favoriteGames={profile.favoriteGames}
+          achievementCounts={achievementCounts}
+          skillTags={profile.skillTags}
+          userId={userId!}
+        />
+        <UserGamesSection
+          profileGames={profileGames}
+          achievementCounts={achievementCounts}
+          skillTags={profile.skillTags}
+          userId={userId!}
+        />
       </ScrollView>
     </SafeAreaView>
   );

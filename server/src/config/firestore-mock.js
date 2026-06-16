@@ -7,6 +7,11 @@ const mockData = {
   users: {},
 };
 
+function makeDocSnapshot(name, id) {
+  const value = mockData[name]?.[id];
+  return { exists: !!value, data: () => value };
+}
+
 const createMockFirestore = () => {
   return {
     collection: (name) => ({
@@ -15,15 +20,8 @@ const createMockFirestore = () => {
           if (!mockData[name]) mockData[name] = {};
           mockData[name][id] = { ...data, id };
           console.log(`✅ Mock Firestore: Guardado ${name}/${id}`);
-          return Promise.resolve();
         },
-        get: async () => {
-          const data = mockData[name]?.[id];
-          return {
-            exists: !!data,
-            data: () => data,
-          };
-        },
+        get: async () => makeDocSnapshot(name, id),
       }),
       where: () => ({
         get: async () => ({ docs: [] }),
