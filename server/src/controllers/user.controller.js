@@ -131,11 +131,48 @@ const getRecommendations = async (req, res, next) => {
 };
 
 
+// ─── Helper: horas en vivo desde Steam ───────────────────────────────────────
+
+const withLiveHours = async (userId, games) => {
+  try {
+    const snap = await db.collection('users').doc(userId).get();
+    const linked = (snap.data()?.platforms || []).find((p) => p.platform === 'steam');
+    if (!linked) return games;
+
+    const freshGames = await steamService.getGames(linked.platformUserId);
+    const freshMap = Object.fromEntries(freshGames.map((g) => [g.gameId, g.playtimeHours]));
+
+    const merged = games.map((g) =>
+      g.platform === 'steam' && freshMap[g.gameId] !== undefined
+        ? { ...g, playtimeHours: freshMap[g.gameId] }
+        : g,
+    );
+
+    // Persiste en background para que la próxima carga sea consistente
+    const data = snap.data();
+    const updateHours = (list) =>
+      (list || []).map((g) =>
+        g.platform === 'steam' && freshMap[g.gameId] !== undefined
+          ? { ...g, playtimeHours: freshMap[g.gameId] }
+          : g,
+      );
+    db.collection('users').doc(userId).update({
+      favoriteGames: updateHours(data.favoriteGames),
+      profileGames:  updateHours(data.profileGames),
+    }).catch(() => {});
+
+    return merged;
+  } catch {
+    return games;
+  }
+};
+
 // ─── Favoritos ────────────────────────────────────────────────────────────────
 
 const getFavorites = async (req, res, next) => {
   try {
-    const games = await userService.getFavoriteGames(req.params.id);
+    let games = await userService.getFavoriteGames(req.params.id);
+    if (req.user.uid === req.params.id) games = await withLiveHours(req.params.id, games);
     return res.status(200).json({ favoriteGames: games });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -197,7 +234,8 @@ const removeFavorite = async (req, res, next) => {
 
 const getProfileGames = async (req, res, next) => {
   try {
-    const games = await userService.getProfileGames(req.params.id);
+    let games = await userService.getProfileGames(req.params.id);
+    if (req.user.uid === req.params.id) games = await withLiveHours(req.params.id, games);
     return res.status(200).json({ profileGames: games });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -236,11 +274,46 @@ const removeProfileGame = async (req, res, next) => {
   }
 };
 
+const setStatus = async (req, res, next) => {
+  try {
+    const { isOnline } = req.body;
+    if (typeof isOnline !== 'boolean') return res.status(400).json({ error: 'isOnline must be boolean' });
+    await userService.setOnlineStatus(req.user.uid, isOnline);
+    return res.status(200).json({ message: 'Status updated' });
+  } catch (err) { next(err); }
+};
+
+const VALID_SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
+
+const setSkillTag = async (req, res, next) => {
+  try {
+    const { level } = req.body;
+    if (level !== null && level !== undefined && !VALID_SKILL_LEVELS.includes(level))
+      return res.status(400).json({ error: 'Invalid skill level' });
+    await userService.setSkillTag(req.params.id, req.params.gameId, level ?? null);
+    return res.status(200).json({ message: 'Skill tag updated' });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+const getUserAchievements = async (req, res, next) => {
+  try {
+    const result = await userService.getUserGameAchievements(req.params.id, req.params.platform, req.params.gameId);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
 module.exports = {
   getMyProfile, getProfile, createProfile, updateProfile,
   getSettings, createSettings, updateSettings,
   deleteUser, searchUsers, getRecommendations,
   getFavorites, addFavorite, removeFavorite,
   getProfileGames, addProfileGame, removeProfileGame,
+  setSkillTag, setStatus,
   getUserGameAchievements,
 };

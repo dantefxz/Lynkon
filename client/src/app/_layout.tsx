@@ -3,12 +3,14 @@ import { Stack, useRouter, useSegments, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Animated, Dimensions } from 'react-native';
+import { View, Animated, Dimensions, AppState } from 'react-native';
+import { userApi } from '@/services/api';
 import { Image } from 'expo-image';
 import { I18nextProvider } from 'react-i18next';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { UnreadProvider } from '@/context/UnreadContext';
 import i18n from '@/i18n';
 
 const SPLASH_MIN_MS = 2500;
@@ -49,8 +51,32 @@ function RootGuard() {
     }
   }, [isLoading]);
 
+  // Presencia: offline al cerrar/minimizar, heartbeat cada 60s en foreground
   useEffect(() => {
-    if (showSplash || isLoading) return;
+    if (!isAuthenticated) return;
+
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        userApi.setStatus(false).catch(() => {});
+      } else if (state === 'active') {
+        userApi.setStatus(true).catch(() => {});
+      }
+    });
+
+    const heartbeat = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        userApi.setStatus(true).catch(() => {});
+      }
+    }, 60_000);
+
+    return () => {
+      sub.remove();
+      clearInterval(heartbeat);
+    };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isLoading) return;
 
     const rootSegment = segments[0] as string | undefined;
     const inAuthGroup = rootSegment === 'auth';
@@ -60,10 +86,10 @@ function RootGuard() {
       if (!inAuthGroup && !inHome) {
         router.replace('/home' as Href);
       }
-    } else if (inAuthGroup || inHome) {
+    } else if (inAuthGroup || inHome || !rootSegment) {
       router.replace('/tabs/profile');
     }
-  }, [showSplash, isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments]);
 
   return (
     <>
@@ -112,8 +138,10 @@ export default function RootLayout() {
           <LanguageProvider>
             <ThemeProvider>
               <AuthProvider>
-                <StatusBarWrapper />
-                <RootGuard />
+                <UnreadProvider>
+                  <StatusBarWrapper />
+                  <RootGuard />
+                </UnreadProvider>
               </AuthProvider>
             </ThemeProvider>
           </LanguageProvider>

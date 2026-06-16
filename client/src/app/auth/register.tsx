@@ -125,7 +125,7 @@ export default function RegisterScreen() {
   };
 
   const textFields = [
-    { labelKey: 'auth.register.email', value: email, setter: setEmail, icon: 'mail-outline', placeholder: 'tu@email.com', type: 'email-address' },
+    { labelKey: 'auth.register.email', value: email, setter: setEmail, icon: 'mail-outline', placeholder: t('auth.register.emailPlaceholder'), type: 'email-address' },
   ];
 
   const passwordBorderColor = !passwordTouched ? colors.cardBorder : passwordOk ? '#22C55E' : '#EF4444';

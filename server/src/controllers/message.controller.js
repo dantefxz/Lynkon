@@ -34,6 +34,13 @@ const sendMessage = async (req, res, next) => {
   }
 };
 
+const markConversationRead = async (req, res, next) => {
+  try {
+    await messageService.markConversationRead(req.user.uid, req.params.friendId);
+    return res.status(200).json({ message: 'Conversation marked as read' });
+  } catch (err) { next(err); }
+};
+
 const markAsRead = async (req, res, next) => {
   try {
     const { data, errors } = parseMarkAsReadDTO(req.body);
@@ -54,4 +61,4 @@ const deleteConversation = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getConversations, getMessages, sendMessage, markAsRead, deleteConversation };
+module.exports = { getConversations, getMessages, sendMessage, markAsRead, markConversationRead, deleteConversation };

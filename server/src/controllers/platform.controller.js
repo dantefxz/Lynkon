@@ -135,7 +135,7 @@ const syncPlatform = async (req, res, next) => {
 
     const platformUserId = await getUserPlatformCredential(userId, platform);
 
-    await Promise.all([
+    const [, freshGames] = await Promise.all([
       SERVICE_MAP[platform].getStats(platformUserId),
       SERVICE_MAP[platform].getGames(platformUserId),
     ]);
@@ -144,13 +144,24 @@ const syncPlatform = async (req, res, next) => {
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: 'User not found' });
 
-    const platforms = snap.data().platforms || [];
+    const data    = snap.data();
     const updatedAt = new Date().toISOString();
-    const updatedPlatforms = platforms.map((p) => (
-      p.platform === platform ? { ...p, linkedAt: updatedAt } : p
-    ));
 
-    await ref.update({ platforms: updatedPlatforms });
+    // gameId → playtimeHours fresco desde la plataforma
+    const freshMap = Object.fromEntries(freshGames.map((g) => [g.gameId, g.playtimeHours]));
+
+    const updateHours = (list) =>
+      (list || []).map((g) =>
+        g.platform === platform && freshMap[g.gameId] !== undefined
+          ? { ...g, playtimeHours: freshMap[g.gameId] }
+          : g,
+      );
+
+    await ref.update({
+      platforms:     (data.platforms || []).map((p) => p.platform === platform ? { ...p, linkedAt: updatedAt } : p),
+      favoriteGames: updateHours(data.favoriteGames),
+      profileGames:  updateHours(data.profileGames),
+    });
 
     return res.status(200).json({ message: `${platform} synchronized successfully`, platform, linkedAt: updatedAt });
   } catch (err) { next(err); }

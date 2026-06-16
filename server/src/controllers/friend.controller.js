@@ -21,6 +21,23 @@ const getFriendRequests = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const cancelSentRequest = async (req, res, next) => {
+  try {
+    await friendService.cancelFriendRequest(req.user.uid, req.params.requestId);
+    return res.status(200).json({ message: 'Friend request cancelled' });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
+const getSentRequests = async (req, res, next) => {
+  try {
+    const requests = await friendService.getSentFriendRequests(req.user.uid);
+    return res.status(200).json({ requests });
+  } catch (err) { next(err); }
+};
+
 const sendFriendRequest = async (req, res, next) => {
   try {
     const { data, errors } = parseSendFriendRequestDTO(req.body, req.user.uid);
@@ -59,4 +76,4 @@ const removeFriend = async (req, res, next) => {
   }
 };
 
-module.exports = { getFriends, getFriendRequests, sendFriendRequest, respondToRequest, removeFriend };
+module.exports = { getFriends, getFriendRequests, getSentRequests, cancelSentRequest, sendFriendRequest, respondToRequest, removeFriend };

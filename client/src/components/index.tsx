@@ -299,41 +299,59 @@ const pcStyles = StyleSheet.create({
 
 // ─── ChatRow ──────────────────────────────────────────────────────────────────
 export function ChatRow({
-  name,
-  avatar,
-  lastMessage,
-  timestamp,
-  onPress,
+  name, avatar, lastMessage, timestamp, isOnline, unreadCount, onPress, onRemove,
 }: {
   name: string;
   avatar?: string;
   lastMessage?: string;
   timestamp?: string;
+  isOnline?: boolean;
+  unreadCount?: number;
   onPress?: () => void;
+  onRemove?: () => void;
 }) {
   const { colors } = useTheme();
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
+  const badgeCount = unreadCount && unreadCount > 0 ? (unreadCount > 99 ? '+99' : String(unreadCount)) : null;
   return (
     <TouchableOpacity
       onPress={onPress}
       style={[crStyles.row, { borderBottomColor: colors.border }]}
     >
-      <Image source={avatarSource} style={crStyles.avatar} />
+      <View style={crStyles.avatarWrap}>
+        <Image source={avatarSource} style={crStyles.avatar} />
+        {isOnline && <View style={[crStyles.dot, { backgroundColor: '#22C55E' }]} />}
+        {badgeCount && (
+          <View style={crStyles.badge}>
+            <Text style={crStyles.badgeText}>{badgeCount}</Text>
+          </View>
+        )}
+      </View>
       <View style={crStyles.content}>
-        <Text style={[crStyles.name, { color: colors.text }]}>{name}</Text>
-        {lastMessage ? <Text style={[crStyles.msg, { color: colors.textMuted }]} numberOfLines={1}>{lastMessage}</Text> : null}
+        <Text style={[crStyles.name, { color: colors.text, fontWeight: badgeCount ? '700' : '600' }]}>{name}</Text>
+        {lastMessage ? <Text style={[crStyles.msg, { color: badgeCount ? colors.text : colors.textMuted, fontWeight: badgeCount ? '600' : '400' }]} numberOfLines={1}>{lastMessage}</Text> : null}
       </View>
       {timestamp ? <Text style={[crStyles.time, { color: colors.textMuted }]}>{timestamp}</Text> : null}
+      {onRemove && (
+        <TouchableOpacity onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={crStyles.removeBtn}>
+          <MaterialIcons name="person-remove" size={rw(18)} color={colors.textMuted} />
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 }
 const crStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: rh(12), paddingHorizontal: rs.md, borderBottomWidth: 1 },
-  avatar: { width: rw(44), height: rw(44), borderRadius: rw(22), marginRight: rs.md },
-  content: { flex: 1 },
-  name: { fontSize: rf(15), fontWeight: '600' },
-  msg: { fontSize: rf(13), marginTop: rh(2) },
-  time: { fontSize: rf(12) },
+  row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: rh(12), paddingHorizontal: rs.md, borderBottomWidth: 1 },
+  avatarWrap:{ position: 'relative' },
+  avatar:    { width: rw(44), height: rw(44), borderRadius: rw(22), marginRight: rs.md },
+  dot:       { position: 'absolute', bottom: 0, right: rs.md, width: rw(11), height: rw(11), borderRadius: rw(6), borderWidth: 2, borderColor: '#fff' },
+  badge:     { position: 'absolute', top: -rh(3), right: rs.md - rw(6), minWidth: rw(18), height: rw(18), borderRadius: rw(9), backgroundColor: '#EF4444', borderWidth: 1.5, borderColor: '#fff', alignItems: 'center', justifyContent: 'center', paddingHorizontal: rw(3) },
+  badgeText: { color: '#fff', fontSize: rf(9), fontWeight: '700', lineHeight: rf(12) },
+  content:   { flex: 1 },
+  name:      { fontSize: rf(15), fontWeight: '600' },
+  msg:       { fontSize: rf(13), marginTop: rh(2) },
+  time:      { fontSize: rf(12) },
+  removeBtn: { padding: rw(4), marginLeft: rw(8) },
 });
 
 // ─── ChatBubble ───────────────────────────────────────────────────────────────

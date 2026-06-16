@@ -5,6 +5,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useUnread } from '@/context/UnreadContext';
 import { rw, rh, rf } from '@/utils/responsive';
 import { resolveAvatarSource } from '@/constants/avatars';
 
@@ -39,10 +40,15 @@ function AvatarTabIcon({ focused, avatar, colors, seed }: { focused: boolean; av
 }
 
 export default function TabsLayout() {
-  const { user }   = useAuth();
-  const { colors } = useTheme();
-  const { t }      = useTranslation();
-  const insets     = useSafeAreaInsets();
+  const { user }           = useAuth();
+  const { colors }         = useTheme();
+  const { t }              = useTranslation();
+  const insets             = useSafeAreaInsets();
+  const { unreadConvCount } = useUnread();
+
+  const socialBadge = unreadConvCount > 0
+    ? (unreadConvCount > 99 ? '+99' : unreadConvCount)
+    : undefined;
 
   return (
     <Tabs
@@ -71,16 +77,9 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => (
             <MaterialIcons name="forum" size={rw(24)} color={color} />
           ),
+          tabBarBadge: socialBadge,
+          tabBarBadgeStyle: { backgroundColor: '#EF4444', fontSize: rf(10) },
         }}
-        listeners={({ navigation, route }) => ({
-          tabPress: (e) => {
-            const state = navigation.getState();
-            const currentRoute = state?.routes?.[state.index];
-            if (currentRoute?.name === route.name) {
-              e.preventDefault();
-            }
-          },
-        })}
       />
       <Tabs.Screen
         name="profile"

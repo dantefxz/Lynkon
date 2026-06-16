@@ -88,6 +88,12 @@ export const userApi = {
   getUserGameAchievements: (userId: string, platform: string, gameId: string) =>
     api.get(`/users/${userId}/platforms/${platform}/games/${gameId}/achievements`),
 
+  setSkillTag: (userId: string, gameId: string, level: string | null) =>
+    api.patch(`/users/${userId}/skills/${gameId}`, { level }),
+
+  setStatus: (isOnline: boolean) =>
+    api.patch('/users/me/status', { isOnline }),
+
   deleteAccount: (userId: string, password: string) =>
     api.delete(`/users/${userId}`, { data: { password } }),
 };
@@ -132,6 +138,8 @@ export const friendApi = {
   getFriends: () => api.get('/friends/me'),
 
   getFriendRequests: () => api.get('/friends/me/requests'),
+  getSentRequests:    () => api.get('/friends/me/requests/sent'),
+  cancelSentRequest: (requestId: string) => api.delete(`/friends/me/requests/sent/${requestId}`),
 
   sendFriendRequest: (targetUserId: string) =>
     api.post('/friends/me/requests', { targetUserId }),
@@ -148,12 +156,14 @@ export const messageApi = {
 
   getMessages: (friendId: string) => api.get(`/messages/me/${friendId}`),
 
-  sendMessage: (toUserId: string, message: string) =>
-    api.post('/messages/me', { toUserId, message }),
+  sendMessage: (toUserId: string, text: string) =>
+    api.post('/messages/me', { toUserId, text }),
 
-  deleteConversation: () => api.delete('/messages/me'),
+  deleteConversation: (friendId: string) => api.delete('/messages/me', { data: { friendId } }),
 
   markAsRead: (messageId: string) => api.patch(`/messages/me/${messageId}`),
+
+  markConversationRead: (friendId: string) => api.patch(`/messages/me/${friendId}/read`),
 };
 
 export default api;

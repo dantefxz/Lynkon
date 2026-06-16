@@ -99,7 +99,8 @@ router.delete('/me', authenticate, blockUnder16, ctrl.deleteConversation);
  *       200:
  *         description: Lista de mensajes ordenados por fecha
  */
-router.get('/me/:friendId',   authenticate, blockUnder16, ctrl.getMessages);
+router.get('/me/:friendId',         authenticate, blockUnder16, ctrl.getMessages);
+router.patch('/me/:friendId/read',  authenticate, blockUnder16, ctrl.markConversationRead);
 
 /**
  * @swagger

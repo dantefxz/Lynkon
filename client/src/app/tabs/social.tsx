@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -7,7 +7,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { friendApi, messageApi, userApi } from '@/services/api';
 import { getProfileAvatar } from '@/services/mockData';
 import { rw, rh, rf, rs } from '@/utils/responsive';
@@ -15,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { PlayerCard, ChatRow, ChatBubble, SearchBar } from '@/components';
 import { useAuth } from '@/context/AuthContext';
+import { useUnread } from '@/context/UnreadContext';
 
 interface User {
   id: string;
@@ -38,6 +40,33 @@ interface IncomingRequest {
   username: string;
   avatarId: string;
 }
+
+// ─── Helpers de formato de mensajes ──────────────────────────────────────────
+const formatMsgTime = (iso: string) => {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const getMsgDay = (iso: string) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+};
+
+const formatDayLabel = (iso: string, locale: string) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (sameDay(d, today)) return d.toLocaleDateString(locale, { weekday: 'long' });
+  if (sameDay(d, yesterday)) return d.toLocaleDateString(locale, { weekday: 'long' });
+  const diffDays = Math.floor((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 7) return d.toLocaleDateString(locale, { weekday: 'long' });
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
 // ─── Bloqueo para menores de 16 ──────────────────────────────────────────────
 function Under16Block() {
@@ -105,7 +134,7 @@ export default function SocialScreen() {
 
 function SocialContent() {
   const { colors } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user: currentUser } = useAuth();
   const router = useRouter();
 
@@ -118,68 +147,114 @@ function SocialContent() {
   const [searchQuery, setSearchQuery]           = useState('');
   const [searchResults, setSearchResults]       = useState<User[]>([]);
   const [loading, setLoading]                   = useState(true);
-  const [pendingRequests, setPendingRequests]   = useState<string[]>([]);
+  const [pendingRequests, setPendingRequests]   = useState<Record<string, string>>({});
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
+  const [chatMenuVisible, setChatMenuVisible]   = useState(false);
+  const [unreadCounts, setUnreadCounts]         = useState<Record<string, number>>({});
+  const { setUnreadConvCount }                  = useUnread();
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef     = useRef<ScrollView>(null);
+  const isFirstLoad   = useRef(true);
+  const navigation    = useNavigation();
 
-  // ── Carga inicial ──────────────────────────────────────────────────────────
+  // Sincronizar conteo de conversaciones con no-leídos al badge del tab
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [friendsRes, requestsRes, recsRes] = await Promise.allSettled([
-          friendApi.getFriends(),
-          friendApi.getFriendRequests(),
-          currentUser?.id ? userApi.getRecommendations(currentUser.id) : Promise.reject(),
-        ]);
+    setUnreadConvCount(Object.keys(unreadCounts).length);
+  }, [unreadCounts]);
 
-        if (friendsRes.status === 'fulfilled') {
-          const arr = (friendsRes.value.data as any)?.friends || [];
-          const serverFriends: User[] = arr.map((f: any) => ({
-            id:            f.uid || f.id || f.userId,
-            name:          f.username || f.name,
-            avatar:        f.avatarId || f.avatar || getProfileAvatar(f.uid || f.id || ''),
-            gamesInCommon: f.gamesInCommon || 0,
-            isOnline:      f.isOnline || false,
-          }));
-          setFriends(serverFriends);
-          setFriendIds(new Set(serverFriends.map((f) => f.id)));
-        }
+  // Resetear a vista base al tocar el tab de social
+  useEffect(() => {
+    const unsub = navigation.addListener('tabPress' as any, () => {
+      setSelectedUser(null);
+      setSearchQuery('');
+      setSearchResults([]);
+      setChatMenuVisible(false);
+    });
+    return unsub;
+  }, [navigation]);
 
-        if (requestsRes.status === 'fulfilled') {
-          const arr = (requestsRes.value.data as any)?.requests || [];
-          setIncomingRequests(
-            arr
-              .map((r: any) => ({
-                requestId:  r.requestId,
-                fromUserId: r.from?.uid || r.from?.id || '',
-                username:   r.from?.username || '',
-                avatarId:   r.from?.avatarId || '',
-              }))
-              .filter((r: IncomingRequest) => r.fromUserId),
-          );
+  // ── Carga (inicial con spinner, silenciosa en re-foco) ─────────────────────
+  useFocusEffect(
+    useCallback(() => {
+      const load = async () => {
+        if (isFirstLoad.current) {
+          setLoading(true);
+          isFirstLoad.current = false;
         }
+        try {
+          const [friendsRes, requestsRes, sentRes, recsRes, convsRes] = await Promise.allSettled([
+            friendApi.getFriends(),
+            friendApi.getFriendRequests(),
+            friendApi.getSentRequests(),
+            currentUser?.id ? userApi.getRecommendations(currentUser.id) : Promise.reject(),
+            messageApi.getConversations(),
+          ]);
 
-        if (recsRes.status === 'fulfilled') {
-          const arr = (recsRes.value.data as any)?.recommendations || recsRes.value.data || [];
-          setSuggestions(
-            (Array.isArray(arr) ? arr : []).map((r: any) => ({
-              id:            r.uid,
-              name:          r.username,
-              avatar:        r.avatarId || getProfileAvatar(r.uid),
-              gamesInCommon: r.commonGamesCount || 0,
-              isOnline:      false,
-            })),
-          );
+          if (friendsRes.status === 'fulfilled') {
+            const arr = (friendsRes.value.data as any)?.friends || [];
+            const serverFriends: User[] = arr.map((f: any) => ({
+              id:            f.uid || f.id || f.userId,
+              name:          f.username || f.name,
+              avatar:        f.avatarId || f.avatar || getProfileAvatar(f.uid || f.id || ''),
+              gamesInCommon: f.gamesInCommon || 0,
+              isOnline:      f.isOnline || false,
+            }));
+            setFriends(serverFriends);
+            setFriendIds(new Set(serverFriends.map((f) => f.id)));
+          }
+
+          if (requestsRes.status === 'fulfilled') {
+            const arr = (requestsRes.value.data as any)?.requests || [];
+            setIncomingRequests(
+              arr
+                .map((r: any) => ({
+                  requestId:  r.requestId,
+                  fromUserId: r.from?.uid || r.from?.id || '',
+                  username:   r.from?.username || '',
+                  avatarId:   r.from?.avatarId || '',
+                }))
+                .filter((r: IncomingRequest) => r.fromUserId),
+            );
+          }
+
+          if (sentRes.status === 'fulfilled') {
+            const arr = (sentRes.value.data as any)?.requests || [];
+            const map: Record<string, string> = {};
+            arr.forEach((r: any) => { if (r.toUserId) map[r.toUserId] = r.requestId; });
+            setPendingRequests(map);
+          }
+
+          if (recsRes.status === 'fulfilled') {
+            const arr = (recsRes.value.data as any)?.recommendations || recsRes.value.data || [];
+            setSuggestions(
+              (Array.isArray(arr) ? arr : []).map((r: any) => ({
+                id:            r.uid,
+                name:          r.username,
+                avatar:        r.avatarId || getProfileAvatar(r.uid),
+                gamesInCommon: r.commonGamesCount || 0,
+                isOnline:      false,
+              })),
+            );
+          }
+
+          if (convsRes.status === 'fulfilled') {
+            const convs: any[] = (convsRes.value.data as any)?.conversations || [];
+            const counts: Record<string, number> = {};
+            convs.forEach((c: any) => {
+              const uid = c.with?.uid;
+              if (uid && c.unreadCount > 0) counts[uid] = c.unreadCount;
+            });
+            setUnreadCounts(counts);
+          }
+        } catch {
+          setFriends([]);
+        } finally {
+          setLoading(false);
         }
-      } catch {
-        setFriends([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [currentUser?.id]);
+      };
+      load();
+    }, [currentUser?.id]),
+  );
 
   // ── Polling en tiempo real cuando hay chat abierto ─────────────────────────
   useEffect(() => {
@@ -187,19 +262,37 @@ function SocialContent() {
     const poll = setInterval(async () => {
       try {
         const res = await messageApi.getMessages(selectedUser.id);
-        const data: any[] = (res.data as any) || [];
-        if (!Array.isArray(data) || data.length === 0) return;
+        const data: any[] = (res.data as any)?.messages || [];
+        if (data.length === 0) return;
         setMessages(data.map((m: any) => ({
           id:        m.id || m.messageId,
           userId:    m.fromUserId,
-          message:   m.content || m.text || m.message || '',
-          timestamp: m.sentAt || m.timestamp || m.createdAt || '',
-          isOwn:     m.fromUserId === currentUser?.id || m.isOwn || false,
+          message:   m.text || '',
+          timestamp: m.sentAt || '',
+          isOwn:     m.fromUserId === currentUser?.id,
         })));
       } catch {}
     }, 3000);
     return () => clearInterval(poll);
   }, [selectedUser?.id, currentUser?.id]);
+
+  // ── Polling de no leídos cuando no hay chat abierto ───────────────────────
+  useEffect(() => {
+    if (selectedUser) return;
+    const poll = setInterval(async () => {
+      try {
+        const res = await messageApi.getConversations();
+        const convs: any[] = (res.data as any)?.conversations || [];
+        const counts: Record<string, number> = {};
+        convs.forEach((c: any) => {
+          const uid = c.with?.uid;
+          if (uid && c.unreadCount > 0) counts[uid] = c.unreadCount;
+        });
+        setUnreadCounts(counts);
+      } catch {}
+    }, 5000);
+    return () => clearInterval(poll);
+  }, [selectedUser]);
 
   // ── Búsqueda con debounce (400ms) ────────────────────────────────────────
   const handleSearch = (q: string) => {
@@ -234,18 +327,19 @@ function SocialContent() {
     }
     setSelectedUser(u);
     setMessages([]);
+    setChatMenuVisible(false);
+    setUnreadCounts((prev) => { const next = { ...prev }; delete next[u.id]; return next; });
+    messageApi.markConversationRead(u.id).catch(() => {});
     try {
       const res = await messageApi.getMessages(u.id);
-      const data: any[] = (res.data as any) || [];
-      if (Array.isArray(data)) {
-        setMessages(data.map((m: any) => ({
-          id:        m.id || m.messageId,
-          userId:    m.fromUserId,
-          message:   m.content || m.text || m.message || '',
-          timestamp: m.sentAt || m.timestamp || m.createdAt || '',
-          isOwn:     m.fromUserId === currentUser?.id || m.isOwn || false,
-        })));
-      }
+      const data: any[] = (res.data as any)?.messages || [];
+      setMessages(data.map((m: any) => ({
+        id:        m.id || m.messageId,
+        userId:    m.fromUserId,
+        message:   m.text || '',
+        timestamp: m.sentAt || '',
+        isOwn:     m.fromUserId === currentUser?.id,
+      })));
     } catch {}
   };
 
@@ -256,7 +350,7 @@ function SocialContent() {
       id:        `tmp_${Date.now()}`,
       userId:    currentUser?.id || 'own',
       message:   text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toISOString(),
       isOwn:     true,
     };
     setMessages((prev) => [...prev, optimistic]);
@@ -266,11 +360,63 @@ function SocialContent() {
 
   // ── Amigos ─────────────────────────────────────────────────────────────────
   const handleAddFriend = async (userId: string) => {
-    if (pendingRequests.includes(userId)) return;
+    if (userId in pendingRequests) return;
     try {
-      await friendApi.sendFriendRequest(userId);
-      setPendingRequests((prev) => [...prev, userId]);
+      const res = await friendApi.sendFriendRequest(userId);
+      const requestId = (res.data as any)?.requestId || '';
+      setPendingRequests((prev) => ({ ...prev, [userId]: requestId }));
     } catch {}
+  };
+
+  const handleCancelRequest = async (userId: string) => {
+    const requestId = pendingRequests[userId];
+    if (!requestId) return;
+    try {
+      await friendApi.cancelSentRequest(requestId);
+      setPendingRequests((prev) => { const next = { ...prev }; delete next[userId]; return next; });
+    } catch {}
+  };
+
+  const handleRemoveFriend = (userId: string, name: string) => {
+    Alert.alert(
+      t('social.removeFriendTitle'),
+      t('social.removeFriendMsg', { name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('social.removeFriend'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await friendApi.removeFriend(userId);
+              setFriends((prev) => prev.filter((f) => f.id !== userId));
+              setFriendIds((prev) => { const next = new Set(prev); next.delete(userId); return next; });
+            } catch {}
+          },
+        },
+      ],
+    );
+  };
+
+  const handleClearChat = () => {
+    if (!selectedUser) return;
+    Alert.alert(
+      t('social.clearChatTitle'),
+      t('social.clearChatMsg'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('social.clearChat'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await messageApi.deleteConversation(selectedUser.id);
+              setMessages([]);
+            } catch {}
+          },
+        },
+      ],
+    );
   };
 
   const handleAcceptRequest = async (requestId: string, fromUserId: string, username: string, avatarId: string) => {
@@ -294,7 +440,7 @@ function SocialContent() {
     if (friendIds.has(userId)) return { label: t('social.actions.message'), onAction: onChat };
     const inc = incomingRequests.find((r) => r.fromUserId === userId);
     if (inc) return { label: t('social.actions.accept'), onAction: () => handleAcceptRequest(inc.requestId, userId, inc.username, inc.avatarId) };
-    if (pendingRequests.includes(userId)) return { label: t('social.actions.pending'), onAction: () => {}, actionDisabled: true };
+    if (userId in pendingRequests) return { label: t('social.actions.cancelRequest'), onAction: () => handleCancelRequest(userId), actionDisabled: false };
     return { label: t('social.actions.add'), onAction: () => handleAddFriend(userId) };
   };
 
@@ -314,8 +460,66 @@ function SocialContent() {
                 {selectedUser.isOnline ? t('social.online') : t('social.offline')}
               </Text>
             </TouchableOpacity>
-            <MaterialIcons name="chevron-right" size={rw(18)} color={colors.textMuted} />
+            <TouchableOpacity onPress={() => setChatMenuVisible((v) => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MaterialIcons name="more-vert" size={rw(24)} color={colors.textMuted} />
+            </TouchableOpacity>
           </View>
+
+          {chatMenuVisible && (
+            <>
+              <TouchableOpacity
+                style={styles.chatMenuBackdrop}
+                onPress={() => setChatMenuVisible(false)}
+                activeOpacity={1}
+              />
+              <View style={[styles.chatMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <TouchableOpacity
+                  style={styles.chatMenuItem}
+                  onPress={() => { setChatMenuVisible(false); router.push(`/user/${selectedUser.id}`); }}
+                >
+                  <MaterialIcons name="person" size={rw(18)} color={colors.purple} />
+                  <Text style={[styles.chatMenuText, { color: colors.text }]}>{t('social.viewProfile')}</Text>
+                </TouchableOpacity>
+                <View style={[styles.chatMenuDivider, { backgroundColor: colors.border }]} />
+                <TouchableOpacity
+                  style={styles.chatMenuItem}
+                  onPress={() => {
+                    setChatMenuVisible(false);
+                    Alert.alert(
+                      t('social.removeFriendTitle'),
+                      t('social.removeFriendMsg', { name: selectedUser.name }),
+                      [
+                        { text: t('common.cancel'), style: 'cancel' },
+                        {
+                          text: t('social.removeFriend'),
+                          style: 'destructive',
+                          onPress: async () => {
+                            try {
+                              await friendApi.removeFriend(selectedUser.id);
+                              setFriends((prev) => prev.filter((f) => f.id !== selectedUser.id));
+                              setFriendIds((prev) => { const next = new Set(prev); next.delete(selectedUser.id); return next; });
+                              setSelectedUser(null);
+                            } catch {}
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                >
+                  <MaterialIcons name="person-remove" size={rw(18)} color="#EF4444" />
+                  <Text style={[styles.chatMenuText, { color: '#EF4444' }]}>{t('social.removeFriend')}</Text>
+                </TouchableOpacity>
+                <View style={[styles.chatMenuDivider, { backgroundColor: colors.border }]} />
+                <TouchableOpacity
+                  style={styles.chatMenuItem}
+                  onPress={() => { setChatMenuVisible(false); handleClearChat(); }}
+                >
+                  <MaterialIcons name="delete-outline" size={rw(18)} color={colors.textMuted} />
+                  <Text style={[styles.chatMenuText, { color: colors.textMuted }]}>{t('social.clearChat')}</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
 
           <ScrollView
             ref={scrollRef}
@@ -328,14 +532,29 @@ function SocialContent() {
                 {t('social.startConversation', { name: selectedUser.name })}
               </Text>
             )}
-            {messages.map((msg) => (
-              <ChatBubble
-                key={msg.id}
-                message={msg.message}
-                timestamp={msg.timestamp}
-                isOwn={msg.isOwn}
-              />
-            ))}
+            {messages.reduce<React.ReactNode[]>((acc, msg, i) => {
+              const day     = getMsgDay(msg.timestamp);
+              const prevDay = i > 0 ? getMsgDay(messages[i - 1].timestamp) : null;
+              if (day !== prevDay) {
+                acc.push(
+                  <Text
+                    key={`day-${day}`}
+                    style={[styles.dateSeparator, { color: colors.textMuted }]}
+                  >
+                    {formatDayLabel(msg.timestamp, i18n.language)}
+                  </Text>,
+                );
+              }
+              acc.push(
+                <ChatBubble
+                  key={msg.id}
+                  message={msg.message}
+                  timestamp={formatMsgTime(msg.timestamp)}
+                  isOwn={msg.isOwn}
+                />,
+              );
+              return acc;
+            }, [])}
           </ScrollView>
 
           <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
@@ -478,7 +697,9 @@ function SocialContent() {
                       name={u.name}
                       avatar={u.avatar}
                       isOnline={u.isOnline}
+                      unreadCount={unreadCounts[u.id] || 0}
                       onPress={() => openConversation(u)}
+                      onRemove={() => handleRemoveFriend(u.id, u.name)}
                     />
                   );
                 })
@@ -505,6 +726,7 @@ const styles = StyleSheet.create({
   sectionSubtitle:  { fontSize: rf(12), marginTop: -rh(4) },
   emptyBox:         { alignItems: 'center', paddingVertical: rh(28), gap: rh(10) },
   emptyText:        { fontSize: rf(14), textAlign: 'center' },
+  dateSeparator:    { fontSize: rf(12), textAlign: 'center', marginVertical: rh(8), textTransform: 'capitalize' },
   // Solicitudes
   requestRow:       { borderRadius: rw(14), borderWidth: 1, overflow: 'hidden' },
   requestActions:   { flexDirection: 'row', alignItems: 'center', gap: rw(8), paddingHorizontal: rw(12), paddingBottom: rh(10) },
@@ -512,11 +734,16 @@ const styles = StyleSheet.create({
   acceptBtnText:    { color: '#fff', fontSize: rf(13), fontWeight: '600' },
   declineBtn:       { width: rw(36), height: rw(36), alignItems: 'center', justifyContent: 'center', borderRadius: rw(18), borderWidth: 1 },
   // Chat
-  chatHeader:       { flexDirection: 'row', alignItems: 'center', padding: rs.md, borderBottomWidth: 1, gap: rw(12) },
-  backBtn:          {},
-  chatUserInfo:     { flex: 1 },
-  chatName:         { fontSize: rf(16), fontWeight: '600' },
-  chatStatus:       { fontSize: rf(12) },
+  chatHeader:        { flexDirection: 'row', alignItems: 'center', padding: rs.md, borderBottomWidth: 1, gap: rw(12) },
+  backBtn:           {},
+  chatUserInfo:      { flex: 1 },
+  chatName:          { fontSize: rf(16), fontWeight: '600' },
+  chatStatus:        { fontSize: rf(12) },
+  chatMenuBackdrop:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 },
+  chatMenu:          { position: 'absolute', top: rh(62), right: rs.md, zIndex: 100, borderRadius: rw(10), borderWidth: 1, minWidth: rw(180), elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, overflow: 'hidden' },
+  chatMenuItem:      { flexDirection: 'row', alignItems: 'center', padding: rs.md, gap: rw(10) },
+  chatMenuText:      { fontSize: rf(14) },
+  chatMenuDivider:   { height: 1 },
   messagesArea:     { flex: 1 },
   inputBar:         { flexDirection: 'row', alignItems: 'flex-end', padding: rs.md, borderTopWidth: 1, gap: rw(10) },
   msgInput:         {

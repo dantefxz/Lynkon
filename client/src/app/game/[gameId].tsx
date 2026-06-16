@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { platformApi, userApi } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 import { rw, rh, rf, rs, SCREEN_WIDTH } from '@/utils/responsive';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
@@ -42,6 +43,7 @@ function formatDate(ts: number | string | null, locale?: string): string {
 export default function GameDetailScreen() {
   const { colors } = useTheme();
   const { t, i18n } = useTranslation();
+  const { user: currentUser } = useAuth();
   const router    = useRouter();
   const {
     gameId,
@@ -50,6 +52,7 @@ export default function GameDetailScreen() {
     name: nameParam,
     cover: coverParam,
     totalHours: totalHoursParam,
+    skillLevel: skillLevelParam,
   } = useLocalSearchParams<{
     gameId: string;
     platform?: string;
@@ -57,6 +60,7 @@ export default function GameDetailScreen() {
     name?: string;
     cover?: string;
     totalHours?: string;
+    skillLevel?: string;
   }>();
 
   const [game,         setGame]         = useState<GameDetail | null>(null);
@@ -159,13 +163,23 @@ export default function GameDetailScreen() {
   }, [gameId, platformParam, viewingUserId]);
 
   useEffect(() => {
-    if (gameId) getSkillLevel(gameId).then(setSkillLevelState);
-  }, [gameId]);
+    if (viewingUserId) {
+      const parsed = (SKILL_LEVELS as readonly string[]).includes(skillLevelParam ?? '')
+        ? skillLevelParam as SkillLevel
+        : null;
+      setSkillLevelState(parsed);
+    } else if (gameId) {
+      getSkillLevel(gameId).then(setSkillLevelState);
+    }
+  }, [gameId, viewingUserId, skillLevelParam]);
 
   const handleSkillLevel = async (level: SkillLevel) => {
     const next = skillLevel === level ? null : level;
     setSkillLevelState(next);
-    if (gameId) await setSkillLevel(gameId, next);
+    if (gameId) {
+      await setSkillLevel(gameId, next);
+      if (currentUser?.id) userApi.setSkillTag(currentUser.id, gameId, next).catch(() => {});
+    }
   };
 
   if (loading) {
@@ -254,8 +268,22 @@ export default function GameDetailScreen() {
             )}
           </View>
 
-          {/* Nivel de habilidad — solo para el propio perfil */}
-          {!viewingUserId && (
+          {/* Nivel de habilidad — editable propio, read-only ajeno */}
+          {viewingUserId ? (
+            skillLevel ? (
+              <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.skillHeader}>
+                  <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />
+                  <Text style={[styles.skillTitle, { color: colors.text }]}>{t('game.skillLevel.title')}</Text>
+                  <View style={[styles.skillBadge, { backgroundColor: SKILL_COLORS[skillLevel] + '22', borderColor: SKILL_COLORS[skillLevel] }]}>
+                    <Text style={[styles.skillBadgeText, { color: SKILL_COLORS[skillLevel] }]}>
+                      {t(`game.skillLevel.${skillLevel}` as any)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null
+          ) : (
             <View style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.skillHeader}>
                 <MaterialIcons name="military-tech" size={rw(18)} color={colors.purple} />

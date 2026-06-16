@@ -44,7 +44,7 @@ export default function LoginScreen() {
               <Text style={[styles.label, { color: colors.purple }]}>{t('auth.login.email')}</Text>
               <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <MaterialIcons name="mail-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
-                <TextInput style={[styles.input, { color: colors.text }]} placeholder="tu@email.com" placeholderTextColor={colors.textMuted}
+                <TextInput style={[styles.input, { color: colors.text }]} placeholder={t('auth.login.emailPlaceholder')} placeholderTextColor={colors.textMuted}
                   value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
               </View>
             </View>

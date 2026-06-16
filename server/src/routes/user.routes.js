@@ -23,7 +23,8 @@ const { authenticate, authorizeOwner } = require('../middleware/auth.middleware'
  *       401:
  *         description: No autorizado
  */
-router.get('/me/profile', authenticate, ctrl.getMyProfile);
+router.get('/me/profile',    authenticate, ctrl.getMyProfile);
+router.patch('/me/status',  authenticate, ctrl.setStatus);
 
 /**
  * @swagger
@@ -363,6 +364,8 @@ router.delete('/:id/favorites/:gameId', authenticate, authorizeOwner, ctrl.remov
 router.get('/:id/profile-games',            authenticate,                 ctrl.getProfileGames);
 router.post('/:id/profile-games',           authenticate, authorizeOwner, ctrl.addProfileGame);
 router.delete('/:id/profile-games/:gameId', authenticate, authorizeOwner, ctrl.removeProfileGame);
+
+router.patch('/:id/skills/:gameId', authenticate, authorizeOwner, ctrl.setSkillTag);
 
 router.get('/:id/platforms/:platform/games/:gameId/achievements', authenticate, ctrl.getUserGameAchievements);
 

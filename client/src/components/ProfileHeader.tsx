@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf } from '@/utils/responsive';
 import { PLATFORM_LABELS, PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
@@ -24,28 +25,42 @@ export interface ProfileHeaderProps {
   onSync?: () => void;
   syncing?: boolean;
   onEditBio?: () => void;
+  onEditAvatar?: () => void;
 }
 
-export function ProfileHeader({ name, email, avatar, bio, stats, platforms = [], onSync, syncing, onEditBio }: ProfileHeaderProps) {
+export function ProfileHeader({ name, email, avatar, bio, stats, platforms = [], onSync, syncing, onEditBio, onEditAvatar }: ProfileHeaderProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const avatarSize = rw(72);
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.cardAlt }]}>
       <View style={styles.userRow}>
-        <View style={[
-          styles.avatarRing,
-          {
-            width: avatarSize + rw(6),
-            height: avatarSize + rw(6),
-            borderRadius: (avatarSize + rw(6)) / 2,
-            borderColor: colors.purple,
-            shadowColor: colors.purple,
-          },
-        ]}>
-          <Image source={avatarSource} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
-        </View>
+        <TouchableOpacity
+          onPress={onEditAvatar}
+          disabled={!onEditAvatar}
+          activeOpacity={onEditAvatar ? 0.8 : 1}
+          style={{ position: 'relative' }}
+        >
+          <View style={[
+            styles.avatarRing,
+            {
+              width: avatarSize + rw(6),
+              height: avatarSize + rw(6),
+              borderRadius: (avatarSize + rw(6)) / 2,
+              borderColor: colors.purple,
+              shadowColor: colors.purple,
+            },
+          ]}>
+            <Image source={avatarSource} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
+          </View>
+          {onEditAvatar && (
+            <View style={[styles.editAvatarBadge, { backgroundColor: colors.purple }]}>
+              <MaterialIcons name="edit" size={rw(11)} color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
         <View style={styles.userInfo}>
           <View style={styles.nameRow}>
             <Text style={[styles.name, { color: colors.text, flexShrink: 1 }]} numberOfLines={1}>{name}</Text>
@@ -64,7 +79,7 @@ export function ProfileHeader({ name, email, avatar, bio, stats, platforms = [],
               style={styles.bioRow}
             >
               <Text style={[styles.bio, { color: colors.textMuted, opacity: bio ? 1 : 0.5 }]} numberOfLines={2}>
-                {bio || 'Añadir descripción...'}
+                {bio || t('editProfile.bioHint')}
               </Text>
             </TouchableOpacity>
           ) : null}
@@ -141,4 +156,10 @@ const styles = StyleSheet.create({
   },
   platformLogo: { width: rw(14), height: rw(14) },
   platformName: { fontSize: rf(12), fontWeight: '500' },
+  editAvatarBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: rw(22), height: rw(22), borderRadius: rw(11),
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
 });

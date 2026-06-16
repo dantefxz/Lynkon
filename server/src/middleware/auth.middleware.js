@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { db } = require('../config/firebase');
 
 // must match the secret used when signing tokens in auth.service.js
 const JWT_SECRET = process.env.JWT_SECRET || 'lynkon-dev-secret-key-2026';
@@ -12,6 +13,7 @@ const authenticate = async (req, res, next) => {
   try {
     const token = header.split(' ')[1];
     req.user = jwt.verify(token, JWT_SECRET);
+    db.collection('users').doc(req.user.uid).update({ lastSeen: new Date().toISOString(), isOnline: true }).catch(() => {});
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired token' });

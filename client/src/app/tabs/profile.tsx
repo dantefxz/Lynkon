@@ -258,7 +258,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const totalHours = allGames.reduce((acc, g) => acc + g.totalHours, 0);
+  const totalHours = profileGames.reduce((acc, g) => acc + (g.playtimeHours || 0), 0);
   const totalGames = profileGames.length;
 
   // Set de IDs de juegos en el perfil (para el modal — usa el mismo key de allGames)
@@ -279,6 +279,7 @@ export default function ProfileScreen() {
           avatar={user?.avatar}
           bio={user?.bio}
           onEditBio={openEditProfile}
+          onEditAvatar={() => router.push('/settings/edit-profile')}
           stats={[
             { icon: 'sports-esports', iconColor: colors.purple, value: totalGames,        label: t('profile.gamesLabel') },
             { icon: 'schedule',       iconColor: '#60A5FA',      value: `${totalHours}h`, label: t('profile.hoursLabel')  },
@@ -486,33 +487,33 @@ export default function ProfileScreen() {
         <View style={styles.epOverlay}>
           <View style={[styles.epModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.epHeader}>
-              <Text style={[styles.epTitle, { color: colors.text }]}>Editar perfil</Text>
+              <Text style={[styles.epTitle, { color: colors.text }]}>{t('editProfile.title')}</Text>
               <TouchableOpacity onPress={() => setEditProfileVisible(false)}>
                 <MaterialIcons name="close" size={rw(22)} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.epLabel, { color: colors.purple }]}>Nombre</Text>
+            <Text style={[styles.epLabel, { color: colors.purple }]}>{t('editProfile.username')}</Text>
             <View style={[styles.epInputRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
               <MaterialIcons name="person-outline" size={rw(17)} color={colors.textMuted} />
               <TextInput
                 style={[styles.epInput, { color: colors.text }]}
                 value={editName}
                 onChangeText={setEditName}
-                placeholder="Tu nombre"
+                placeholder={t('editProfile.usernamePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
             </View>
 
-            <Text style={[styles.epLabel, { color: colors.purple }]}>Bio</Text>
+            <Text style={[styles.epLabel, { color: colors.purple }]}>{t('editProfile.bio')}</Text>
             <View style={[styles.epBioBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
               <TextInput
                 style={[styles.epBioInput, { color: colors.text }]}
                 value={editBio}
                 onChangeText={setEditBio}
-                placeholder="Añadir descripción..."
+                placeholder={t('editProfile.bioHint')}
                 placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={3}
@@ -530,7 +531,7 @@ export default function ProfileScreen() {
             >
               {editSaving
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.epSaveBtnText}>Guardar</Text>}
+                : <Text style={styles.epSaveBtnText}>{t('common.save')}</Text>}
             </TouchableOpacity>
           </View>
         </View>

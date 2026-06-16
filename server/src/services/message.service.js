@@ -16,7 +16,7 @@ const getConversations = async (userId) => {
 
   const conversations = await Promise.all(snap.docs.map(async (doc) => {
     const d        = doc.data();
-    if (d[`deletedBy_${userId}`]) return null;
+    if (d[`deletedBy_${userId}`] && !(d[`unread_${userId}`] > 0)) return null;
 
     const otherUid  = d.participants.find((id) => id !== userId);
     const otherSnap = await db.collection('users').doc(otherUid).get();
@@ -38,7 +38,11 @@ const getConversations = async (userId) => {
 };
 
 const getMessages = async (userId, friendId, limit = 50, before = null) => {
-  let query = db.collection('conversations').doc(convId(userId, friendId))
+  const cid     = convId(userId, friendId);
+  const convSnap = await db.collection('conversations').doc(cid).get();
+  const deletedAt = convSnap.exists ? convSnap.data()[`deletedAt_${userId}`] : null;
+
+  let query = db.collection('conversations').doc(cid)
     .collection('messages')
     .orderBy('sentAt', 'desc')
     .limit(Number(limit));
@@ -46,7 +50,10 @@ const getMessages = async (userId, friendId, limit = 50, before = null) => {
   if (before) query = query.startAfter(new Date(before));
 
   const snap = await query.get();
-  return snap.docs.map((d) => serializeMessage(d.id, d.data())).reverse();
+  return snap.docs
+    .filter((d) => !deletedAt || d.data().sentAt > deletedAt)
+    .map((d) => serializeMessage(d.id, d.data()))
+    .reverse();
 };
 
 const sendMessage = async (userId, data) => {
@@ -80,6 +87,13 @@ const markAsRead = async (userId, messageId, friendId) => {
   await db.collection('conversations').doc(cid).update({ [`unread_${userId}`]: 0 });
 };
 
+const markConversationRead = async (userId, friendId) => {
+  const cid = convId(userId, friendId);
+  const snap = await db.collection('conversations').doc(cid).get();
+  if (!snap.exists) return;
+  await db.collection('conversations').doc(cid).update({ [`unread_${userId}`]: 0 });
+};
+
 const deleteConversation = async (userId, friendId) => {
   const cid = convId(userId, friendId);
   await db.collection('conversations').doc(cid).update({
@@ -88,4 +102,4 @@ const deleteConversation = async (userId, friendId) => {
   });
 };
 
-module.exports = { getConversations, getMessages, sendMessage, markAsRead, deleteConversation };
+module.exports = { getConversations, getMessages, sendMessage, markAsRead, markConversationRead, deleteConversation };

@@ -6,13 +6,21 @@ const getProfile = async (uid) => {
   return snap.exists ? snap.data() : null;
 };
 
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutos
+
 const getFriends = async (userId) => {
   const snap = await db.collection('users').doc(userId).get();
   if (!snap.exists) throw Object.assign(new Error('User not found'), { status: 404 });
 
   const friendIds = snap.data().friends || [];
   const profiles  = await Promise.all(friendIds.map(getProfile));
-  return profiles.filter(Boolean).map(serializeBasicProfile);
+  const now = Date.now();
+  return profiles.filter(Boolean).map((p) => ({
+    ...serializeBasicProfile(p),
+    isOnline: p.isOnline === true
+      && !!p.lastSeen
+      && (now - new Date(p.lastSeen).getTime()) < ONLINE_THRESHOLD_MS,
+  }));
 };
 
 const getFriendRequests = async (userId) => {
@@ -88,6 +96,23 @@ const respondToRequest = async (userId, requestId, action) => {
   }
 };
 
+const cancelFriendRequest = async (userId, requestId) => {
+  const reqSnap = await db.collection('friendRequests').doc(requestId).get();
+  if (!reqSnap.exists) throw Object.assign(new Error('Request not found'), { status: 404 });
+  const d = reqSnap.data();
+  if (d.fromUserId !== userId) throw Object.assign(new Error('Not your request'), { status: 403 });
+  if (d.status !== 'pending') throw Object.assign(new Error('Request already processed'), { status: 409 });
+  await db.collection('friendRequests').doc(requestId).delete();
+};
+
+const getSentFriendRequests = async (userId) => {
+  const snap = await db.collection('friendRequests')
+    .where('fromUserId', '==', userId)
+    .where('status', '==', 'pending')
+    .get();
+  return snap.docs.map((doc) => ({ requestId: doc.id, toUserId: doc.data().toUserId }));
+};
+
 const removeFriend = async (userId, friendId) => {
   const [userSnap, friendSnap] = await Promise.all([
     db.collection('users').doc(userId).get(),
@@ -110,4 +135,4 @@ const removeFriend = async (userId, friendId) => {
   await batch.commit();
 };
 
-module.exports = { getFriends, getFriendRequests, sendFriendRequest, respondToRequest, removeFriend };
+module.exports = { getFriends, getFriendRequests, getSentFriendRequests, cancelFriendRequest, sendFriendRequest, respondToRequest, removeFriend };

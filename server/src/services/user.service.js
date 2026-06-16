@@ -81,10 +81,12 @@ const searchUsers = async (q) => {
     .where('username', '<=', q + '\uf8ff')
     .limit(20).get();
 
-  return snap.docs.map((d) => {
-    const u = d.data();
-    return { uid: u.uid, username: u.username, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid) };
-  });
+  return snap.docs
+    .filter((d) => !d.data().isUnder16)
+    .map((d) => {
+      const u = d.data();
+      return { uid: u.uid, username: u.username, avatarId: normalizeAvatarId(u.avatarId || u.avatar, u.uid) };
+    });
 };
 
 const getRecommendations = async (userId) => {
@@ -113,7 +115,7 @@ const getRecommendations = async (userId) => {
       .limit(30).get();
 
     results = recSnap.docs
-      .filter((d) => d.id !== userId && !friendIds.has(d.id))
+      .filter((d) => d.id !== userId && !friendIds.has(d.id) && !d.data().isUnder16)
       .map((d) => {
         const u = d.data();
         const userGameIds = u.favoriteGameIds || (u.favoriteGames || []).map((g) => g.gameId);
@@ -130,7 +132,7 @@ const getRecommendations = async (userId) => {
       .limit(20).get();
 
     results = fallbackSnap.docs
-      .filter((d) => d.id !== userId && !friendIds.has(d.id))
+      .filter((d) => d.id !== userId && !friendIds.has(d.id) && !d.data().isUnder16)
       .slice(0, 10)
       .map((d) => {
         const u = d.data();
@@ -249,10 +251,25 @@ const getProfileGames = async (userId) => {
   return snap.data().profileGames || [];
 };
 
+const setSkillTag = async (userId, gameId, level) => {
+  const field = `skillTags.${gameId}`;
+  const value = level === null ? admin.firestore.FieldValue.delete() : level;
+  await db.collection('users').doc(userId).update({ [field]: value });
+};
+
+const setOnlineStatus = async (userId, isOnline) => {
+  await db.collection('users').doc(userId).update({
+    isOnline,
+    lastSeen: new Date().toISOString(),
+  });
+};
+
 module.exports = {
   getMyProfile, getProfile, createProfile, updateProfile,
   getSettings, createSettings, updateSettings,
+  setOnlineStatus,
   deleteUser, searchUsers, getRecommendations,
   addFavoriteGame, removeFavoriteGame, getFavoriteGames,
   addProfileGame, removeProfileGame, getProfileGames,
+  setSkillTag,
 };

@@ -60,8 +60,10 @@ router.get('/me', authenticate, blockUnder16, ctrl.getFriends);
  *       409:
  *         description: Ya son amigos o solicitud ya enviada
  */
-router.get('/me/requests',  authenticate, blockUnder16, ctrl.getFriendRequests);
-router.post('/me/requests', authenticate, blockUnder16, ctrl.sendFriendRequest);
+router.get('/me/requests',      authenticate, blockUnder16, ctrl.getFriendRequests);
+router.get('/me/requests/sent',               authenticate, blockUnder16, ctrl.getSentRequests);
+router.delete('/me/requests/sent/:requestId', authenticate, blockUnder16, ctrl.cancelSentRequest);
+router.post('/me/requests',     authenticate, blockUnder16, ctrl.sendFriendRequest);
 
 /**
  * @swagger

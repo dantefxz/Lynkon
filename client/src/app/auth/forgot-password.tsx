@@ -52,7 +52,7 @@ function EmailStep({ onSent }: { onSent: (email: string) => void }) {
             <MaterialIcons name="mail-outline" size={rw(20)} color={colors.purple} style={styles.inputIcon} />
             <TextInput
               style={[styles.input, { color: colors.text, fontSize: rf(15) }]}
-              placeholder="tu@email.com"
+              placeholder={t('auth.forgotPassword.emailPlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={email}
               onChangeText={(v) => { setEmail(v); setError(''); }}

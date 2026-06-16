@@ -14,6 +14,7 @@ import { rw, rh, rf, rs, cardWidth, gridColumns } from '@/utils/responsive';
 import { ProfileHeader, GameCard } from '@/components';
 import { normalizeAvatarId } from '@/constants/avatars';
 import { getProfileAvatar } from '@/services/mockData';
+import { SKILL_LEVELS, SkillLevel } from '@/utils/skillStorage';
 
 const COLS       = gridColumns();
 const CARD_W     = cardWidth(COLS);
@@ -48,6 +49,7 @@ interface UserProfile {
   avatarId: string | null;
   favoriteGames: FavGame[];
   platforms: { platform: string }[];
+  skillTags: Record<string, SkillLevel>;
 }
 
 export default function UserProfileScreen() {
@@ -62,8 +64,9 @@ export default function UserProfileScreen() {
   const [achievementCounts, setAchievementCounts] = useState<Record<string, { total: number; completed: number }>>({});
   const [loading, setLoading]           = useState(true);
   const [refreshing, setRefreshing]     = useState(false);
-  const [isFriend, setIsFriend]         = useState(false);
-  const [pendingSent, setPendingSent]   = useState(false);
+  const [isFriend, setIsFriend]           = useState(false);
+  const [pendingSent, setPendingSent]     = useState(false);
+  const [pendingRequestId, setPendingRequestId] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const isOwn = userId === currentUser?.id;
@@ -71,10 +74,11 @@ export default function UserProfileScreen() {
   const loadData = useCallback(async () => {
     if (!userId) return;
     try {
-      const [profileRes, gamesRes, friendsRes] = await Promise.allSettled([
+      const [profileRes, gamesRes, friendsRes, sentRes] = await Promise.allSettled([
         userApi.getProfile(userId),
         userApi.getProfileGames(userId),
         friendApi.getFriends(),
+        friendApi.getSentRequests(),
       ]);
 
       let favGames: FavGame[] = [];
@@ -89,6 +93,7 @@ export default function UserProfileScreen() {
           avatarId:      normalizeAvatarId(d.avatarId || d.avatar, d.uid || d.id || userId),
           favoriteGames: favGames,
           platforms:     d.platforms || [],
+          skillTags:     d.skillTags || {},
         });
       }
 
@@ -129,6 +134,13 @@ export default function UserProfileScreen() {
         const friends: any[] = (friendsRes.value.data as any)?.friends || [];
         setIsFriend(friends.some((f: any) => (f.uid || f.id) === userId));
       }
+
+      if (sentRes.status === 'fulfilled') {
+        const sent: any[] = (sentRes.value.data as any)?.requests || [];
+        const found = sent.find((r: any) => r.toUserId === userId);
+        setPendingSent(!!found);
+        setPendingRequestId(found?.requestId || '');
+      }
     } catch {}
   }, [userId]);
 
@@ -144,14 +156,55 @@ export default function UserProfileScreen() {
     setRefreshing(false);
   };
 
+  const handleRemoveFriend = () => {
+    Alert.alert(
+      t('social.removeFriendTitle'),
+      t('social.removeFriendMsg', { name: profile?.username }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('social.removeFriend'),
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              await friendApi.removeFriend(userId!);
+              setIsFriend(false);
+            } catch (err: any) {
+              Alert.alert(t('common.error'), err?.response?.data?.error || '');
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const handleFriendAction = async () => {
-    if (!userId || pendingSent || isFriend) return;
+    if (!userId || actionLoading) return;
+    if (isFriend) { handleRemoveFriend(); return; }
+    if (pendingSent) {
+      if (!pendingRequestId) return;
+      setActionLoading(true);
+      try {
+        await friendApi.cancelSentRequest(pendingRequestId);
+        setPendingSent(false);
+        setPendingRequestId('');
+      } catch (err: any) {
+        Alert.alert(t('common.error'), err?.response?.data?.error || '');
+      } finally {
+        setActionLoading(false);
+      }
+      return;
+    }
     setActionLoading(true);
     try {
-      await friendApi.sendFriendRequest(userId);
+      const res = await friendApi.sendFriendRequest(userId);
+      setPendingRequestId((res.data as any)?.requestId || '');
       setPendingSent(true);
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.error || 'No se pudo enviar la solicitud');
+      Alert.alert(t('common.error'), err?.response?.data?.error || '');
     } finally {
       setActionLoading(false);
     }
@@ -181,7 +234,11 @@ export default function UserProfileScreen() {
   }
 
   const platformNames = profile.platforms.map((p) => p.platform);
-  const friendButtonLabel = isFriend ? t('social.friends') : pendingSent ? t('social.actions.pending') : t('userProfile.addFriend');
+  const friendButtonLabel = isFriend
+    ? t('social.removeFriend')
+    : pendingSent
+      ? t('social.actions.cancelRequest')
+      : t('userProfile.addFriend');
   const totalHours = profileGames.reduce((acc, g) => acc + (g.playtimeHours || 0), 0);
 
   return (
@@ -199,21 +256,21 @@ export default function UserProfileScreen() {
             style={[
               styles.friendBtn,
               {
-                backgroundColor: isFriend ? colors.purpleMuted : pendingSent ? colors.card : colors.purple,
-                borderColor: isFriend ? colors.purpleBorder : pendingSent ? colors.border : colors.purple,
+                backgroundColor: isFriend ? '#EF444422' : pendingSent ? colors.card : colors.purple,
+                borderColor:     isFriend ? '#EF4444'   : pendingSent ? colors.border : colors.purple,
               },
             ]}
             onPress={handleFriendAction}
-            disabled={isFriend || pendingSent || actionLoading}
+            disabled={actionLoading}
           >
             {actionLoading
-              ? <ActivityIndicator size="small" color="#fff" />
+              ? <ActivityIndicator size="small" color={isFriend ? '#EF4444' : '#fff'} />
               : <MaterialIcons
-                  name={isFriend ? 'check' : pendingSent ? 'schedule' : 'person-add'}
+                  name={isFriend ? 'person-remove' : pendingSent ? 'close' : 'person-add'}
                   size={rw(16)}
-                  color={isFriend || pendingSent ? colors.textMuted : '#fff'}
+                  color={isFriend ? '#EF4444' : pendingSent ? colors.textMuted : '#fff'}
                 />}
-            <Text style={[styles.friendBtnText, { color: isFriend || pendingSent ? colors.textMuted : '#fff' }]}>
+            <Text style={[styles.friendBtnText, { color: isFriend ? '#EF4444' : pendingSent ? colors.textMuted : '#fff' }]}>
               {friendButtonLabel}
             </Text>
           </TouchableOpacity>
@@ -269,9 +326,9 @@ export default function UserProfileScreen() {
                     completedAchievements={ach?.completed ?? 0}
                     platform={item.platform}
                     width={FAV_CARD_W}
-                    skillLevel={null}
+                    skillLevel={profile.skillTags[item.gameId] ?? null}
                     onPress={() => router.push(
-                      `/game/${item.gameId}?platform=${item.platform}&userId=${userId}&name=${encodeURIComponent(item.name)}&cover=${encodeURIComponent(resolveCover(item.platform, item.gameId, item.cover))}&totalHours=${hours}`
+                      `/game/${item.gameId}?platform=${item.platform}&userId=${userId}&name=${encodeURIComponent(item.name)}&cover=${encodeURIComponent(resolveCover(item.platform, item.gameId, item.cover))}&totalHours=${hours}&skillLevel=${profile.skillTags[item.gameId] || ''}`
                     )}
                   />
                 );
@@ -319,9 +376,9 @@ export default function UserProfileScreen() {
                     completedAchievements={ach?.completed ?? 0}
                     platform={pg.platform}
                     width={CARD_W}
-                    skillLevel={null}
+                    skillLevel={profile.skillTags[pg.gameId] ?? null}
                     onPress={() => router.push(
-                      `/game/${pg.gameId}?platform=${pg.platform}&userId=${userId}&name=${encodeURIComponent(pg.name)}&cover=${encodeURIComponent(resolveCover(pg.platform, pg.gameId, pg.cover))}&totalHours=${pg.playtimeHours}`
+                      `/game/${pg.gameId}?platform=${pg.platform}&userId=${userId}&name=${encodeURIComponent(pg.name)}&cover=${encodeURIComponent(resolveCover(pg.platform, pg.gameId, pg.cover))}&totalHours=${pg.playtimeHours}&skillLevel=${profile.skillTags[pg.gameId] || ''}`
                     )}
                   />
                 );
