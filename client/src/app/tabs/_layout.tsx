@@ -12,8 +12,18 @@ import { resolveAvatarSource } from '@/constants/avatars';
 const AVATAR_SIZE = rw(54);
 const AVATAR_LIFT = rh(22);
 
-function AvatarTabIcon({ focused, avatar, colors, seed }: { focused: boolean; avatar: string; colors: any; seed: string }) {
-  const avatarSource = resolveAvatarSource(avatar, seed);
+function SocialTabIcon({ color }: { color: string }) {
+  return <MaterialIcons name="forum" size={rw(24)} color={color} />;
+}
+
+function SettingsTabIcon({ color }: { color: string }) {
+  return <MaterialIcons name="settings" size={rw(24)} color={color} />;
+}
+
+function AvatarTabIcon({ focused }: { focused: boolean }) {
+  const { user }   = useAuth();
+  const { colors } = useTheme();
+  const avatarSource = resolveAvatarSource(user?.avatar || '', user?.name || user?.id || '');
   return (
     <View style={{
       width:           AVATAR_SIZE + 10,
@@ -40,15 +50,13 @@ function AvatarTabIcon({ focused, avatar, colors, seed }: { focused: boolean; av
 }
 
 export default function TabsLayout() {
-  const { user }           = useAuth();
-  const { colors }         = useTheme();
+  const { colors } = useTheme();
   const { t }              = useTranslation();
   const insets             = useSafeAreaInsets();
   const { unreadConvCount } = useUnread();
 
-  const socialBadge = unreadConvCount > 0
-    ? (unreadConvCount > 99 ? '+99' : unreadConvCount)
-    : undefined;
+  const badgeCount  = unreadConvCount > 99 ? '+99' : unreadConvCount;
+  const socialBadge = unreadConvCount > 0 ? badgeCount : undefined;
 
   return (
     <Tabs
@@ -74,9 +82,7 @@ export default function TabsLayout() {
         name="social"
         options={{
           title: t('tabs.social'),
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="forum" size={rw(24)} color={color} />
-          ),
+          tabBarIcon: SocialTabIcon,
           tabBarBadge: socialBadge,
           tabBarBadgeStyle: { backgroundColor: '#EF4444', fontSize: rf(10) },
         }}
@@ -86,23 +92,14 @@ export default function TabsLayout() {
         options={{
           title: t('tabs.home'),
           tabBarItemStyle: { overflow: 'visible' },
-          tabBarIcon: ({ focused }) => (
-            <AvatarTabIcon
-              focused={focused}
-              avatar={user?.avatar || ''}
-              seed={user?.name || user?.id || ''}
-              colors={colors}
-            />
-          ),
+          tabBarIcon: AvatarTabIcon,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: t('tabs.settings'),
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="settings" size={rw(24)} color={color} />
-          ),
+          tabBarIcon: SettingsTabIcon,
         }}
       />
     </Tabs>

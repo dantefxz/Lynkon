@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 
 interface UnreadContextType {
   unreadConvCount: number;
@@ -12,8 +12,9 @@ const UnreadContext = createContext<UnreadContextType>({
 
 export function UnreadProvider({ children }: { children: React.ReactNode }) {
   const [unreadConvCount, setUnreadConvCount] = useState(0);
+  const ctxValue = useMemo(() => ({ unreadConvCount, setUnreadConvCount }), [unreadConvCount, setUnreadConvCount]);
   return (
-    <UnreadContext.Provider value={{ unreadConvCount, setUnreadConvCount }}>
+    <UnreadContext.Provider value={ctxValue}>
       {children}
     </UnreadContext.Provider>
   );

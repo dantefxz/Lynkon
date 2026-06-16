@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
 import i18n, { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
@@ -43,8 +43,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLang(lang);
   };
 
+  const ctxValue = useMemo(() => ({ language, setLanguage }), [language, setLanguage]);
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage }}>
+    <LanguageContext.Provider value={ctxValue}>
       {children}
     </LanguageContext.Provider>
   );

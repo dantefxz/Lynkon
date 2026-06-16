@@ -24,17 +24,20 @@ export function SettingsRow({
   const resolvedIconColor = iconColor ?? colors.purple;
   const bg = iconBg ?? colors.purpleMuted;
 
+  let iconEl: React.ReactNode = null;
+  if (iconImage) {
+    iconEl = <Image source={iconImage} style={styles.iconImage} resizeMode="contain" />;
+  } else if (emoji) {
+    iconEl = <Text style={{ fontSize: rw(18) }}>{emoji}</Text>;
+  } else if (icon) {
+    iconEl = <MaterialIcons name={icon as any} size={rw(19)} color={resolvedIconColor} />;
+  }
+
   return (
     <>
       <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.75}>
         <View style={[styles.iconBox, { backgroundColor: bg }]}>
-          {iconImage ? (
-            <Image source={iconImage} style={styles.iconImage} resizeMode="contain" />
-          ) : emoji ? (
-            <Text style={{ fontSize: rw(18) }}>{emoji}</Text>
-          ) : icon ? (
-            <MaterialIcons name={icon as any} size={rw(19)} color={resolvedIconColor} />
-          ) : null}
+          {iconEl}
         </View>
         <View style={styles.textBlock}>
           <Text style={[styles.label, { color: colors.text }]}>{label}</Text>

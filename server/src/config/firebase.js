@@ -1,6 +1,6 @@
 const admin = require('firebase-admin');
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 const { createMockFirestore } = require('./firestore-mock');
 
 let serviceAccount;

@@ -32,7 +32,7 @@ const getConversations = async (userId) => {
   }));
 
   return conversations
-    .filter((c) => c && c.with)
+    .filter((c) => c?.with)
     .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
     .slice(0, 50);
 };

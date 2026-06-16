@@ -66,8 +66,15 @@ function getPasswordBorderColor(touched: boolean, ok: boolean, defaultColor: str
 function RuleRow({ labelKey, passed, touched }: { labelKey: string; passed: boolean; touched: boolean }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const color = !touched ? colors.textMuted : passed ? '#22C55E' : '#EF4444';
-  const icon  = !touched ? 'radio-button-unchecked' : passed ? 'check-circle-outline' : 'cancel';
+  let color: string;
+  let icon: string;
+  if (!touched) {
+    color = colors.textMuted; icon = 'radio-button-unchecked';
+  } else if (passed) {
+    color = '#22C55E'; icon = 'check-circle-outline';
+  } else {
+    color = '#EF4444'; icon = 'cancel';
+  }
   return (
     <View style={ruleStyles.row}>
       <MaterialIcons name={icon as any} size={rw(15)} color={color} />
@@ -226,8 +233,8 @@ export default function RegisterScreen() {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
       if (event.type === 'set' && date) setSelectedDate(date);
-    } else {
-      if (date) setSelectedDate(date);
+    } else if (date) {
+      setSelectedDate(date);
     }
   };
 

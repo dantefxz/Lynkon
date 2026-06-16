@@ -148,9 +148,6 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
                 style={styles.gameList}
                 showsVerticalScrollIndicator
                 renderItem={({ item }) => {
-                  const pct = item.totalAchievements > 0
-                    ? Math.round((item.completedAchievements / item.totalAchievements) * 100)
-                    : 0;
                   const isVisible = visibleIds.has(item.id);
 
                   return (

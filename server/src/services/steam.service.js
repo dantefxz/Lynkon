@@ -2,6 +2,12 @@ const axios = require('axios');
 const BASE    = 'https://api.steampowered.com';
 const DEV_KEY = () => process.env.STEAM_API_KEY;
 
+const resolveIconUrl = (raw, appid) => {
+  if (!raw) return null;
+  if (raw.startsWith('http')) return raw;
+  return `https://steamcommunity.akamaihd.net/steamcommunity/public/images/apps/${appid}/${raw}.jpg`;
+};
+
 const resolveId = async (input) => {
   if (/^\d{17}$/.test(input)) return input;
   const res = await axios.get(`${BASE}/ISteamUser/ResolveVanityURL/v1/`, {
@@ -70,16 +76,8 @@ const getGameAchievements = async (steamId, appid) => {
       description: schemaMap[a.apiname]?.description || '',
       unlocked:    a.achieved === 1,
       unlockedAt:  a.achieved ? a.unlocktime : null,
-      icon:        schemaMap[a.apiname]?.icon
-        ? (schemaMap[a.apiname].icon.startsWith('http')
-            ? schemaMap[a.apiname].icon
-            : `https://steamcommunity.akamaihd.net/steamcommunity/public/images/apps/${appid}/${schemaMap[a.apiname].icon}.jpg`)
-        : null,
-      iconLocked: schemaMap[a.apiname]?.icongray
-        ? (schemaMap[a.apiname].icongray.startsWith('http')
-            ? schemaMap[a.apiname].icongray
-            : `https://steamcommunity.akamaihd.net/steamcommunity/public/images/apps/${appid}/${schemaMap[a.apiname].icongray}.jpg`)
-        : null,
+      icon:       resolveIconUrl(schemaMap[a.apiname]?.icon,     appid),
+      iconLocked: resolveIconUrl(schemaMap[a.apiname]?.icongray, appid),
     }));
   } catch {
     return [];

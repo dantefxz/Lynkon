@@ -283,12 +283,12 @@ const setStatus = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-const VALID_SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
+const VALID_SKILL_LEVELS = new Set(['beginner', 'intermediate', 'advanced', 'expert']);
 
 const setSkillTag = async (req, res, next) => {
   try {
     const { level } = req.body;
-    if (level !== null && level !== undefined && !VALID_SKILL_LEVELS.includes(level))
+    if (level !== null && level !== undefined && !VALID_SKILL_LEVELS.has(level))
       return res.status(400).json({ error: 'Invalid skill level' });
     await userService.setSkillTag(req.params.id, req.params.gameId, level ?? null);
     return res.status(200).json({ message: 'Skill tag updated' });

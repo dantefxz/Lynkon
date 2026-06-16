@@ -568,6 +568,28 @@ export default function PlatformGamesScreen() {
   const platformLabel = platformId ? (PLATFORM_NAME_FULL[platformId] ?? PLATFORM_LABELS[platformId]) : (platform || 'Platform');
   const usesOAuth     = platformId ? USES_OAUTH[platformId] : false;
 
+  const platformContent = connected ? (
+    <ConnectedView
+      games={games}
+      stats={stats}
+      linkedAt={linkedAt}
+      syncing={syncing}
+      platformLabel={platformLabel}
+      platformId={platformId}
+      onSync={handleSync}
+      onUnlink={handleUnlink}
+    />
+  ) : (
+    <ConnectView
+      platformLogo={platformLogo}
+      platformLabel={platformLabel}
+      usesOAuth={usesOAuth}
+      linking={linking}
+      onOAuthLink={handleOAuthLink}
+      onOpenPsnModal={() => setModalVisible(true)}
+    />
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <PlatformHeader
@@ -582,27 +604,7 @@ export default function PlatformGamesScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.purple} />
         </View>
-      ) : connected ? (
-        <ConnectedView
-          games={games}
-          stats={stats}
-          linkedAt={linkedAt}
-          syncing={syncing}
-          platformLabel={platformLabel}
-          platformId={platformId}
-          onSync={handleSync}
-          onUnlink={handleUnlink}
-        />
-      ) : (
-        <ConnectView
-          platformLogo={platformLogo}
-          platformLabel={platformLabel}
-          usesOAuth={usesOAuth}
-          linking={linking}
-          onOAuthLink={handleOAuthLink}
-          onOpenPsnModal={() => setModalVisible(true)}
-        />
-      )}
+      ) : platformContent}
 
       <PsnModal
         visible={modalVisible}

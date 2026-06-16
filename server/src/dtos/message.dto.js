@@ -45,15 +45,7 @@ const parseMarkAsReadDTO = (body) => {
  * @property {string} friendId
  */
 
-const parseDeleteConversationDTO = (body) => {
-  const errors = [];
-  const { friendId } = body;
-
-  if (!friendId) errors.push('friendId is required');
-
-  if (errors.length) return { data: null, errors };
-  return { data: { friendId }, errors: [] };
-};
+const parseDeleteConversationDTO = parseMarkAsReadDTO;
 
 /**
  * Serializa un mensaje para la respuesta

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi, userApi } from '@/services/api';
 import { getProfileAvatar } from '@/services/mockData';
@@ -178,10 +178,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => (prev ? { ...prev, bio } : prev));
   };
 
+  const ctxValue = useMemo(
+    () => ({ isAuthenticated, user, token, isLoading, login, register, logout, updateUserName, updateUserAvatar, updateUserBio }),
+    [isAuthenticated, user, token, isLoading, login, register, logout, updateUserName, updateUserAvatar, updateUserBio],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{ isAuthenticated, user, token, isLoading, login, register, logout, updateUserName, updateUserAvatar, updateUserBio }}
-    >
+    <AuthContext.Provider value={ctxValue}>
       {children}
     </AuthContext.Provider>
   );

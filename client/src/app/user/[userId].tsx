@@ -280,18 +280,24 @@ function doRemoveFriend(
   ]);
 }
 
+interface FriendActionState {
+  isFriend: boolean; pendingSent: boolean; pendingRequestId: string; actionLoading: boolean;
+}
+interface FriendActionSetters {
+  setActionLoading:    React.Dispatch<React.SetStateAction<boolean>>;
+  setPendingSent:      React.Dispatch<React.SetStateAction<boolean>>;
+  setPendingRequestId: React.Dispatch<React.SetStateAction<string>>;
+}
+
 async function doFriendAction(
   userId: string,
-  isFriend: boolean,
-  pendingSent: boolean,
-  pendingRequestId: string,
-  actionLoading: boolean,
+  state: FriendActionState,
   errorTitle: string,
   removeFriend: () => void,
-  setActionLoading:    React.Dispatch<React.SetStateAction<boolean>>,
-  setPendingSent:      React.Dispatch<React.SetStateAction<boolean>>,
-  setPendingRequestId: React.Dispatch<React.SetStateAction<string>>,
+  setters: FriendActionSetters,
 ) {
+  const { isFriend, pendingSent, pendingRequestId, actionLoading } = state;
+  const { setActionLoading, setPendingSent, setPendingRequestId }  = setters;
   if (!userId || actionLoading) return;
   if (isFriend) { removeFriend(); return; }
   if (pendingSent) {
@@ -328,34 +334,34 @@ function FriendButton({ isFriend, pendingSent, actionLoading, onPress }: {
 }) {
   const { colors } = useTheme();
   const { t }      = useTranslation();
-  const label = isFriend
-    ? t('social.removeFriend')
-    : pendingSent
-      ? t('social.actions.cancelRequest')
-      : t('userProfile.addFriend');
+
+  let bgColor: string;
+  let bdColor: string;
+  let tintColor: string;
+  let iconName: string;
+  let label: string;
+
+  if (isFriend) {
+    bgColor = '#EF444422'; bdColor = '#EF4444'; tintColor = '#EF4444';
+    iconName = 'person-remove'; label = t('social.removeFriend');
+  } else if (pendingSent) {
+    bgColor = colors.card; bdColor = colors.border; tintColor = colors.textMuted;
+    iconName = 'close'; label = t('social.actions.cancelRequest');
+  } else {
+    bgColor = colors.purple; bdColor = colors.purple; tintColor = '#fff';
+    iconName = 'person-add'; label = t('userProfile.addFriend');
+  }
 
   return (
     <TouchableOpacity
-      style={[
-        styles.friendBtn,
-        {
-          backgroundColor: isFriend ? '#EF444422' : pendingSent ? colors.card : colors.purple,
-          borderColor:     isFriend ? '#EF4444'   : pendingSent ? colors.border : colors.purple,
-        },
-      ]}
+      style={[styles.friendBtn, { backgroundColor: bgColor, borderColor: bdColor }]}
       onPress={onPress}
       disabled={actionLoading}
     >
       {actionLoading
-        ? <ActivityIndicator size="small" color={isFriend ? '#EF4444' : '#fff'} />
-        : <MaterialIcons
-            name={isFriend ? 'person-remove' : pendingSent ? 'close' : 'person-add'}
-            size={rw(16)}
-            color={isFriend ? '#EF4444' : pendingSent ? colors.textMuted : '#fff'}
-          />}
-      <Text style={[styles.friendBtnText, { color: isFriend ? '#EF4444' : pendingSent ? colors.textMuted : '#fff' }]}>
-        {label}
-      </Text>
+        ? <ActivityIndicator size="small" color={tintColor} />
+        : <MaterialIcons name={iconName as any} size={rw(16)} color={tintColor} />}
+      <Text style={[styles.friendBtnText, { color: tintColor }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -412,9 +418,11 @@ export default function UserProfileScreen() {
   );
 
   const handleFriendAction = () => doFriendAction(
-    userId!, isFriend, pendingSent, pendingRequestId, actionLoading,
+    userId!,
+    { isFriend, pendingSent, pendingRequestId, actionLoading },
     t('common.error'),
-    handleRemoveFriend, setActionLoading, setPendingSent, setPendingRequestId,
+    handleRemoveFriend,
+    { setActionLoading, setPendingSent, setPendingRequestId },
   );
 
   if (loading) {

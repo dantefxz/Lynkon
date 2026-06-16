@@ -293,7 +293,8 @@ function FriendsSection({ displayList, searchQuery, friends, unreadCounts, getUs
   const { t }      = useTranslation();
   const router     = useRouter();
   const isSearch   = searchQuery.length >= 2;
-  const title      = isSearch ? t('social.results') : `${t('social.friends')}${friends.length > 0 ? ` (${friends.length})` : ''}`;
+  const friendCount = friends.length > 0 ? ` (${friends.length})` : '';
+  const title       = isSearch ? t('social.results') : `${t('social.friends')}${friendCount}`;
 
   return (
     <View style={styles.section}>

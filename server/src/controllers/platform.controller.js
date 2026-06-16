@@ -184,7 +184,7 @@ const toggleGameVisibility = async (req, res, next) => {
     if (!SERVICE_MAP[platform])
       return res.status(400).json({ error: `Unsupported platform: ${platform}` });
 
-    if (!gameId || !gameId.trim())
+    if (!gameId?.trim())
       return res.status(400).json({ error: 'gameId is required' });
 
     const visRef = db

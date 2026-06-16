@@ -29,9 +29,10 @@ export function AppButton({
   variant?: 'primary' | 'secondary' | 'destructive';
 }) {
   const { colors } = useTheme();
-  const isDestructive = variant === 'destructive';
-  const isPrimary     = variant === 'primary';
-  const bgColor       = isDestructive ? '#EF4444' : isPrimary ? colors.purple : colors.card;
+  const isDestructive    = variant === 'destructive';
+  const isPrimary        = variant === 'primary';
+  const nonDestructiveBg = isPrimary ? colors.purple : colors.card;
+  const bgColor          = isDestructive ? '#EF4444' : nonDestructiveBg;
   const textColor     = isDestructive || isPrimary ? '#fff' : colors.purple;
   return (
     <TouchableOpacity
@@ -90,7 +91,8 @@ export function GameCard({
       : null;
   const platformId   = platform ? normalizePlatformId(platform) : null;
   const platformLogo = platformId ? PLATFORM_LOGOS[platformId] : null;
-  const hideHours    = platformId ? ['xbox', 'psn', 'playstation'].includes(platformId) : false;
+  const hideHours         = platformId ? ['xbox', 'psn', 'playstation'].includes(platformId) : false;
+  const noAchievementsText = (!hideHours && totalHours) ? t('profile.hoursPlayed', { hours: totalHours }) : '';
 
   return (
     <TouchableOpacity
@@ -130,7 +132,7 @@ export function GameCard({
           <Text style={[gcStyles.meta, { color: colors.textMuted }]}>
             {completion !== null
               ? `${completedAchievements}/${totalAchievements} · ${completion}%`
-              : (!hideHours && totalHours) ? t('profile.hoursPlayed', { hours: totalHours }) : ''}
+              : noAchievementsText}
           </Text>
           {platformLogo && <Image source={platformLogo} style={gcStyles.platformLogo} resizeMode="contain" />}
         </View>
@@ -174,16 +176,18 @@ export function SettingsRow({
   rightLabel?: string;
 }) {
   const { colors } = useTheme();
+  let iconEl: React.ReactNode = null;
+  if (iconName) {
+    iconEl = <MaterialIcons name={iconName as any} size={rw(22)} color={colors.purple} style={srStyles.icon} />;
+  } else if (iconImage) {
+    iconEl = <Image source={iconImage} style={srStyles.imgIcon} />;
+  }
   return (
     <TouchableOpacity
       onPress={onPress}
       style={[srStyles.row, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
     >
-      {iconName ? (
-        <MaterialIcons name={iconName as any} size={rw(22)} color={colors.purple} style={srStyles.icon} />
-      ) : iconImage ? (
-        <Image source={iconImage} style={srStyles.imgIcon} />
-      ) : null}
+      {iconEl}
       <View style={srStyles.textGroup}>
         <Text style={[srStyles.label, { color: colors.text }]}>{label}</Text>
         {sublabel ? <Text style={[srStyles.sub, { color: colors.textMuted }]}>{sublabel}</Text> : null}
@@ -313,7 +317,8 @@ export function ChatRow({
 }) {
   const { colors } = useTheme();
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
-  const badgeCount = unreadCount && unreadCount > 0 ? (unreadCount > 99 ? '+99' : String(unreadCount)) : null;
+  const badgeStr   = (unreadCount ?? 0) > 99 ? '+99' : String(unreadCount ?? 0);
+  const badgeCount = unreadCount && unreadCount > 0 ? badgeStr : null;
   return (
     <TouchableOpacity
       onPress={onPress}

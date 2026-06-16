@@ -17,6 +17,22 @@ export interface InfoCardProps {
   layout?: 'horizontal' | 'vertical';
 }
 
+interface IconElProps { bg: string; emoji?: string; icon?: string; iconColor: string; }
+
+function IconEl({ bg, emoji, icon, iconColor }: IconElProps) {
+  let content: React.ReactNode = null;
+  if (emoji) {
+    content = <Text style={{ fontSize: rw(20) }}>{emoji}</Text>;
+  } else if (icon) {
+    content = <MaterialIcons name={icon as any} size={rw(20)} color={iconColor} />;
+  }
+  return (
+    <View style={[styles.iconWrapper, { backgroundColor: bg, width: rw(40), height: rw(40), borderRadius: rw(11) }]}>
+      {content}
+    </View>
+  );
+}
+
 export function InfoCard({
   icon, emoji, iconBg, iconColor,
   miniTitle, title, value, description,
@@ -26,20 +42,10 @@ export function InfoCard({
   const resolvedIconColor = iconColor ?? colors.purple;
   const bg = iconBg ?? colors.purpleMuted;
 
-  const IconEl = () => (
-    <View style={[styles.iconWrapper, { backgroundColor: bg, width: rw(40), height: rw(40), borderRadius: rw(11) }]}>
-      {emoji ? (
-        <Text style={{ fontSize: rw(20) }}>{emoji}</Text>
-      ) : icon ? (
-        <MaterialIcons name={icon as any} size={rw(20)} color={resolvedIconColor} />
-      ) : null}
-    </View>
-  );
-
   if (layout === 'vertical') {
     return (
       <View style={[styles.cardVertical, { backgroundColor: colors.card, borderColor: colors.border }, style]}>
-        <IconEl />
+        <IconEl bg={bg} emoji={emoji} icon={icon} iconColor={resolvedIconColor} />
         {miniTitle && <Text style={[styles.miniTitle, { color: colors.textMuted }]}>{miniTitle}</Text>}
         {value !== undefined && <Text style={[styles.value, { color: colors.text }]}>{value}</Text>}
         <Text style={[styles.titleVertical, { color: colors.textMuted }]}>{title}</Text>
@@ -50,7 +56,7 @@ export function InfoCard({
 
   return (
     <View style={[styles.cardHorizontal, { backgroundColor: colors.card, borderColor: colors.border }, style]}>
-      <IconEl />
+      <IconEl bg={bg} emoji={emoji} icon={icon} iconColor={resolvedIconColor} />
       <View style={styles.textBlock}>
         {miniTitle && <Text style={[styles.miniTitle, { color: colors.textMuted }]}>{miniTitle}</Text>}
         <Text style={[styles.titleHorizontal, { color: colors.text }]}>{title}</Text>
