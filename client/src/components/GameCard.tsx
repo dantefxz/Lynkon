@@ -31,9 +31,10 @@ export function GameCard({
   const pct = totalAchievements > 0
     ? Math.round((completedAchievements / totalAchievements) * 100)
     : 0;
-  const isComplete  = pct === 100;
-  const platformId  = platform ? normalizePlatformId(platform) : null;
+  const isComplete   = pct === 100;
+  const platformId   = platform ? normalizePlatformId(platform) : null;
   const platformLogo = platformId ? PLATFORM_LOGOS[platformId] : null;
+  const hideHours    = platformId ? ['xbox', 'psn', 'playstation'].includes(platformId) : false;
 
   return (
     <TouchableOpacity
@@ -74,13 +75,13 @@ export function GameCard({
           <Text style={[styles.stats, { color: colors.textMuted }]}>
             {totalAchievements > 0
               ? `${completedAchievements}/${totalAchievements} · ${pct}%`
-              : t('profile.hoursPlayed', { hours: totalHours })}
+              : hideHours ? '' : t('profile.hoursPlayed', { hours: totalHours })}
           </Text>
           {platformLogo && (
             <Image source={platformLogo} style={styles.platformLogo} resizeMode="contain" />
           )}
         </View>
-        {totalAchievements > 0 && (
+        {totalAchievements > 0 && !hideHours && (
           <Text style={[styles.hours, { color: colors.textMuted }]}>{t('profile.hoursPlayed', { hours: totalHours })}</Text>
         )}
       </View>

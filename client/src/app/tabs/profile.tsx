@@ -351,17 +351,16 @@ export default function ProfileScreen() {
       g.platform && arr.findIndex((x) => x.platform === g.platform && x.gameId === g.gameId) === i
     );
 
-    games.forEach(({ platform, gameId }) => {
-      platformApi.getGameAchievements(platform, gameId)
-        .then((achRes) => {
-          const achievements: any[] = (achRes.data as any)?.achievements || [];
-          const completed = achievements.filter((a: any) => a.unlocked).length;
-          setAchievementCounts((prev) => ({
-            ...prev,
-            [`${platform}_${gameId}`]: { total: achievements.length, completed },
-          }));
-        })
-        .catch(() => {});
+    games.forEach(async ({ platform, gameId }) => {
+      try {
+        const achRes = await platformApi.getGameAchievements(platform, gameId);
+        const achievements: any[] = (achRes.data as any)?.achievements || [];
+        const completed = achievements.filter((a: any) => a.unlocked).length;
+        setAchievementCounts((prev) => ({
+          ...prev,
+          [`${platform}_${gameId}`]: { total: achievements.length, completed },
+        }));
+      } catch {}
     });
   }, [profileGames.length, favoriteGames.length]);
 

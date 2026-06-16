@@ -90,6 +90,7 @@ export function GameCard({
       : null;
   const platformId   = platform ? normalizePlatformId(platform) : null;
   const platformLogo = platformId ? PLATFORM_LOGOS[platformId] : null;
+  const hideHours    = platformId ? ['xbox', 'psn', 'playstation'].includes(platformId) : false;
 
   return (
     <TouchableOpacity
@@ -129,11 +130,11 @@ export function GameCard({
           <Text style={[gcStyles.meta, { color: colors.textMuted }]}>
             {completion !== null
               ? `${completedAchievements}/${totalAchievements} · ${completion}%`
-              : totalHours ? t('profile.hoursPlayed', { hours: totalHours }) : ''}
+              : (!hideHours && totalHours) ? t('profile.hoursPlayed', { hours: totalHours }) : ''}
           </Text>
           {platformLogo && <Image source={platformLogo} style={gcStyles.platformLogo} resizeMode="contain" />}
         </View>
-        {completion !== null && !!totalHours && (
+        {completion !== null && !!totalHours && !hideHours && (
           <Text style={[gcStyles.meta, { color: colors.textMuted }]}>{t('profile.hoursPlayed', { hours: totalHours })}</Text>
         )}
       </View>

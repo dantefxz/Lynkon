@@ -13,6 +13,7 @@ interface Game {
   totalHours: number;
   completedAchievements: number;
   totalAchievements: number;
+  platform?: string;
 }
 
 interface Props {
@@ -60,7 +61,9 @@ export function EditFavoritesModal({ visible, favorites, onReorder, onRemove, on
 
         <View style={styles.info}>
           <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-          <Text style={[styles.hours, { color: colors.textMuted }]}>{item.totalHours}h jugadas</Text>
+          {!['xbox', 'psn', 'playstation'].includes(item.platform?.toLowerCase() || '') && (
+            <Text style={[styles.hours, { color: colors.textMuted }]}>{item.totalHours}h jugadas</Text>
+          )}
         </View>
 
         <TouchableOpacity

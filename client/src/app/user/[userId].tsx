@@ -22,8 +22,9 @@ const FAV_CARD_W = cardWidth(Math.min(COLS + 1, 3));
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function UserFavoritesSection({ favoriteGames, achievementCounts, skillTags, userId }: {
+function UserFavoritesSection({ favoriteGames, profileGames, achievementCounts, skillTags, userId }: {
   favoriteGames: FavGame[];
+  profileGames: ProfileGame[];
   achievementCounts: Record<string, { total: number; completed: number }>;
   skillTags: Record<string, SkillLevel>;
   userId: string;
@@ -52,7 +53,8 @@ function UserFavoritesSection({ favoriteGames, achievementCounts, skillTags, use
           renderItem={({ item }) => {
             const achKey = `${item.platform}_${item.gameId}`;
             const ach = achievementCounts[achKey];
-            const hours = item.playtimeHours || 0;
+            const pg    = profileGames.find((g) => g.gameId === item.gameId && g.platform === item.platform);
+            const hours = item.playtimeHours || pg?.playtimeHours || 0;
             const cover = resolveCover(item.platform, item.gameId, item.cover);
             return (
               <GameCard
@@ -172,6 +174,192 @@ interface UserProfile {
   skillTags: Record<string, SkillLevel>;
 }
 
+// ── Module-level helpers (independent SonarQube complexity budget) ────────────
+
+async function loadUserData(
+  userId: string,
+  setProfile:           React.Dispatch<React.SetStateAction<UserProfile | null>>,
+  setProfileGames:      React.Dispatch<React.SetStateAction<ProfileGame[]>>,
+  setAchievementCounts: React.Dispatch<React.SetStateAction<Record<string, { total: number; completed: number }>>>,
+  setIsFriend:          React.Dispatch<React.SetStateAction<boolean>>,
+  setPendingSent:       React.Dispatch<React.SetStateAction<boolean>>,
+  setPendingRequestId:  React.Dispatch<React.SetStateAction<string>>,
+) {
+  const [profileRes, gamesRes, friendsRes, sentRes] = await Promise.allSettled([
+    userApi.getProfile(userId),
+    userApi.getProfileGames(userId),
+    friendApi.getFriends(),
+    friendApi.getSentRequests(),
+  ]);
+
+  let favGames: FavGame[] = [];
+
+  if (profileRes.status === 'fulfilled') {
+    const d = (profileRes.value.data as any)?.profile ?? (profileRes.value.data as any);
+    favGames = d.favoriteGames || [];
+    setProfile({
+      uid:           d.uid || d.id || userId,
+      username:      d.username || d.name || d.displayName || userId,
+      bio:           d.bio || '',
+      avatarId:      normalizeAvatarId(d.avatarId || d.avatar, d.uid || d.id || userId),
+      favoriteGames: favGames,
+      platforms:     d.platforms || [],
+      skillTags:     d.skillTags || {},
+    });
+  }
+
+  if (gamesRes.status === 'fulfilled') {
+    const data = gamesRes.value.data as any;
+    const games: ProfileGame[] = data?.profileGames || data || [];
+    setProfileGames(games);
+
+    const seen = new Set<string>();
+    const allToFetch = [
+      ...games.map((g) => ({ platform: g.platform, gameId: g.gameId })),
+      ...favGames.map((g) => ({ platform: g.platform, gameId: g.gameId })),
+    ].filter(({ platform, gameId }) => {
+      const key = `${platform}_${gameId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    allToFetch.forEach(async ({ platform, gameId }) => {
+      try {
+        const achRes = await userApi.getUserGameAchievements(userId, platform, gameId);
+        const achievements: any[] = (achRes.data as any)?.achievements || [];
+        const completed = achievements.filter((a: any) => a.unlocked).length;
+        setAchievementCounts((prev) => ({
+          ...prev,
+          [`${platform}_${gameId}`]: { total: achievements.length, completed },
+        }));
+      } catch {}
+    });
+  }
+
+  if (friendsRes.status === 'fulfilled') {
+    const friends: any[] = (friendsRes.value.data as any)?.friends || [];
+    setIsFriend(friends.some((f: any) => (f.uid || f.id) === userId));
+  }
+
+  if (sentRes.status === 'fulfilled') {
+    const sent: any[] = (sentRes.value.data as any)?.requests || [];
+    const found = sent.find((r: any) => r.toUserId === userId);
+    setPendingSent(!!found);
+    setPendingRequestId(found?.requestId || '');
+  }
+}
+
+interface RemoveFriendLabels {
+  title: string; msg: string; confirm: string; cancel: string; errorTitle: string;
+}
+
+function doRemoveFriend(
+  userId: string,
+  labels: RemoveFriendLabels,
+  setActionLoading: React.Dispatch<React.SetStateAction<boolean>>,
+  setIsFriend:      React.Dispatch<React.SetStateAction<boolean>>,
+) {
+  Alert.alert(labels.title, labels.msg, [
+    { text: labels.cancel, style: 'cancel' },
+    {
+      text: labels.confirm,
+      style: 'destructive',
+      onPress: async () => {
+        setActionLoading(true);
+        try {
+          await friendApi.removeFriend(userId);
+          setIsFriend(false);
+        } catch (err: any) {
+          Alert.alert(labels.errorTitle, err?.response?.data?.error || '');
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    },
+  ]);
+}
+
+async function doFriendAction(
+  userId: string,
+  isFriend: boolean,
+  pendingSent: boolean,
+  pendingRequestId: string,
+  actionLoading: boolean,
+  errorTitle: string,
+  removeFriend: () => void,
+  setActionLoading:    React.Dispatch<React.SetStateAction<boolean>>,
+  setPendingSent:      React.Dispatch<React.SetStateAction<boolean>>,
+  setPendingRequestId: React.Dispatch<React.SetStateAction<string>>,
+) {
+  if (!userId || actionLoading) return;
+  if (isFriend) { removeFriend(); return; }
+  if (pendingSent) {
+    if (!pendingRequestId) return;
+    setActionLoading(true);
+    try {
+      await friendApi.cancelSentRequest(pendingRequestId);
+      setPendingSent(false);
+      setPendingRequestId('');
+    } catch (err: any) {
+      Alert.alert(errorTitle, err?.response?.data?.error || '');
+    } finally {
+      setActionLoading(false);
+    }
+    return;
+  }
+  setActionLoading(true);
+  try {
+    const res = await friendApi.sendFriendRequest(userId);
+    setPendingRequestId((res.data as any)?.requestId || '');
+    setPendingSent(true);
+  } catch (err: any) {
+    Alert.alert(errorTitle, err?.response?.data?.error || '');
+  } finally {
+    setActionLoading(false);
+  }
+}
+
+function FriendButton({ isFriend, pendingSent, actionLoading, onPress }: {
+  isFriend: boolean;
+  pendingSent: boolean;
+  actionLoading: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const { t }      = useTranslation();
+  const label = isFriend
+    ? t('social.removeFriend')
+    : pendingSent
+      ? t('social.actions.cancelRequest')
+      : t('userProfile.addFriend');
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.friendBtn,
+        {
+          backgroundColor: isFriend ? '#EF444422' : pendingSent ? colors.card : colors.purple,
+          borderColor:     isFriend ? '#EF4444'   : pendingSent ? colors.border : colors.purple,
+        },
+      ]}
+      onPress={onPress}
+      disabled={actionLoading}
+    >
+      {actionLoading
+        ? <ActivityIndicator size="small" color={isFriend ? '#EF4444' : '#fff'} />
+        : <MaterialIcons
+            name={isFriend ? 'person-remove' : pendingSent ? 'close' : 'person-add'}
+            size={rw(16)}
+            color={isFriend ? '#EF4444' : pendingSent ? colors.textMuted : '#fff'}
+          />}
+      <Text style={[styles.friendBtnText, { color: isFriend ? '#EF4444' : pendingSent ? colors.textMuted : '#fff' }]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
@@ -194,71 +382,7 @@ export default function UserProfileScreen() {
   const loadData = useCallback(async () => {
     if (!userId) return;
     try {
-      const [profileRes, gamesRes, friendsRes, sentRes] = await Promise.allSettled([
-        userApi.getProfile(userId),
-        userApi.getProfileGames(userId),
-        friendApi.getFriends(),
-        friendApi.getSentRequests(),
-      ]);
-
-      let favGames: FavGame[] = [];
-
-      if (profileRes.status === 'fulfilled') {
-        const d = (profileRes.value.data as any)?.profile ?? (profileRes.value.data as any);
-        favGames = d.favoriteGames || [];
-        setProfile({
-          uid:           d.uid || d.id || userId,
-          username:      d.username || d.name || d.displayName || userId,
-          bio:           d.bio || '',
-          avatarId:      normalizeAvatarId(d.avatarId || d.avatar, d.uid || d.id || userId),
-          favoriteGames: favGames,
-          platforms:     d.platforms || [],
-          skillTags:     d.skillTags || {},
-        });
-      }
-
-      if (gamesRes.status === 'fulfilled') {
-        const data = gamesRes.value.data as any;
-        const games: ProfileGame[] = data?.profileGames || data || [];
-        setProfileGames(games);
-
-        // Fetch achievements for profile games + favorites, deduped by platform+gameId
-        const seen = new Set<string>();
-        const allToFetch = [
-          ...games.map((g) => ({ platform: g.platform, gameId: g.gameId })),
-          ...favGames.map((g) => ({ platform: g.platform, gameId: g.gameId })),
-        ].filter(({ platform, gameId }) => {
-          const key = `${platform}_${gameId}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-        allToFetch.forEach(({ platform, gameId }) => {
-          userApi.getUserGameAchievements(userId, platform, gameId)
-            .then((achRes) => {
-              const achievements: any[] = (achRes.data as any)?.achievements || [];
-              const completed = achievements.filter((a: any) => a.unlocked).length;
-              setAchievementCounts((prev) => ({
-                ...prev,
-                [`${platform}_${gameId}`]: { total: achievements.length, completed },
-              }));
-            })
-            .catch(() => {});
-        });
-      }
-
-      if (friendsRes.status === 'fulfilled') {
-        const friends: any[] = (friendsRes.value.data as any)?.friends || [];
-        setIsFriend(friends.some((f: any) => (f.uid || f.id) === userId));
-      }
-
-      if (sentRes.status === 'fulfilled') {
-        const sent: any[] = (sentRes.value.data as any)?.requests || [];
-        const found = sent.find((r: any) => r.toUserId === userId);
-        setPendingSent(!!found);
-        setPendingRequestId(found?.requestId || '');
-      }
+      await loadUserData(userId, setProfile, setProfileGames, setAchievementCounts, setIsFriend, setPendingSent, setPendingRequestId);
     } catch {}
   }, [userId]);
 
@@ -274,59 +398,24 @@ export default function UserProfileScreen() {
     setRefreshing(false);
   };
 
-  const handleRemoveFriend = () => {
-    Alert.alert(
-      t('social.removeFriendTitle'),
-      t('social.removeFriendMsg', { name: profile?.username }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('social.removeFriend'),
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              await friendApi.removeFriend(userId!);
-              setIsFriend(false);
-            } catch (err: any) {
-              Alert.alert(t('common.error'), err?.response?.data?.error || '');
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ],
-    );
-  };
+  const handleRemoveFriend = () => doRemoveFriend(
+    userId!,
+    {
+      title:      t('social.removeFriendTitle'),
+      msg:        t('social.removeFriendMsg', { name: profile?.username }),
+      confirm:    t('social.removeFriend'),
+      cancel:     t('common.cancel'),
+      errorTitle: t('common.error'),
+    },
+    setActionLoading,
+    setIsFriend,
+  );
 
-  const handleFriendAction = async () => {
-    if (!userId || actionLoading) return;
-    if (isFriend) { handleRemoveFriend(); return; }
-    if (pendingSent) {
-      if (!pendingRequestId) return;
-      setActionLoading(true);
-      try {
-        await friendApi.cancelSentRequest(pendingRequestId);
-        setPendingSent(false);
-        setPendingRequestId('');
-      } catch (err: any) {
-        Alert.alert(t('common.error'), err?.response?.data?.error || '');
-      } finally {
-        setActionLoading(false);
-      }
-      return;
-    }
-    setActionLoading(true);
-    try {
-      const res = await friendApi.sendFriendRequest(userId);
-      setPendingRequestId((res.data as any)?.requestId || '');
-      setPendingSent(true);
-    } catch (err: any) {
-      Alert.alert(t('common.error'), err?.response?.data?.error || '');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  const handleFriendAction = () => doFriendAction(
+    userId!, isFriend, pendingSent, pendingRequestId, actionLoading,
+    t('common.error'),
+    handleRemoveFriend, setActionLoading, setPendingSent, setPendingRequestId,
+  );
 
   if (loading) {
     return (
@@ -352,11 +441,6 @@ export default function UserProfileScreen() {
   }
 
   const platformNames = profile.platforms.map((p) => p.platform);
-  const friendButtonLabel = isFriend
-    ? t('social.removeFriend')
-    : pendingSent
-      ? t('social.actions.cancelRequest')
-      : t('userProfile.addFriend');
   const totalHours = profileGames.reduce((acc, g) => acc + (g.playtimeHours || 0), 0);
 
   return (
@@ -370,28 +454,12 @@ export default function UserProfileScreen() {
           {profile.username}
         </Text>
         {!isOwn && (
-          <TouchableOpacity
-            style={[
-              styles.friendBtn,
-              {
-                backgroundColor: isFriend ? '#EF444422' : pendingSent ? colors.card : colors.purple,
-                borderColor:     isFriend ? '#EF4444'   : pendingSent ? colors.border : colors.purple,
-              },
-            ]}
+          <FriendButton
+            isFriend={isFriend}
+            pendingSent={pendingSent}
+            actionLoading={actionLoading}
             onPress={handleFriendAction}
-            disabled={actionLoading}
-          >
-            {actionLoading
-              ? <ActivityIndicator size="small" color={isFriend ? '#EF4444' : '#fff'} />
-              : <MaterialIcons
-                  name={isFriend ? 'person-remove' : pendingSent ? 'close' : 'person-add'}
-                  size={rw(16)}
-                  color={isFriend ? '#EF4444' : pendingSent ? colors.textMuted : '#fff'}
-                />}
-            <Text style={[styles.friendBtnText, { color: isFriend ? '#EF4444' : pendingSent ? colors.textMuted : '#fff' }]}>
-              {friendButtonLabel}
-            </Text>
-          </TouchableOpacity>
+          />
         )}
       </View>
 
@@ -414,6 +482,7 @@ export default function UserProfileScreen() {
 
         <UserFavoritesSection
           favoriteGames={profile.favoriteGames}
+          profileGames={profileGames}
           achievementCounts={achievementCounts}
           skillTags={profile.skillTags}
           userId={userId!}

@@ -49,6 +49,9 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
   }, [platformGames, search]);
 
   const selectedCount = filteredGames.filter((g) => visibleIds.has(g.id)).length;
+  const hideHours = selectedPlatform
+    ? ['xbox', 'psn', 'playstation'].includes(normalizePlatformId(selectedPlatform) || selectedPlatform.toLowerCase())
+    : false;
 
   const handlePlatformPress = (plat: string) => {
     setSelectedPlatform(plat);
@@ -159,7 +162,7 @@ export function AddGameModal({ visible, platforms, allGames, visibleIds, onToggl
                       <Image source={{ uri: item.cover }} style={[styles.gameCover, { backgroundColor: colors.purpleMuted }]} />
                       <View style={styles.gameInfo}>
                         <Text style={[styles.gameName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                        <Text style={[styles.gameMeta, { color: colors.textMuted }]}>{t('platform.hoursPlayedShort', { hours: item.totalHours })}</Text>
+                        {!hideHours && <Text style={[styles.gameMeta, { color: colors.textMuted }]}>{t('platform.hoursPlayedShort', { hours: item.totalHours })}</Text>}
                       </View>
                       <Switch
                         value={isVisible}

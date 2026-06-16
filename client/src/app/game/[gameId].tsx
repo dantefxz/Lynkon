@@ -237,11 +237,12 @@ export default function GameDetailScreen() {
             const achRes = await userApi.getUserGameAchievements(viewingUserId, platformParam, String(gameId));
             if (active) {
               const achs: any[] = (achRes.data as any)?.achievements || [];
+              const completed = achs.filter((a) => a.unlocked).length;
               setAchievements(achs);
               setGame((prev) => prev ? {
                 ...prev,
                 totalAchievements:     achs.length,
-                completedAchievements: achs.filter((a) => a.unlocked).length,
+                completedAchievements: completed,
               } : prev);
             }
           } catch {} finally {

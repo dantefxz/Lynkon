@@ -329,7 +329,7 @@ export default function SocialScreen() {
 
 function SocialContent() {
   const { colors } = useTheme();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const router = useRouter();
 

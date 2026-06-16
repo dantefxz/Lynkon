@@ -108,9 +108,11 @@ function GameCard({ game, index, platformId }: { game: any; index: number; platf
       </View>
       <View style={styles.gameInfo}>
         <Text style={[styles.gameName, { color: colors.text }]} numberOfLines={1}>{game.name || game.title}</Text>
-        <Text style={{ color: colors.textMuted, fontSize: rf(12), marginTop: rh(4) }}>
-          {t('platform.hoursPlayedShort', { hours })}
-        </Text>
+        {!['xbox', 'psn', 'playstation'].includes(platformId ?? '') && (
+          <Text style={{ color: colors.textMuted, fontSize: rf(12), marginTop: rh(4) }}>
+            {t('platform.hoursPlayedShort', { hours })}
+          </Text>
+        )}
         {game.totalAchievements > 0 && (
           <View style={{ marginTop: rh(6) }}>
             <View style={[styles.progressBar, { backgroundColor: colors.purpleDim }]}>
@@ -140,8 +142,10 @@ function ConnectedView({ games, stats, linkedAt, syncing, platformLabel, platfor
   const { colors } = useTheme();
   const { t } = useTranslation();
 
+  const hideHours = (['xbox', 'psn', 'playstation'] as string[]).includes(platformId ?? '');
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy,      setSortBy]      = useState<'playtime' | 'name'>('playtime');
+  const [sortBy,      setSortBy]      = useState<'playtime' | 'name'>(hideHours ? 'name' : 'playtime');
   const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('desc');
 
   const displayGames = useMemo(() => {
@@ -183,7 +187,7 @@ function ConnectedView({ games, stats, linkedAt, syncing, platformLabel, platfor
             </Text>
           </View>
         )}
-        {stats?.totalHours !== undefined && (
+        {!hideHours && stats?.totalHours !== undefined && (
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t('platform.hoursPlayed')}</Text>
             <Text style={[styles.infoValue, { color: colors.text, fontWeight: '600' }]}>{stats.totalHours}h</Text>
@@ -237,14 +241,16 @@ function ConnectedView({ games, stats, linkedAt, syncing, platformLabel, platfor
 
           <View style={styles.sortRow}>
             <View style={styles.sortGroup}>
-              <TouchableOpacity
-                style={[styles.sortChip, { backgroundColor: sortBy === 'playtime' ? colors.purple : colors.purpleDim }]}
-                onPress={() => setSortBy('playtime')}
-              >
-                <Text style={{ color: sortBy === 'playtime' ? '#fff' : colors.textMuted, fontSize: rf(13), fontWeight: '600' }}>
-                  {t('platform.hoursPlayed')}
-                </Text>
-              </TouchableOpacity>
+              {!hideHours && (
+                <TouchableOpacity
+                  style={[styles.sortChip, { backgroundColor: sortBy === 'playtime' ? colors.purple : colors.purpleDim }]}
+                  onPress={() => setSortBy('playtime')}
+                >
+                  <Text style={{ color: sortBy === 'playtime' ? '#fff' : colors.textMuted, fontSize: rf(13), fontWeight: '600' }}>
+                    {t('platform.hoursPlayed')}
+                  </Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.sortChip, { backgroundColor: sortBy === 'name' ? colors.purple : colors.purpleDim }]}
                 onPress={() => setSortBy('name')}
