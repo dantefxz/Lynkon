@@ -78,13 +78,20 @@ const unlinkPlatform = async (req, res, next) => {
     const snap = await db.collection('users').doc(userId).get();
     if (!snap.exists) return res.status(404).json({ error: 'User not found' });
 
-    const current = snap.data().platforms || [];
+    const data    = snap.data();
+    const current = data.platforms || [];
     const updated = current.filter((p) => p.platform !== platform);
 
     if (updated.length === current.length)
       return res.status(404).json({ error: `${platform} is not linked` });
 
-    await db.collection('users').doc(userId).update({ platforms: updated });
+    const keepGame = (g) => g.platform !== platform;
+
+    await db.collection('users').doc(userId).update({
+      platforms:    updated,
+      favoriteGames: (data.favoriteGames || []).filter(keepGame),
+      profileGames:  (data.profileGames  || []).filter(keepGame),
+    });
     return res.status(200).json({ message: `${platform} unlinked successfully` });
   } catch (err) { next(err); }
 };

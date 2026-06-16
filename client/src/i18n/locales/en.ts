@@ -245,6 +245,7 @@ export default {
     avatar:              'Profile picture',
     save:                'Save changes',
     saved:               'Profile updated successfully',
+    saveError:           'Could not save profile',
   },
 
   changePassword: {

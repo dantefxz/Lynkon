@@ -245,6 +245,7 @@ export default {
     avatar:              'プロフィール画像',
     save:                '変更を保存',
     saved:               'プロフィールを更新しました',
+    saveError:           'プロフィールを保存できませんでした',
   },
 
   changePassword: {

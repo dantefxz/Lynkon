@@ -84,11 +84,14 @@ export default function ProfileScreen() {
     setEditSaving(true);
     try {
       await userApi.updateProfile(user.id, { username: editName, bio: editBio });
-    } catch {}
-    updateUserName(editName);
-    updateUserBio(editBio);
-    setEditProfileVisible(false);
-    setEditSaving(false);
+      updateUserName(editName);
+      updateUserBio(editBio);
+      setEditProfileVisible(false);
+    } catch (err: any) {
+      Alert.alert(t('common.error'), err?.response?.data?.error || t('editProfile.saveError'));
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   // ── Carga principal ────────────────────────────────────────────────────────

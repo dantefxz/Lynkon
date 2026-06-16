@@ -49,9 +49,16 @@ const verifySteamCallback = async (query) => {
   if (!match) throw Object.assign(new Error('Invalid Steam OpenID response'), { status: 400 });
   const steamId = match[1];
 
-  const verifyParams = { ...query };
-  verifyParams['openid.mode'] = 'check_authentication';
-  delete verifyParams['state'];
+  // Whitelist de parámetros OpenID — evita inyección de campos arbitrarios del query del usuario
+  const OPENID_FIELDS = [
+    'openid.ns', 'openid.op_endpoint', 'openid.claimed_id', 'openid.identity',
+    'openid.return_to', 'openid.response_nonce', 'openid.assoc_handle',
+    'openid.signed', 'openid.sig',
+  ];
+  const verifyParams = { 'openid.mode': 'check_authentication' };
+  for (const field of OPENID_FIELDS) {
+    if (query[field] !== undefined) verifyParams[field] = query[field];
+  }
 
   const verifyRes = await axios.post(
     'https://steamcommunity.com/openid/login',

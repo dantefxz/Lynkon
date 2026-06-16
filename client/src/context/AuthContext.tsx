@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 ...prev,
                 name:   profile.username || prev.name,
                 avatar: profile.avatarId || profile.avatar || prev.avatar,
-                bio:    profile.bio      || prev.bio || '',
+                bio:    profile.bio !== undefined ? profile.bio : (prev.bio || ''),
               } : prev);
             }
           } catch (err: any) {

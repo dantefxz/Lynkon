@@ -53,11 +53,17 @@ const getAchievements = async (xuid) => {
   }));
 };
 
+const validateTitleId = (input) => {
+  if (/^\d+$/.test(input)) return input;
+  throw Object.assign(new Error('Invalid titleId'), { status: 400 });
+};
+
 const getGameAchievements = async (xuid, titleId) => {
   try {
-    const resolvedId = validateXuid(xuid);
+    const resolvedId       = validateXuid(xuid);
+    const resolvedTitleId  = validateTitleId(titleId);
     const res = await axios.get(
-      `${BASE}/achievements/player/${resolvedId}/title/${titleId}`,
+      `${BASE}/achievements/player/${resolvedId}/title/${resolvedTitleId}`,
       { headers: headers() }
     );
     return (res.data.content?.achievements || []).map((a) => ({
