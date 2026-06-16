@@ -176,20 +176,30 @@ interface UserProfile {
 
 // ── Module-level helpers (independent SonarQube complexity budget) ────────────
 
-async function loadUserData(
-  userId: string,
-  setProfile:           React.Dispatch<React.SetStateAction<UserProfile | null>>,
-  setProfileGames:      React.Dispatch<React.SetStateAction<ProfileGame[]>>,
-  setAchievementCounts: React.Dispatch<React.SetStateAction<Record<string, { total: number; completed: number }>>>,
-  setIsFriend:          React.Dispatch<React.SetStateAction<boolean>>,
-  setPendingSent:       React.Dispatch<React.SetStateAction<boolean>>,
-  setPendingRequestId:  React.Dispatch<React.SetStateAction<string>>,
-) {
-  const [profileRes, gamesRes, friendsRes, sentRes] = await Promise.allSettled([
+interface LoadUserDataSetters {
+  setProfile:           React.Dispatch<React.SetStateAction<UserProfile | null>>;
+  setProfileGames:      React.Dispatch<React.SetStateAction<ProfileGame[]>>;
+  setAchievementCounts: React.Dispatch<React.SetStateAction<Record<string, { total: number; completed: number }>>>;
+  setIsFriend:          React.Dispatch<React.SetStateAction<boolean>>;
+  setPendingSent:       React.Dispatch<React.SetStateAction<boolean>>;
+  setPendingRequestId:  React.Dispatch<React.SetStateAction<string>>;
+  setPendingReceived:   React.Dispatch<React.SetStateAction<boolean>>;
+  setPendingReceivedId: React.Dispatch<React.SetStateAction<string>>;
+}
+
+async function loadUserData(userId: string, setters: LoadUserDataSetters) {
+  const {
+    setProfile, setProfileGames, setAchievementCounts,
+    setIsFriend, setPendingSent, setPendingRequestId,
+    setPendingReceived, setPendingReceivedId,
+  } = setters;
+
+  const [profileRes, gamesRes, friendsRes, sentRes, receivedRes] = await Promise.allSettled([
     userApi.getProfile(userId),
     userApi.getProfileGames(userId),
     friendApi.getFriends(),
     friendApi.getSentRequests(),
+    friendApi.getFriendRequests(),
   ]);
 
   let favGames: FavGame[] = [];
@@ -247,6 +257,13 @@ async function loadUserData(
     const found = sent.find((r: any) => r.toUserId === userId);
     setPendingSent(!!found);
     setPendingRequestId(found?.requestId || '');
+  }
+
+  if (receivedRes.status === 'fulfilled') {
+    const received: any[] = (receivedRes.value.data as any)?.requests || [];
+    const incoming = received.find((r: any) => r.from?.uid === userId);
+    setPendingReceived(!!incoming);
+    setPendingReceivedId(incoming?.requestId || '');
   }
 }
 
@@ -326,6 +343,75 @@ async function doFriendAction(
   }
 }
 
+async function doAcceptRequest(
+  requestId: string,
+  errorTitle: string,
+  setActionLoading: React.Dispatch<React.SetStateAction<boolean>>,
+  setIsFriend:      React.Dispatch<React.SetStateAction<boolean>>,
+  setPendingReceived:   React.Dispatch<React.SetStateAction<boolean>>,
+  setPendingReceivedId: React.Dispatch<React.SetStateAction<string>>,
+) {
+  setActionLoading(true);
+  try {
+    await friendApi.respondToRequest(requestId, true);
+    setIsFriend(true);
+    setPendingReceived(false);
+    setPendingReceivedId('');
+  } catch (err: any) {
+    Alert.alert(errorTitle, err?.response?.data?.error || '');
+  } finally {
+    setActionLoading(false);
+  }
+}
+
+async function doDeclineRequest(
+  requestId: string,
+  errorTitle: string,
+  setActionLoading:    React.Dispatch<React.SetStateAction<boolean>>,
+  setPendingReceived:  React.Dispatch<React.SetStateAction<boolean>>,
+  setPendingReceivedId: React.Dispatch<React.SetStateAction<string>>,
+) {
+  setActionLoading(true);
+  try {
+    await friendApi.respondToRequest(requestId, false);
+    setPendingReceived(false);
+    setPendingReceivedId('');
+  } catch (err: any) {
+    Alert.alert(errorTitle, err?.response?.data?.error || '');
+  } finally {
+    setActionLoading(false);
+  }
+}
+
+function IncomingRequestButtons({ loading, onAccept, onDecline }: {
+  loading: boolean; onAccept: () => void; onDecline: () => void;
+}) {
+  const { colors } = useTheme();
+  const { t }      = useTranslation();
+  return (
+    <View style={{ flexDirection: 'row', gap: rw(6) }}>
+      <TouchableOpacity
+        style={[styles.friendBtn, { backgroundColor: colors.purple, borderColor: colors.purple }]}
+        onPress={onAccept}
+        disabled={loading}
+      >
+        {loading
+          ? <ActivityIndicator size="small" color="#fff" />
+          : <MaterialIcons name="check" size={rw(16)} color="#fff" />}
+        <Text style={[styles.friendBtnText, { color: '#fff' }]}>{t('social.actions.accept')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.friendBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={onDecline}
+        disabled={loading}
+      >
+        <MaterialIcons name="close" size={rw(16)} color={colors.textMuted} />
+        <Text style={[styles.friendBtnText, { color: colors.textMuted }]}>{t('social.actions.decline')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 function FriendButton({ isFriend, pendingSent, actionLoading, onPress }: {
   isFriend: boolean;
   pendingSent: boolean;
@@ -381,6 +467,8 @@ export default function UserProfileScreen() {
   const [isFriend, setIsFriend]           = useState(false);
   const [pendingSent, setPendingSent]     = useState(false);
   const [pendingRequestId, setPendingRequestId] = useState('');
+  const [pendingReceived, setPendingReceived]   = useState(false);
+  const [pendingReceivedId, setPendingReceivedId] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const isOwn = userId === currentUser?.id;
@@ -388,7 +476,11 @@ export default function UserProfileScreen() {
   const loadData = useCallback(async () => {
     if (!userId) return;
     try {
-      await loadUserData(userId, setProfile, setProfileGames, setAchievementCounts, setIsFriend, setPendingSent, setPendingRequestId);
+      await loadUserData(userId, {
+        setProfile, setProfileGames, setAchievementCounts,
+        setIsFriend, setPendingSent, setPendingRequestId,
+        setPendingReceived, setPendingReceivedId,
+      });
     } catch {}
   }, [userId]);
 
@@ -451,6 +543,28 @@ export default function UserProfileScreen() {
   const platformNames = profile.platforms.map((p) => p.platform);
   const totalHours = profileGames.reduce((acc, g) => acc + (g.playtimeHours || 0), 0);
 
+  let headerButton: React.ReactNode = null;
+  if (!isOwn) {
+    if (pendingReceived) {
+      headerButton = (
+        <IncomingRequestButtons
+          loading={actionLoading}
+          onAccept={() => doAcceptRequest(pendingReceivedId, t('common.error'), setActionLoading, setIsFriend, setPendingReceived, setPendingReceivedId)}
+          onDecline={() => doDeclineRequest(pendingReceivedId, t('common.error'), setActionLoading, setPendingReceived, setPendingReceivedId)}
+        />
+      );
+    } else {
+      headerButton = (
+        <FriendButton
+          isFriend={isFriend}
+          pendingSent={pendingSent}
+          actionLoading={actionLoading}
+          onPress={handleFriendAction}
+        />
+      );
+    }
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ── Barra superior ── */}
@@ -461,14 +575,7 @@ export default function UserProfileScreen() {
         <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
           {profile.username}
         </Text>
-        {!isOwn && (
-          <FriendButton
-            isFriend={isFriend}
-            pendingSent={pendingSent}
-            actionLoading={actionLoading}
-            onPress={handleFriendAction}
-          />
-        )}
+        {headerButton}
       </View>
 
       <ScrollView

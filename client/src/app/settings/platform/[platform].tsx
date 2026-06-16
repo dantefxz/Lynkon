@@ -488,26 +488,26 @@ export default function PlatformGamesScreen() {
   useEffect(() => {
     const subscription = ExpoLinking.addEventListener('url', ({ url }) => {
       const parsed        = ExpoLinking.parse(url);
-      if (parsed.path !== 'platform-linked') return;
+      if (parsed.path !== '--/platform-linked') return;
       const linkedPlat    = parsed.queryParams?.platform as string;
       const success       = parsed.queryParams?.success === 'true';
       if (linkedPlat !== platformId) return;
       if (success) {
         setLoading(true);
-        load();
+        load().finally(() => router.back());
       } else {
         const errMsg = parsed.queryParams?.error as string || t('platform.notConnected');
         Alert.alert(t('common.error'), errMsg);
       }
     });
     return () => subscription.remove();
-  }, [platformId, load, t]);
+  }, [platformId, load, t, router]);
 
   const handleOAuthLink = async () => {
     if (!platformId || !USES_OAUTH[platformId]) return;
     setLinking(true);
     try {
-      const redirectUri     = ExpoLinking.createURL('platform-linked');
+      const redirectUri     = ExpoLinking.createURL('--/platform-linked');
       const res             = await (platformApi as any).initPlatformAuth(platformId, redirectUri);
       const authUrl: string = (res.data as any)?.authUrl;
       if (!authUrl) throw new Error('No auth URL received');
@@ -527,8 +527,7 @@ export default function PlatformGamesScreen() {
     try {
       await platformApi.linkPlatform('psn', credential);
       setModalVisible(false);
-      setLoading(true);
-      await load();
+      router.back();
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.response?.data?.errors?.[0] || t('common.error');
       Alert.alert(t('common.error'), msg);

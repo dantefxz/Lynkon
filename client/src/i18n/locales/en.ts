@@ -183,6 +183,7 @@ export default {
       accept:        'Accept',
       pending:       'Request sent',
       cancelRequest: 'Cancel request',
+      decline:       'Decline',
     },
     removeFriend:      'Remove friend',
     removeFriendTitle: 'Remove friend?',

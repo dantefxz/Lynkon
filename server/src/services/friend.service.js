@@ -123,6 +123,10 @@ const removeFriend = async (userId, friendId) => {
   if (!userFriends.includes(friendId))
     throw Object.assign(new Error('This user is not your friend'), { status: 404 });
 
+  const now   = new Date().toISOString();
+  const convId = [userId, friendId].sort((a, b) => a.localeCompare(b)).join('_');
+  const convRef = db.collection('conversations').doc(convId);
+
   const batch = db.batch();
   batch.update(db.collection('users').doc(userId), {
     friends: userFriends.filter((id) => id !== friendId),
@@ -132,6 +136,12 @@ const removeFriend = async (userId, friendId) => {
       friends: (friendSnap.data().friends || []).filter((id) => id !== userId),
     });
   }
+  batch.set(convRef, {
+    [`deletedBy_${userId}`]:   true,
+    [`deletedAt_${userId}`]:   now,
+    [`deletedBy_${friendId}`]: true,
+    [`deletedAt_${friendId}`]: now,
+  }, { merge: true });
   await batch.commit();
 };
 
