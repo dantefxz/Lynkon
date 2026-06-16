@@ -325,4 +325,27 @@ export default {
     noGames:         'Sin juegos en el perfil',
     noGamesSubtitle: 'Este usuario todavía no agregó juegos a su perfil',
   },
+
+  offline: {
+    title: 'Sin conexión a internet',
+    desc:  'Revisá tu conexión Wi-Fi o datos móviles para continuar usando Lynkon.',
+  },
+
+  onboarding: {
+    skip:  'Saltar',
+    next:  'Siguiente',
+    start: 'Comenzar',
+    slide1: {
+      title: 'Bienvenido a Lynkon',
+      desc:  'Tu perfil gamer en un solo lugar. Mostrá quién sos como jugador.',
+    },
+    slide2: {
+      title: 'Conecta tus plataformas',
+      desc:  'Vinculá Steam, PSN y Xbox para tener todos tus juegos y horas sincronizados.',
+    },
+    slide3: {
+      title: 'Encontrá jugadores',
+      desc:  'Descubrí gente que juega los mismos juegos que vos y hacete amigo.',
+    },
+  },
 } as const;

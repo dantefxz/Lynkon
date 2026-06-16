@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 import { AppButton } from '@/components';
+import { track, identify } from '@/services/analytics';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,7 +25,9 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim(), password);
+      track('login', { method: 'email' });
     } catch (err: any) {
+      track('login_failed', { reason: err?.response?.data?.message || 'unknown' });
       Alert.alert(t('common.error'), err?.response?.data?.message || t('auth.login.errorInvalid'));
     } finally { setLoading(false); }
   };

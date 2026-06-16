@@ -325,4 +325,27 @@ export default {
     noGames:         'No games in profile',
     noGamesSubtitle: "This user hasn't added any games to their profile yet",
   },
+
+  offline: {
+    title: 'No internet connection',
+    desc:  'Check your Wi-Fi or mobile data connection to keep using Lynkon.',
+  },
+
+  onboarding: {
+    skip:  'Skip',
+    next:  'Next',
+    start: 'Get started',
+    slide1: {
+      title: 'Welcome to Lynkon',
+      desc:  'Your gamer profile in one place. Show the world who you are as a player.',
+    },
+    slide2: {
+      title: 'Connect your platforms',
+      desc:  'Link Steam, PSN and Xbox to sync all your games and playtime.',
+    },
+    slide3: {
+      title: 'Find players',
+      desc:  'Discover people who play the same games and make new friends.',
+    },
+  },
 } as const;

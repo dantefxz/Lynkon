@@ -325,4 +325,27 @@ export default {
     noGames:         'プロフィールにゲームがありません',
     noGamesSubtitle: 'このユーザーはまだゲームを追加していません',
   },
+
+  offline: {
+    title: 'インターネット接続なし',
+    desc:  'Wi-Fiまたはモバイルデータの接続を確認して、Lynkonを使い続けてください。',
+  },
+
+  onboarding: {
+    skip:  'スキップ',
+    next:  '次へ',
+    start: 'はじめる',
+    slide1: {
+      title: 'Lynkonへようこそ',
+      desc:  'あなたのゲーマープロフィールを一箇所に。プレイヤーとしての自分を見せよう。',
+    },
+    slide2: {
+      title: 'プラットフォームを連携',
+      desc:  'Steam・PSN・Xboxを連携して、すべてのゲームとプレイ時間を同期しよう。',
+    },
+    slide3: {
+      title: 'プレイヤーを見つけよう',
+      desc:  '同じゲームをプレイする人を発見して、友達になろう。',
+    },
+  },
 } as const;

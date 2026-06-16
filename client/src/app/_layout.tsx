@@ -3,34 +3,80 @@ import { Stack, useRouter, useSegments, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Animated, Dimensions, AppState } from 'react-native';
+import { View, Text, Animated, Dimensions, AppState, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { userApi } from '@/services/api';
+import { initAnalytics, track, identify } from '@/services/analytics';
 import { Image } from 'expo-image';
 import { I18nextProvider } from 'react-i18next';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { UnreadProvider } from '@/context/UnreadContext';
+import { MaterialIcons } from '@expo/vector-icons';
 import i18n from '@/i18n';
 
-const SPLASH_MIN_MS = 2500;
-const SPLASH_FADE_MS = 600;
+const SPLASH_MIN_MS  = 1800;
+const SPLASH_FADE_MS = 500;
 
-function RootGuard() {
-  const { isAuthenticated, isLoading } = useAuth();
+// ── Overlay de sin conexión ────────────────────────────────────────────────────
+function OfflineOverlay() {
   const { colors } = useTheme();
-  const segments = useSegments();
-  const router = useRouter();
+  const { t } = i18n;
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    const unsub = NetInfo.addEventListener((state) => {
+      setIsOffline(state.isConnected === false);
+    });
+    return () => unsub();
+  }, []);
+
+  if (!isOffline) return null;
+
+  return (
+    <View style={[styles.offlineOverlay, { backgroundColor: colors.background }]}>
+      <MaterialIcons name="wifi-off" size={64} color={colors.textMuted} />
+      <Text style={[styles.offlineTitle, { color: colors.text }]}>
+        {t('offline.title')}
+      </Text>
+      <Text style={[styles.offlineDesc, { color: colors.textMuted }]}>
+        {t('offline.desc')}
+      </Text>
+    </View>
+  );
+}
+
+// ── Guard principal ────────────────────────────────────────────────────────────
+function RootGuard() {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const { colors } = useTheme();
+  const segments   = useSegments();
+  const router     = useRouter();
 
   const [showSplash, setShowSplash] = useState(true);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const authDone = useRef(false);
+  const fadeAnim  = useRef(new Animated.Value(1)).current;
+  const authDone  = useRef(false);
   const timerDone = useRef(false);
+
+  // Inicializar analytics dentro del componente (después de que RN esté listo)
+  useEffect(() => {
+    initAnalytics();
+    track('app_open');
+  }, []);
+
+  // Identificar al usuario en PostHog cuando se autentica
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      identify(user.id, { username: user.name });
+    }
+  }, [isAuthenticated, user?.id]);
 
   const tryHideSplash = () => {
     if (!authDone.current || !timerDone.current) return;
     Animated.timing(fadeAnim, {
-      toValue: 0,
+      toValue:  0,
       duration: SPLASH_FADE_MS,
       useNativeDriver: true,
     }).start(() => setShowSplash(false));
@@ -78,22 +124,34 @@ function RootGuard() {
   useEffect(() => {
     if (isLoading) return;
 
-    const rootSegment = segments[0] as string | undefined;
-    const inAuthGroup = rootSegment === 'auth';
-    const inHome = rootSegment === 'home';
+    const navigate = async () => {
+      const rootSegment  = segments[0] as string | undefined;
+      const inOnboarding = rootSegment === 'onboarding';
 
-    if (!isAuthenticated) {
-      if (!inAuthGroup && !inHome) {
-        router.replace('/home' as Href);
+      const onboardingDone = (await AsyncStorage.getItem('onboarding_complete')) === 'true';
+
+      if (!onboardingDone) {
+        if (!inOnboarding) router.replace('/onboarding' as Href);
+        return;
       }
-    } else if (inAuthGroup || inHome || !rootSegment) {
-      router.replace('/tabs/profile');
-    }
+
+      const inAuthGroup = rootSegment === 'auth';
+      const inHome      = rootSegment === 'home';
+
+      if (!isAuthenticated) {
+        if (!inAuthGroup && !inHome) router.replace('/home' as Href);
+      } else if (inAuthGroup || inHome || !rootSegment) {
+        router.replace('/tabs/profile');
+      }
+    };
+
+    navigate();
   }, [isAuthenticated, isLoading, segments]);
 
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="home" />
         <Stack.Screen name="auth" />
         <Stack.Screen name="tabs" />
@@ -101,10 +159,13 @@ function RootGuard() {
           name="game/[gameId]"
           options={{
             presentation: 'card',
-            animation: 'slide_from_right',
+            animation:    'slide_from_right',
           }}
         />
       </Stack>
+
+      {/* Overlay de sin conexión — bloquea toda interacción */}
+      <OfflineOverlay />
 
       {showSplash && (
         <Animated.View
@@ -118,7 +179,7 @@ function RootGuard() {
           <Image
             source={require('../../assets/Splash.gif')}
             style={{
-              width: Dimensions.get('window').width,
+              width:  Dimensions.get('window').width,
               height: Dimensions.get('window').height,
             }}
             contentFit="cover"
@@ -155,3 +216,25 @@ function StatusBarWrapper() {
   const { theme } = useTheme();
   return <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />;
 }
+
+const styles = StyleSheet.create({
+  offlineOverlay: {
+    position:       'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems:     'center',
+    justifyContent: 'center',
+    gap:            16,
+    paddingHorizontal: 40,
+    zIndex:         999,
+  },
+  offlineTitle: {
+    fontSize:   22,
+    fontWeight: '700',
+    textAlign:  'center',
+  },
+  offlineDesc: {
+    fontSize:   15,
+    textAlign:  'center',
+    lineHeight: 22,
+  },
+});

@@ -5,6 +5,7 @@ import {
   Modal, TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +16,7 @@ import { rw, rh, rf, rs, gridColumns, cardWidth } from '@/utils/responsive';
 import { GameCard, ProfileHeader } from '@/components';
 import { AddGameModal } from '@/components/AddGameModal';
 import { EditFavoritesModal } from '@/components/EditFavoritesModal';
-import { getAllSkillLevels, SkillLevel } from '@/utils/skillStorage';
+import { SkillLevel } from '@/utils/skillStorage';
 
 interface Game {
   id: string;
@@ -129,6 +130,13 @@ export default function ProfileScreen() {
         setProfileGames((pgRes.data as any)?.profileGames || []);
       } catch {}
 
+      // 5. Skill tags desde Firestore (fuente de verdad)
+      try {
+        const profileRes = await userApi.getMyProfile();
+        const tags: Record<string, SkillLevel> = (profileRes.data as any)?.profile?.skillTags || {};
+        setSkillLevels(tags);
+      } catch {}
+
       // 4. Favoritos
       try {
         const favRes = await userApi.getFavorites(user.id);
@@ -149,9 +157,12 @@ export default function ProfileScreen() {
     loadData().finally(() => setLoading(false));
   }, [loadData]);
 
-  useEffect(() => {
-    getAllSkillLevels().then(setSkillLevels);
-  }, []);
+  // Recargar skill tags al volver al tab (ej: después de setear uno en [gameId].tsx)
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading) loadData();
+    }, [loadData]),
+  );
 
   // Fetch achievement counts for profile + favorite games in background
   useEffect(() => {
