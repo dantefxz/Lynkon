@@ -2,7 +2,7 @@ const { db } = require('../config/firebase');
 const { serializeMessage } = require('../dtos/message.dto');
 const { normalizeAvatarId } = require('../utils/avatar.utils');
 
-const convId = (a, b) => [a, b].sort().join('_');
+const convId = (a, b) => [a, b].sort((x, y) => x.localeCompare(y)).join('_');
 
 const getUnread = async (conversationId, uid) => {
   const snap = await db.collection('conversations').doc(conversationId).get();

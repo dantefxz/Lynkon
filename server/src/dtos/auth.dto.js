@@ -32,7 +32,7 @@ const parseRegisterDTO = (body) => {
     if (password.length < 8) errors.push('password must be at least 8 characters');
   }
   if (!birthDate) errors.push('birthDate is required (YYYY-MM-DD)');
-  else if (isNaN(new Date(birthDate).getTime())) errors.push('birthDate is not a valid date');
+  else if (Number.isNaN(new Date(birthDate).getTime())) errors.push('birthDate is not a valid date');
 
   if (!['email', 'google'].includes(authProvider))
     errors.push("authProvider must be 'email' or 'google'");

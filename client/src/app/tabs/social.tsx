@@ -186,7 +186,7 @@ function SocialContent() {
             friendApi.getFriends(),
             friendApi.getFriendRequests(),
             friendApi.getSentRequests(),
-            currentUser?.id ? userApi.getRecommendations(currentUser.id) : Promise.reject(),
+            currentUser?.id ? userApi.getRecommendations(currentUser.id) : Promise.reject(new Error('No user id')),
             messageApi.getConversations(),
           ]);
 
