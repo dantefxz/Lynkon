@@ -3,6 +3,7 @@ const {
   parseUpdateSettingsDTO,
 } = require('../dtos/user.dto');
 const userService  = require('../services/user.service');
+const axios        = require('axios');
 const { db }       = require('../config/firebase');
 const steamService = require('../services/steam.service');
 const psnService   = require('../services/psn.service');
@@ -84,6 +85,26 @@ const updateSettings = async (req, res, next) => {
 
 const deleteUser = async (req, res, next) => {
   try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    const snap = await db.collection('users').doc(req.params.id).get();
+    if (!snap.exists) return res.status(404).json({ error: 'User not found' });
+    const { email } = snap.data();
+
+    const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+    try {
+      await axios.post(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+        { email, password, returnSecureToken: false },
+      );
+    } catch (err) {
+      const code = err.response?.data?.error?.message || '';
+      if (['INVALID_PASSWORD', 'EMAIL_NOT_FOUND', 'INVALID_LOGIN_CREDENTIALS', 'USER_DISABLED'].includes(code))
+        return res.status(401).json({ error: 'Incorrect password' });
+      throw err;
+    }
+
     await userService.deleteUser(req.params.id);
     return res.status(200).json({ message: 'User deleted successfully' });
   } catch (err) { next(err); }

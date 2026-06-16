@@ -87,6 +87,9 @@ export const userApi = {
 
   getUserGameAchievements: (userId: string, platform: string, gameId: string) =>
     api.get(`/users/${userId}/platforms/${platform}/games/${gameId}/achievements`),
+
+  deleteAccount: (userId: string, password: string) =>
+    api.delete(`/users/${userId}`, { data: { password } }),
 };
 
 // ─── Platforms ─────────────────────────────────────────

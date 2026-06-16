@@ -50,8 +50,8 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: colors.card,
-          borderTopColor:  colors.border,
-          borderTopWidth:  1,
+          borderTopColor:  'transparent',
+          borderTopWidth:  0,
           height:          rh(72) + insets.bottom,
           paddingBottom:   insets.bottom + rh(12),
           paddingTop:      rh(8),

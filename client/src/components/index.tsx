@@ -26,10 +26,13 @@ export function AppButton({
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'destructive';
 }) {
   const { colors } = useTheme();
-  const isPrimary = variant === 'primary';
+  const isDestructive = variant === 'destructive';
+  const isPrimary     = variant === 'primary';
+  const bgColor       = isDestructive ? '#EF4444' : isPrimary ? colors.purple : colors.card;
+  const textColor     = isDestructive || isPrimary ? '#fff' : colors.purple;
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -37,9 +40,9 @@ export function AppButton({
       style={[
         btnStyles.btn,
         {
-          backgroundColor: isPrimary ? colors.purple : colors.card,
-          borderColor: colors.purpleBorder,
-          borderWidth: isPrimary ? 0 : 1,
+          backgroundColor: bgColor,
+          borderColor: isDestructive ? '#EF4444' : colors.purpleBorder,
+          borderWidth: isPrimary || isDestructive ? 0 : 1,
           opacity: disabled || loading ? 0.6 : 1,
         },
       ]}
@@ -47,7 +50,7 @@ export function AppButton({
       {loading ? (
         <ActivityIndicator color="#fff" size="small" />
       ) : (
-        <Text style={[btnStyles.label, { color: isPrimary ? '#fff' : colors.purple }]}>
+        <Text style={[btnStyles.label, { color: textColor }]}>
           {label}
         </Text>
       )}
@@ -126,11 +129,11 @@ export function GameCard({
           <Text style={[gcStyles.meta, { color: colors.textMuted }]}>
             {completion !== null
               ? `${completedAchievements}/${totalAchievements} · ${completion}%`
-              : t('profile.hoursPlayed', { hours: totalHours })}
+              : totalHours ? t('profile.hoursPlayed', { hours: totalHours }) : ''}
           </Text>
           {platformLogo && <Image source={platformLogo} style={gcStyles.platformLogo} resizeMode="contain" />}
         </View>
-        {completion !== null && totalHours !== undefined && (
+        {completion !== null && !!totalHours && (
           <Text style={[gcStyles.meta, { color: colors.textMuted }]}>{t('profile.hoursPlayed', { hours: totalHours })}</Text>
         )}
       </View>
@@ -266,7 +269,7 @@ export function PlayerCard({
         <Text style={[pcStyles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
         {gamesInCommon !== undefined && gamesInCommon > 0 && (
           <Text style={[pcStyles.meta, { color: colors.textMuted }]}>
-            {gamesInCommon} juego{gamesInCommon !== 1 ? 's' : ''} en común
+            {t('social.inCommon', { count: gamesInCommon, plural: gamesInCommon !== 1 ? 's' : '' })}
           </Text>
         )}
       </View>
@@ -372,7 +375,7 @@ const cbStyles = StyleSheet.create({
 export function SearchBar({
   value,
   onChangeText,
-  placeholder = 'Buscar...',
+  placeholder = 'Search...',
 }: {
   value: string;
   onChangeText: (text: string) => void;

@@ -174,14 +174,14 @@ export default function UserProfileScreen() {
           <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
         </TouchableOpacity>
         <View style={styles.centered}>
-          <Text style={[styles.emptyText, { color: colors.textMuted }]}>Usuario no encontrado</Text>
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('userProfile.notFound')}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   const platformNames = profile.platforms.map((p) => p.platform);
-  const friendButtonLabel = isFriend ? 'Amigos' : pendingSent ? 'Solicitud enviada' : 'Agregar amigo';
+  const friendButtonLabel = isFriend ? t('social.friends') : pendingSent ? t('social.actions.pending') : t('userProfile.addFriend');
   const totalHours = profileGames.reduce((acc, g) => acc + (g.playtimeHours || 0), 0);
 
   return (
@@ -229,8 +229,8 @@ export default function UserProfileScreen() {
           avatar={profile.avatarId || getProfileAvatar(profile.uid)}
           bio={profile.bio}
           stats={[
-            { icon: 'sports-esports', iconColor: colors.purple, value: profileGames.length, label: 'Juegos'  },
-            { icon: 'schedule',       iconColor: '#60A5FA',      value: `${totalHours}h`,    label: 'Horas'   },
+            { icon: 'sports-esports', iconColor: colors.purple, value: profileGames.length,                    label: t('profile.gamesLabel') },
+            { icon: 'schedule',       iconColor: '#60A5FA',      value: totalHours ? `${totalHours}h` : '—', label: t('profile.hoursLabel') },
           ]}
           platforms={platformNames}
           onSync={onRefresh}
@@ -243,7 +243,7 @@ export default function UserProfileScreen() {
             <View style={styles.sectionTitleRow}>
               <MaterialIcons name="star-outline" size={rw(17)} color="#F59E0B" />
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Favoritos{profile.favoriteGames.length > 0 ? ` (${profile.favoriteGames.length})` : ''}
+                {t('profile.favorites')}{profile.favoriteGames.length > 0 ? ` (${profile.favoriteGames.length})` : ''}
               </Text>
             </View>
           </View>
@@ -280,7 +280,7 @@ export default function UserProfileScreen() {
           ) : (
             <View style={[styles.emptyFavs, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <MaterialIcons name="star-outline" size={rw(28)} color={colors.textMuted} />
-              <Text style={[styles.emptyFavsText, { color: colors.textMuted }]}>Sin favoritos todavía</Text>
+              <Text style={[styles.emptyFavsText, { color: colors.textMuted }]}>{t('userProfile.noFavorites')}</Text>
             </View>
           )}
         </View>
@@ -291,7 +291,7 @@ export default function UserProfileScreen() {
             <View style={styles.sectionTitleRow}>
               <MaterialIcons name="sports-esports" size={rw(17)} color={colors.purple} />
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Juegos{profileGames.length > 0 ? ` (${profileGames.length})` : ''}
+                {t('profile.gamesLabel')}{profileGames.length > 0 ? ` (${profileGames.length})` : ''}
               </Text>
             </View>
           </View>
@@ -300,10 +300,8 @@ export default function UserProfileScreen() {
               <View style={[styles.emptyIcon, { backgroundColor: colors.purpleMuted }]}>
                 <MaterialIcons name="videogame-asset-off" size={rw(40)} color={colors.purple} />
               </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>Sin juegos en el perfil</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                Este usuario todavía no agregó juegos a su perfil
-              </Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('userProfile.noGames')}</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>{t('userProfile.noGamesSubtitle')}</Text>
             </View>
           ) : (
             <View style={[styles.grid, { paddingHorizontal: rs.md, gap: rw(12) }]}>

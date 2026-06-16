@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity, Modal, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { platformApi } from '@/services/api';
+import { platformApi, userApi } from '@/services/api';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 import { SettingsRow, SettingsSwitchRow, AppButton } from '@/components';
 import {
@@ -30,8 +30,12 @@ export default function SettingsScreen() {
     PLATFORM_ORDER.map((id) => ({ id, connected: false }))
   );
   const [loading, setLoading]               = useState(true);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm]   = useState(false);
+  const [showLangPicker, setShowLangPicker]         = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm]   = useState(false);
+  const [deletePassword, setDeletePassword]         = useState('');
+  const [deleteLoading, setDeleteLoading]           = useState(false);
+  const [deleteError, setDeleteError]               = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -51,6 +55,21 @@ export default function SettingsScreen() {
   );
 
   const isDark = theme === 'dark';
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim() || !user?.id) return;
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      await userApi.deleteAccount(user.id, deletePassword);
+      await logout();
+    } catch (err: any) {
+      const status = err?.response?.status;
+      setDeleteError(status === 401 ? t('settings.deleteAccount.wrongPassword') : t('settings.deleteAccount.error'));
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -131,6 +150,11 @@ export default function SettingsScreen() {
             variant="destructive"
             onPress={() => setShowLogoutConfirm(true)}
           />
+          <AppButton
+            label={t('settings.deleteAccount.button')}
+            variant="destructive"
+            onPress={() => { setShowDeleteConfirm(true); setDeletePassword(''); setDeleteError(''); }}
+          />
         </View>
       </ScrollView>
 
@@ -153,6 +177,47 @@ export default function SettingsScreen() {
                 onPress={logout}
                 style={{ flex: 1 }}
               />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Confirmación eliminar cuenta */}
+      {showDeleteConfirm && (
+        <View style={styles.overlay}>
+          <View style={[styles.dialog, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.deleteIconCircle, { backgroundColor: '#FEE2E2' }]}>
+              <MaterialIcons name="warning" size={rw(28)} color="#EF4444" />
+            </View>
+            <Text style={[styles.dialogTitle, { color: colors.text }]}>{t('settings.deleteAccount.title')}</Text>
+            <Text style={[styles.dialogMsg, { color: colors.textMuted }]}>{t('settings.deleteAccount.message')}</Text>
+            <TextInput
+              style={[styles.passwordInput, { color: colors.text, backgroundColor: colors.background, borderColor: deleteError ? '#EF4444' : colors.border }]}
+              placeholder={t('settings.deleteAccount.passwordPlaceholder')}
+              placeholderTextColor={colors.textMuted}
+              value={deletePassword}
+              onChangeText={(v) => { setDeletePassword(v); setDeleteError(''); }}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            {deleteError ? <Text style={styles.deleteErrorText}>{deleteError}</Text> : null}
+            <View style={styles.dialogBtns}>
+              <AppButton
+                label={t('common.cancel')}
+                variant="secondary"
+                onPress={() => setShowDeleteConfirm(false)}
+                style={{ flex: 1 }}
+                disabled={deleteLoading}
+              />
+              <TouchableOpacity
+                style={[styles.deleteConfirmBtn, { backgroundColor: deleteLoading || !deletePassword.trim() ? colors.textMuted : '#EF4444' }]}
+                onPress={handleDeleteAccount}
+                disabled={deleteLoading || !deletePassword.trim()}
+              >
+                {deleteLoading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.deleteConfirmText}>{t('settings.deleteAccount.confirm')}</Text>}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -211,7 +276,12 @@ const styles = StyleSheet.create({
   dialogTitle:  { fontSize: rf(18), fontWeight: '700' },
   dialogMsg:    { fontSize: rf(14), lineHeight: rh(20) },
   dialogBtns:   { flexDirection: 'row', gap: rw(12) },
-  langOption:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: rh(14), paddingHorizontal: rw(16), borderRadius: rw(12), borderWidth: 1 },
-  langLabel:    { fontSize: rf(15), fontWeight: '500' },
-  langCancel:   { alignItems: 'center', paddingTop: rh(4) },
+  langOption:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: rh(14), paddingHorizontal: rw(16), borderRadius: rw(12), borderWidth: 1 },
+  langLabel:         { fontSize: rf(15), fontWeight: '500' },
+  langCancel:        { alignItems: 'center', paddingTop: rh(4) },
+  deleteIconCircle:  { width: rw(56), height: rw(56), borderRadius: rw(28), alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  passwordInput:     { borderWidth: 1, borderRadius: rw(12), paddingHorizontal: rs.md, paddingVertical: rh(12), fontSize: rf(15) },
+  deleteErrorText:   { fontSize: rf(13), color: '#EF4444' },
+  deleteConfirmBtn:  { flex: 1, borderRadius: rw(12), paddingVertical: rh(14), alignItems: 'center', justifyContent: 'center' },
+  deleteConfirmText: { fontSize: rf(16), fontWeight: '600', color: '#fff' },
 });

@@ -118,6 +118,15 @@ export default {
       message: 'Vas a tener que volver a iniciar sesión para acceder a tu cuenta.',
       confirm: 'Cerrar sesión',
     },
+    deleteAccount: {
+      button:              'Eliminar cuenta',
+      title:               '¿Eliminar cuenta?',
+      message:             'Esta acción es permanente y no se puede deshacer. Todos tus datos serán eliminados.',
+      passwordPlaceholder: 'Tu contraseña',
+      confirm:             'Eliminar mi cuenta',
+      wrongPassword:       'Contraseña incorrecta',
+      error:               'No se pudo eliminar la cuenta',
+    },
   },
 
   profile: {
@@ -175,6 +184,11 @@ export default {
       title:   'Función no disponible',
       message: 'Las funciones sociales (amigos y mensajes) no están disponibles para usuarios menores de 16 años.',
     },
+    recommendations:          'Recomendaciones',
+    recommendationsGames:     'Jugadores con juegos favoritos en común',
+    recommendationsCommunity: 'Jugadores de la comunidad',
+    noRecommendations:        'Todavía no hay recomendaciones',
+    incomingRequests:         'Solicitudes recibidas ({{count}})',
   },
 
   game: {
@@ -292,5 +306,12 @@ export default {
       tokenPlaceholder: 'Pegá tu token NPSSO aquí',
       link:             'Vincular cuenta',
     },
+  },
+  userProfile: {
+    notFound:        'Usuario no encontrado',
+    addFriend:       'Agregar amigo',
+    noFavorites:     'Sin favoritos todavía',
+    noGames:         'Sin juegos en el perfil',
+    noGamesSubtitle: 'Este usuario todavía no agregó juegos a su perfil',
   },
 } as const;

@@ -118,6 +118,15 @@ export default {
       message: 'アカウントにアクセスするには再度ログインが必要です。',
       confirm: 'ログアウト',
     },
+    deleteAccount: {
+      button:              'アカウントを削除',
+      title:               'アカウントを削除しますか？',
+      message:             'この操作は元に戻せません。すべてのデータが削除されます。',
+      passwordPlaceholder: 'パスワード',
+      confirm:             'アカウントを削除する',
+      wrongPassword:       'パスワードが正しくありません',
+      error:               'アカウントを削除できませんでした',
+    },
   },
 
   profile: {
@@ -175,6 +184,11 @@ export default {
       title:   '機能が利用できません',
       message: 'ソーシャル機能（フレンドとメッセージ）は16歳未満のユーザーには利用できません。',
     },
+    recommendations:          'おすすめ',
+    recommendationsGames:     '共通ゲームがあるプレイヤー',
+    recommendationsCommunity: 'コミュニティプレイヤー',
+    noRecommendations:        'まだおすすめがありません',
+    incomingRequests:         'フレンドリクエスト ({{count}})',
   },
 
   game: {
@@ -292,5 +306,12 @@ export default {
       tokenPlaceholder: 'NPSSOトークンをここに貼り付け',
       link:             'アカウントを連携',
     },
+  },
+  userProfile: {
+    notFound:        'ユーザーが見つかりません',
+    addFriend:       'フレンドを追加',
+    noFavorites:     'お気に入りがまだありません',
+    noGames:         'プロフィールにゲームがありません',
+    noGamesSubtitle: 'このユーザーはまだゲームを追加していません',
   },
 } as const;

@@ -68,6 +68,7 @@ function RequestRow({
   onPress: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={[styles.requestRow, { backgroundColor: colors.card, borderColor: colors.purpleBorder }]}>
       <PlayerCard
@@ -82,7 +83,7 @@ function RequestRow({
           onPress={onAccept}
         >
           <MaterialIcons name="check" size={rw(16)} color="#fff" />
-          <Text style={styles.acceptBtnText}>Aceptar</Text>
+          <Text style={styles.acceptBtnText}>{t('social.actions.accept')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.declineBtn, { borderColor: colors.border }]}
@@ -384,7 +385,7 @@ function SocialContent() {
             {incomingRequests.length > 0 && searchQuery.length < 2 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  Solicitudes recibidas ({incomingRequests.length})
+                  {t('social.incomingRequests', { count: incomingRequests.length })}
                 </Text>
                 {incomingRequests.map((req) => (
                   <RequestRow
@@ -402,19 +403,19 @@ function SocialContent() {
             {searchQuery.length < 2 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Recomendaciones</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('social.recommendations')}</Text>
                   <MaterialIcons name="auto-awesome" size={rw(16)} color={colors.purple} />
                 </View>
                 <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
                   {suggestions.length > 0 && suggestions.some((u) => u.gamesInCommon > 0)
-                    ? 'Jugadores con juegos favoritos en común'
-                    : 'Jugadores de la comunidad'}
+                    ? t('social.recommendationsGames')
+                    : t('social.recommendationsCommunity')}
                 </Text>
                 {suggestions.length === 0 ? (
                   <View style={styles.emptyBox}>
                     <MaterialIcons name="people-outline" size={rw(32)} color={colors.textMuted} />
                     <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                      Todavía no hay recomendaciones
+                      {t('social.noRecommendations')}
                     </Text>
                   </View>
                 ) : (

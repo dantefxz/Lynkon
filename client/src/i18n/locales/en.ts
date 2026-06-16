@@ -118,6 +118,15 @@ export default {
       message: "You'll need to sign in again to access your account.",
       confirm: 'Sign out',
     },
+    deleteAccount: {
+      button:              'Delete account',
+      title:               'Delete account?',
+      message:             'This is permanent and cannot be undone. All your data will be deleted.',
+      passwordPlaceholder: 'Your password',
+      confirm:             'Delete my account',
+      wrongPassword:       'Incorrect password',
+      error:               'Could not delete account',
+    },
   },
 
   profile: {
@@ -175,6 +184,11 @@ export default {
       title:   'Feature unavailable',
       message: 'Social features (friends and messages) are not available for users under 16 years old.',
     },
+    recommendations:          'Recommendations',
+    recommendationsGames:     'Players with games in common',
+    recommendationsCommunity: 'Community players',
+    noRecommendations:        'No recommendations yet',
+    incomingRequests:         'Requests ({{count}})',
   },
 
   game: {
@@ -292,5 +306,12 @@ export default {
       tokenPlaceholder: 'Paste your NPSSO token here',
       link:             'Link account',
     },
+  },
+  userProfile: {
+    notFound:        'User not found',
+    addFriend:       'Add friend',
+    noFavorites:     'No favorites yet',
+    noGames:         'No games in profile',
+    noGamesSubtitle: "This user hasn't added any games to their profile yet",
   },
 } as const;

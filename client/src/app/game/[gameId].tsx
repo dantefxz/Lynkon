@@ -33,15 +33,15 @@ interface GameDetail {
   platform: string;
 }
 
-function formatDate(ts: number | string | null): string {
+function formatDate(ts: number | string | null, locale?: string): string {
   if (!ts) return '';
   const d = new Date(typeof ts === 'number' ? ts * 1000 : ts);
-  return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 export default function GameDetailScreen() {
   const { colors } = useTheme();
-  const { t }      = useTranslation();
+  const { t, i18n } = useTranslation();
   const router    = useRouter();
   const {
     gameId,
@@ -231,11 +231,13 @@ export default function GameDetailScreen() {
         <View style={{ padding: rs.md, gap: rh(16) }}>
           {/* Stats */}
           <View style={styles.statsRow}>
-            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <MaterialIcons name="schedule" size={rw(20)} color={colors.purple} />
-              <Text style={[styles.statValue, { color: colors.text }]}>{game.totalHours}h</Text>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('game.section.hours')}</Text>
-            </View>
+            {game.totalHours > 0 && (
+              <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <MaterialIcons name="schedule" size={rw(20)} color={colors.purple} />
+                <Text style={[styles.statValue, { color: colors.text }]}>{game.totalHours}h</Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('game.section.hours')}</Text>
+              </View>
+            )}
             {game.totalAchievements > 0 && (
               <>
                 <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -336,7 +338,7 @@ export default function GameDetailScreen() {
                           <Text style={[styles.achDesc, { color: colors.textMuted }]} numberOfLines={2}>{ach.description}</Text>
                         ) : null}
                         {ach.unlocked && ach.unlockedAt ? (
-                          <Text style={[styles.achDate, { color: colors.purple }]}>{formatDate(ach.unlockedAt)}</Text>
+                          <Text style={[styles.achDate, { color: colors.purple }]}>{formatDate(ach.unlockedAt, i18n.language)}</Text>
                         ) : null}
                       </View>
                       {ach.unlocked && (
