@@ -3,11 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 function resolveApiUrl(): string {
-  // Producción (APK/EAS build): usa la variable de entorno
   if (!__DEV__) {
     return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
   }
-  // Desarrollo: detecta la IP del host a partir del servidor de Expo
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const host = hostUri.split(':')[0];
@@ -24,7 +22,6 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Inject token on every request
 api.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem('authToken');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -119,7 +116,7 @@ export const platformApi = {
   syncPlatform: (platform: string) =>
     api.post(`/platforms/me/${platform}/sync`),
 
-  // ── OAuth / vinculación real ───────────────────────
+  // ── Vinculación real ───────────────────────
   initPlatformAuth: (platform: 'steam' | 'xbox', redirectUri?: string) =>
     api.post(`/platforms/auth/${platform}/init`, { redirectUri }),
 

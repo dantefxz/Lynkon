@@ -55,7 +55,7 @@ export function SettingsRow({
 }
 
 export interface SettingsSwitchRowProps {
-  icon: string; // MaterialIcons name
+  icon: string; 
   iconBg?: string;
   iconColor?: string;
   label: string;

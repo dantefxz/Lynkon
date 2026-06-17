@@ -41,7 +41,6 @@ interface IncomingRequest {
   avatarId: string;
 }
 
-// ─── Helpers de formato de mensajes ──────────────────────────────────────────
 const formatMsgTime = (iso: string) => {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -242,7 +241,6 @@ function ChatView({
   );
 }
 
-// ─── Social list sub-sections ─────────────────────────────────────────────────
 function SuggestionsSection({ suggestions, getUserAction, openConversation }: {
   suggestions: User[];
   getUserAction: (id: string, onChat?: () => void) => { label: string; onAction?: () => void; actionDisabled?: boolean };
@@ -368,7 +366,7 @@ function SocialContent() {
     return unsub;
   }, [navigation]);
 
-  // ── Carga (inicial con spinner, silenciosa en re-foco) ─────────────────────
+  // ── Carga ─────────────────────
   useFocusEffect(
     useCallback(() => {
       const load = async () => {

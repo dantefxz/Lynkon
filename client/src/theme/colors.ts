@@ -1,5 +1,3 @@
-// Static dark-theme color palette.
-// For dynamic light/dark switching, use useTheme() from @/context/ThemeContext instead.
 export const colors = {
   background: '#0D0D14',
   card: '#16161F',

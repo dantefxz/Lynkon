@@ -20,7 +20,6 @@ const COLS       = gridColumns();
 const CARD_W     = cardWidth(COLS);
 const FAV_CARD_W = cardWidth(Math.min(COLS + 1, 3));
 
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 function UserFavoritesSection({ favoriteGames, profileGames, achievementCounts, skillTags, userId }: {
   favoriteGames: FavGame[];
@@ -174,7 +173,6 @@ interface UserProfile {
   skillTags: Record<string, SkillLevel>;
 }
 
-// ── Module-level helpers (independent SonarQube complexity budget) ────────────
 
 interface LoadUserDataSetters {
   setProfile:           React.Dispatch<React.SetStateAction<UserProfile | null>>;

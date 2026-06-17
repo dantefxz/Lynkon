@@ -60,7 +60,7 @@ function RootGuard() {
   const authDone  = useRef(false);
   const timerDone = useRef(false);
 
-  // Inicializar analytics dentro del componente (después de que RN esté listo)
+  // Inicializar analytics dentro del componente 
   useEffect(() => {
     initAnalytics();
     track('app_open');

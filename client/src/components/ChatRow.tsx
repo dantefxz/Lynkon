@@ -84,7 +84,6 @@ export function ChatBubble({ message, timestamp, isOwn }: ChatBubbleProps) {
 }
 
 const styles = StyleSheet.create({
-  // ChatRow
   row: {
     flexDirection: 'row',
     alignItems: 'center',

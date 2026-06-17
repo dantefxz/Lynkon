@@ -106,7 +106,7 @@ const forgotPassword = async (email) => {
       { requestType: 'PASSWORD_RESET', email: normalizedEmail },
     );
   } catch {
-    // Silently ignore — avoid revealing whether the email is registered
+    // Ignora sin infromar que el email ya esta registrado
   }
 
   return { message: 'If that email exists, a reset link has been sent.' };

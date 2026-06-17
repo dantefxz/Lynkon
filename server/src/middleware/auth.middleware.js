@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { db } = require('../config/firebase');
 
-// must match the secret used when signing tokens in auth.service.js
 const JWT_SECRET = process.env.JWT_SECRET || 'lynkon-dev-secret-key-2026';
 const authenticate = async (req, res, next) => {
   const header = req.headers.authorization;

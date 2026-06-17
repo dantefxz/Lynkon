@@ -41,7 +41,6 @@ const COLS       = gridColumns();
 const CARD_W     = cardWidth(COLS);
 const FAV_CARD_W = cardWidth(Math.min(COLS + 1, 3));
 
-// ── Sub-components (independent cognitive complexity) ──────────────────────────
 
 function FavoritesSection({ favoriteGames, achievementCounts, skillLevels, onAddFav, onEditFav }: {
   favoriteGames: Game[];
@@ -222,7 +221,7 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const { t }      = useTranslation();
 
-  // All games fetched from platforms (for search/add modal)
+  // All games fetched from platforms 
   const [allGames, setAllGames]           = useState<Game[]>([]);
   const [platforms, setPlatforms]         = useState<string[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -242,7 +241,7 @@ export default function ProfileScreen() {
   const [addFavModalVisible, setAddFavModalVisible]         = useState(false);
   const [editModalVisible, setEditModalVisible]             = useState(false);
 
-  // ── Edición inline de nombre y bio ────────────────────────────────────────────
+  // ── Edición inline de nombre y bio ──
   const [editProfileVisible, setEditProfileVisible] = useState(false);
   const [editName, setEditName]                     = useState('');
   const [editBio, setEditBio]                       = useState('');

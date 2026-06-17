@@ -154,7 +154,6 @@ const syncPlatform = async (req, res, next) => {
     const data    = snap.data();
     const updatedAt = new Date().toISOString();
 
-    // gameId → playtimeHours fresco desde la plataforma
     const freshMap = Object.fromEntries(freshGames.map((g) => [g.gameId, g.playtimeHours]));
 
     const updateHours = (list) =>
