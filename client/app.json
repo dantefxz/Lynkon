@@ -4,11 +4,11 @@
     "slug": "lynkon-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/Logo.png",
+    "icon": "./assets/logo_cuadrado.png",
     "userInterfaceStyle": "automatic",
     "scheme": "lynkon",
     "splash": {
-      "image": "./assets/Logo.png",
+      "image": "./assets/logo_cuadrado.png",
       "resizeMode": "contain",
       "backgroundColor": "#0A0A0F"
     },
@@ -18,11 +18,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/Logo.png",
+        "foregroundImage": "./assets/logo_cuadrado.png",
         "backgroundColor": "#0A0A0F"
       },
-      "package": "com.lynkon.app",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.lynkon.app"
     },
     "plugins": [
       [
@@ -38,6 +37,15 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "root": "./src/app"
+      },
+      "eas": {
+        "projectId": "a0e80a59-5f3e-4256-8968-4d54c7db74a5"
+      }
     }
   }
 }
+

@@ -16,7 +16,7 @@ export default function WelcomeScreen() {
       <View style={styles.content}>
         <View style={styles.logoSection}>
         
-          <Image source={require('../../../assets/Logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require('../../../assets/logo_cuadrado.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={[styles.title, { color: colors.text, fontSize: rf(36) }]}>Lynkon</Text>
           <Text style={[styles.subtitle, { color: colors.purple, fontSize: rf(16) }]}>
             {t('auth.welcome.subtitle')}
