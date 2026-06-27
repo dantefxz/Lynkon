@@ -570,23 +570,21 @@ function SocialContent() {
     } catch {}
   };
 
+  const doRemoveFriend = async (userId: string) => {
+    try {
+      await friendApi.removeFriend(userId);
+      setFriends((prev) => prev.filter((f) => f.id !== userId));
+      setFriendIds((prev) => { const next = new Set(prev); next.delete(userId); return next; });
+    } catch {}
+  };
+
   const handleRemoveFriend = (userId: string, name: string) => {
     Alert.alert(
       t('social.removeFriendTitle'),
       t('social.removeFriendMsg', { name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('social.removeFriend'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await friendApi.removeFriend(userId);
-              setFriends((prev) => prev.filter((f) => f.id !== userId));
-              setFriendIds((prev) => { const next = new Set(prev); next.delete(userId); return next; });
-            } catch {}
-          },
-        },
+        { text: t('social.removeFriend'), style: 'destructive', onPress: () => doRemoveFriend(userId) },
       ],
     );
   };
@@ -638,6 +636,16 @@ function SocialContent() {
   };
 
 
+  const doRemoveFriendFromChat = async () => {
+    if (!selectedUser) return;
+    try {
+      await friendApi.removeFriend(selectedUser.id);
+      setFriends((prev) => prev.filter((f) => f.id !== selectedUser.id));
+      setFriendIds((prev) => { const next = new Set(prev); next.delete(selectedUser.id); return next; });
+      setSelectedUser(null);
+    } catch {}
+  };
+
   const handleRemoveFriendFromChat = () => {
     if (!selectedUser) return;
     Alert.alert(
@@ -645,18 +653,7 @@ function SocialContent() {
       t('social.removeFriendMsg', { name: selectedUser.name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('social.removeFriend'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await friendApi.removeFriend(selectedUser.id);
-              setFriends((prev) => prev.filter((f) => f.id !== selectedUser.id));
-              setFriendIds((prev) => { const next = new Set(prev); next.delete(selectedUser.id); return next; });
-              setSelectedUser(null);
-            } catch {}
-          },
-        },
+        { text: t('social.removeFriend'), style: 'destructive', onPress: doRemoveFriendFromChat },
       ],
     );
   };

@@ -214,79 +214,80 @@ export default function GameDetailScreen() {
   useEffect(() => {
     let active = true;
 
+    const loadAchsForViewer = async () => {
+      setLoadingAchs(true);
+      try {
+        const achRes = await userApi.getUserGameAchievements(viewingUserId!, platformParam!, String(gameId));
+        if (!active) return;
+        const achs: any[] = (achRes.data as any)?.achievements || [];
+        const completed = achs.filter((a) => a.unlocked).length;
+        setAchievements(achs);
+        setGame((prev) => prev ? { ...prev, totalAchievements: achs.length, completedAchievements: completed } : prev);
+      } catch {} finally {
+        if (active) setLoadingAchs(false);
+      }
+    };
+
+    const loadGameForViewer = async () => {
+      if (active) {
+        setGame({
+          id:                    String(gameId),
+          name:                  nameParam ? decodeURIComponent(nameParam) : gameId,
+          cover:                 coverParam ? decodeURIComponent(coverParam) : '',
+          totalHours:            totalHoursParam ? Number(totalHoursParam) : 0,
+          totalAchievements:     0,
+          completedAchievements: 0,
+          platform:              platformParam!,
+        });
+        setLoading(false);
+      }
+      await loadAchsForViewer();
+    };
+
+    const findGameInPlatform = async (plat: string): Promise<boolean> => {
+      try {
+        const gamesRes = await platformApi.getPlatformGames(plat);
+        const list: any[] = (gamesRes.data as any)?.games || gamesRes.data || [];
+        const match = list.find((g: any) => String(g.gameId) === String(gameId) || String(g.id) === String(gameId));
+        if (!match || !active) return false;
+
+        const matchId = String(match.gameId || match.id);
+        setGame({
+          id:                    matchId,
+          name:                  match.name || match.title || 'Unknown',
+          cover:                 match.cover || match.imageUrl || match.iconUrl || '',
+          totalHours:            match.playtimeHours || match.totalHours || match.playtime || 0,
+          totalAchievements:     match.totalAchievements || 0,
+          completedAchievements: match.completedAchievements || 0,
+          platform:              plat,
+        });
+
+        setLoadingAchs(true);
+        try {
+          const achRes = await platformApi.getGameAchievements(plat, matchId);
+          if (active) setAchievements((achRes.data as any)?.achievements || []);
+        } catch {} finally {
+          if (active) setLoadingAchs(false);
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
     const loadGame = async () => {
       if (!gameId) { setLoading(false); return; }
-
       try {
         if (viewingUserId && platformParam) {
-          if (active) {
-            setGame({
-              id:                    String(gameId),
-              name:                  nameParam ? decodeURIComponent(nameParam) : gameId,
-              cover:                 coverParam ? decodeURIComponent(coverParam) : '',
-              totalHours:            totalHoursParam ? Number(totalHoursParam) : 0,
-              totalAchievements:     0,
-              completedAchievements: 0,
-              platform:              platformParam,
-            });
-            setLoading(false);
-          }
-
-          setLoadingAchs(true);
-          try {
-            const achRes = await userApi.getUserGameAchievements(viewingUserId, platformParam, String(gameId));
-            if (active) {
-              const achs: any[] = (achRes.data as any)?.achievements || [];
-              const completed = achs.filter((a) => a.unlocked).length;
-              setAchievements(achs);
-              setGame((prev) => prev ? {
-                ...prev,
-                totalAchievements:     achs.length,
-                completedAchievements: completed,
-              } : prev);
-            }
-          } catch {} finally {
-            if (active) setLoadingAchs(false);
-          }
+          await loadGameForViewer();
           return;
         }
-
-        const platRes  = await platformApi.getLinkedPlatforms();
+        const platRes = await platformApi.getLinkedPlatforms();
         const linked: string[] = ((platRes.data as any)?.platforms || []).map((p: any) => p.platform || p.name);
-        const ordered = platformParam
-          ? [platformParam, ...linked.filter((p) => p !== platformParam)]
-          : linked;
-
+        const ordered = platformParam ? [platformParam, ...linked.filter((p) => p !== platformParam)] : linked;
         for (const plat of ordered) {
-          try {
-            const gamesRes = await platformApi.getPlatformGames(plat);
-            const list: any[] = (gamesRes.data as any)?.games || gamesRes.data || [];
-            const match = list.find(
-              (g: any) => String(g.gameId) === String(gameId) || String(g.id) === String(gameId)
-            );
-            if (!match) continue;
-
-            if (active) {
-              setGame({
-                id:                    String(match.gameId || match.id),
-                name:                  match.name || match.title || 'Unknown',
-                cover:                 match.cover || match.imageUrl || match.iconUrl || '',
-                totalHours:            match.playtimeHours || match.totalHours || match.playtime || 0,
-                totalAchievements:     match.totalAchievements || 0,
-                completedAchievements: match.completedAchievements || 0,
-                platform:              plat,
-              });
-
-              setLoadingAchs(true);
-              try {
-                const achRes = await platformApi.getGameAchievements(plat, String(match.gameId || match.id));
-                if (active) setAchievements((achRes.data as any)?.achievements || []);
-              } catch {} finally {
-                if (active) setLoadingAchs(false);
-              }
-            }
-            break;
-          } catch {}
+          const found = await findGameInPlatform(plat);
+          if (found) break;
         }
       } catch {
         if (active) setGame(null);

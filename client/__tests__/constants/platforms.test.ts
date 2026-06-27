@@ -44,19 +44,19 @@ describe('platforms', () => {
 
     describe('PlayStation / PSN', () => {
       it('recognises "psn"', () => {
-        expect(normalizePlatformId('psn')).toBe('psn');
-        expect(normalizePlatformId('PSN')).toBe('psn');
+        expect(normalizePlatformId('psn')).toBe('playstation');
+        expect(normalizePlatformId('PSN')).toBe('playstation');
       });
 
       it('recognises "playstation"', () => {
-        expect(normalizePlatformId('playstation')).toBe('psn');
-        expect(normalizePlatformId('PlayStation')).toBe('psn');
-        expect(normalizePlatformId('PlayStation 5')).toBe('psn');
+        expect(normalizePlatformId('playstation')).toBe('playstation');
+        expect(normalizePlatformId('PlayStation')).toBe('playstation');
+        expect(normalizePlatformId('PlayStation 5')).toBe('playstation');
       });
 
       it('recognises strings containing "ps"', () => {
-        expect(normalizePlatformId('ps4')).toBe('psn');
-        expect(normalizePlatformId('ps5')).toBe('psn');
+        expect(normalizePlatformId('ps4')).toBe('playstation');
+        expect(normalizePlatformId('ps5')).toBe('playstation');
       });
     });
 

@@ -34,9 +34,9 @@ describe('SettingsRow', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('renders a rightLabel instead of chevron when provided', () => {
+  it('renders a value instead of chevron when provided', () => {
     const { getByText } = renderWithTheme(
-      <SettingsRow label="Idioma" rightLabel="Español" />,
+      <SettingsRow label="Idioma" value="Español" />,
     );
     expect(getByText('Español')).toBeTruthy();
   });
