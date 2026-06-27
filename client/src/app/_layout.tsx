@@ -7,7 +7,6 @@ import { View, Text, Animated, Dimensions, AppState, StyleSheet } from 'react-na
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { userApi } from '@/services/api';
-import { initAnalytics, track, identify } from '@/services/analytics';
 import { Image } from 'expo-image';
 import { I18nextProvider } from 'react-i18next';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -59,19 +58,6 @@ function RootGuard() {
   const fadeAnim  = useRef(new Animated.Value(1)).current;
   const authDone  = useRef(false);
   const timerDone = useRef(false);
-
-  // Inicializar analytics dentro del componente 
-  useEffect(() => {
-    initAnalytics();
-    track('app_open');
-  }, []);
-
-  // Identificar al usuario en PostHog cuando se autentica
-  useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      identify(user.id, { username: user.name });
-    }
-  }, [isAuthenticated, user?.id]);
 
   const tryHideSplash = () => {
     if (!authDone.current || !timerDone.current) return;

@@ -10,7 +10,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { rw, rh, rf, rs } from '@/utils/responsive';
-import { track } from '@/services/analytics';
 
 const { width } = Dimensions.get('window');
 
@@ -61,7 +60,6 @@ export default function OnboardingScreen() {
 
   const finish = async () => {
     await AsyncStorage.setItem('onboarding_complete', 'true');
-    track('onboarding_completed');
     router.replace('/home');
   };
 
@@ -74,7 +72,6 @@ export default function OnboardingScreen() {
   };
 
   const skip = () => {
-    track('onboarding_skipped', { slide: index });
     finish();
   };
 
