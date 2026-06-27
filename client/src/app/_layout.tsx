@@ -49,7 +49,7 @@ function OfflineOverlay() {
 
 // ── Guard principal ────────────────────────────────────────────────────────────
 function RootGuard() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const { colors } = useTheme();
   const segments   = useSegments();
   const router     = useRouter();

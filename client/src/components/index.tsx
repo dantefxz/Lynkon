@@ -240,7 +240,8 @@ export function ChatRow({
 }) {
   const { colors } = useTheme();
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
-  const badgeCount = unreadCount && unreadCount > 0 ? (unreadCount > 99 ? '+99' : String(unreadCount)) : null;
+  const rawCount   = unreadCount && unreadCount > 0 ? unreadCount : null;
+  const badgeCount = rawCount ? (rawCount > 99 ? '+99' : String(rawCount)) : null;
   return (
     <TouchableOpacity
       onPress={onPress}
