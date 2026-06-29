@@ -11,12 +11,11 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { platformApi } from '@/services/api';
 import { rw, rh, rf, rs } from '@/utils/responsive';
-import { PLATFORM_LABELS, PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
+import { PLATFORM_LABELS, PLATFORM_LOGOS, normalizePlatformId, toBackendPlatformId } from '@/constants/platforms';
 import type { PlatformId } from '@/constants/platforms';
 
 const PLATFORM_NAME_FULL: Record<PlatformId, string> = {
   steam:       'Steam',
-  psn:         'PlayStation Network',
   playstation: 'PlayStation Network',
   xbox:        'Xbox Network',
 };
@@ -24,7 +23,6 @@ const PLATFORM_NAME_FULL: Record<PlatformId, string> = {
 const USES_OAUTH: Record<PlatformId, boolean> = {
   steam:       true,
   xbox:        true,
-  psn:         false,
   playstation: false,
 };
 
@@ -430,6 +428,7 @@ export default function PlatformGamesScreen() {
   const router       = useRouter();
   const { platform } = useLocalSearchParams<{ platform: string }>();
   const platformId   = normalizePlatformId(platform);
+  const apiId        = platformId ? toBackendPlatformId(platformId) : null;
   const { colors }   = useTheme();
   const { t }        = useTranslation();
 
@@ -456,8 +455,8 @@ export default function PlatformGamesScreen() {
         setLinkedAt(found.linkedAt || null);
         try {
           const [statsRes, gamesRes] = await Promise.all([
-            platformApi.getPlatformStats(platformId),
-            platformApi.getPlatformGames(platformId),
+            platformApi.getPlatformStats(apiId!),
+            platformApi.getPlatformGames(apiId!),
           ]);
           setStats((statsRes.data as any)?.stats || statsRes.data || null);
           setGames((gamesRes.data as any)?.games || gamesRes.data || []);
@@ -508,7 +507,7 @@ export default function PlatformGamesScreen() {
     setLinking(true);
     try {
       const redirectUri     = ExpoLinking.createURL('--/platform-linked');
-      const res             = await (platformApi as any).initPlatformAuth(platformId, redirectUri);
+      const res             = await (platformApi as any).initPlatformAuth(apiId!, redirectUri);
       const authUrl: string = (res.data as any)?.authUrl;
       if (!authUrl) throw new Error('No auth URL received');
       linkingStarted.current = true;
@@ -525,7 +524,7 @@ export default function PlatformGamesScreen() {
   const handlePsnLink = async (credential: string) => {
     setLinking(true);
     try {
-      await platformApi.linkPlatform('psn', credential);
+      await platformApi.linkPlatform(apiId!, credential);
       setModalVisible(false);
       router.back();
     } catch (err: any) {
@@ -538,7 +537,7 @@ export default function PlatformGamesScreen() {
     if (!platformId || !connected) return;
     setSyncing(true);
     try {
-      await platformApi.syncPlatform(platformId);
+      await platformApi.syncPlatform(apiId!);
       setLoading(true);
       await load();
     } catch (err: any) {
@@ -555,7 +554,7 @@ export default function PlatformGamesScreen() {
         { text: t('common.cancel'), style: 'cancel' },
         { text: t('platform.unlinkConfirm'), style: 'destructive', onPress: async () => {
           try {
-            await platformApi.unlinkPlatform(platformId);
+            await platformApi.unlinkPlatform(apiId!);
             setConnected(false); setStats(null); setGames([]); setLinkedAt(null);
           } catch { Alert.alert(t('common.error'), t('common.error')); }
         }},

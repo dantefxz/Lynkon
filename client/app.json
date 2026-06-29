@@ -33,19 +33,21 @@
       "expo-font",
       "expo-secure-store",
       "@react-native-community/datetimepicker",
-      "expo-localization"
+      "expo-localization",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "router": {
-        "root": "./src/app"
+        "root": "./src/app",
+        "origin": false
       },
       "eas": {
-        "projectId": "a0e80a59-5f3e-4256-8968-4d54c7db74a5"
+        "projectId": "b471c582-35ef-4159-b96f-568ff4c79235"
       }
-    }
+    },
+    "owner": "lynkon"
   }
 }
-

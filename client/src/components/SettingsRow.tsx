@@ -11,14 +11,15 @@ export interface SettingsRowProps {
   iconBg?: string;
   iconColor?: string;
   label: string;
+  sublabel?: string;
   value?: string;
-  onPress: () => void;
+  onPress?: () => void;
   showDivider?: boolean;
 }
 
 export function SettingsRow({
   icon, emoji, iconImage, iconBg, iconColor,
-  label, value, onPress, showDivider = false,
+  label, sublabel, value, onPress, showDivider = false,
 }: SettingsRowProps) {
   const { colors } = useTheme();
   const resolvedIconColor = iconColor ?? colors.purple;
@@ -41,6 +42,7 @@ export function SettingsRow({
         </View>
         <View style={styles.textBlock}>
           <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+          {sublabel ? <Text style={[styles.value, { color: colors.textMuted }]}>{sublabel}</Text> : null}
           {value ? (
             <Text style={[styles.value, { color: colors.textMuted }, value.startsWith('●') && { color: colors.online }]}>
               {value}
@@ -55,10 +57,11 @@ export function SettingsRow({
 }
 
 export interface SettingsSwitchRowProps {
-  icon: string; 
+  icon?: string;
   iconBg?: string;
   iconColor?: string;
   label: string;
+  sublabel?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
   showDivider?: boolean;
@@ -66,7 +69,7 @@ export interface SettingsSwitchRowProps {
 
 export function SettingsSwitchRow({
   icon, iconBg, iconColor,
-  label, value, onValueChange, showDivider = false,
+  label, sublabel, value, onValueChange, showDivider = false,
 }: SettingsSwitchRowProps) {
   const { colors } = useTheme();
   const resolvedIconColor = iconColor ?? colors.purple;
@@ -75,10 +78,15 @@ export function SettingsSwitchRow({
   return (
     <>
       <View style={styles.row}>
-        <View style={[styles.iconBox, { backgroundColor: bg }]}>
-          <MaterialIcons name={icon as any} size={rw(19)} color={resolvedIconColor} />
+        {icon ? (
+          <View style={[styles.iconBox, { backgroundColor: bg }]}>
+            <MaterialIcons name={icon as any} size={rw(19)} color={resolvedIconColor} />
+          </View>
+        ) : null}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+          {sublabel ? <Text style={[styles.value, { color: colors.textMuted }]}>{sublabel}</Text> : null}
         </View>
-        <Text style={[styles.label, { color: colors.text, flex: 1 }]}>{label}</Text>
         <Switch
           value={value}
           onValueChange={onValueChange}

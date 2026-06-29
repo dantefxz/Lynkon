@@ -72,7 +72,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { backgroundColor: colors.cardAlt }]}>
           <Text style={[styles.title, { color: colors.text }]}>{t('settings.title')}</Text>
@@ -144,17 +144,19 @@ export default function SettingsScreen() {
           </View>
 
           {/* Cerrar sesión */}
-          <AppButton
-            label={t('settings.logout.button')}
-            icon="logout"
-            variant="destructive"
-            onPress={() => setShowLogoutConfirm(true)}
-          />
-          <AppButton
-            label={t('settings.deleteAccount.button')}
-            variant="destructive"
-            onPress={() => { setShowDeleteConfirm(true); setDeletePassword(''); setDeleteError(''); }}
-          />
+          <View style={styles.actionBtns}>
+            <AppButton
+              label={t('settings.logout.button')}
+              icon="logout"
+              variant="destructive"
+              onPress={() => setShowLogoutConfirm(true)}
+            />
+            <AppButton
+              label={t('settings.deleteAccount.button')}
+              variant="destructive"
+              onPress={() => { setShowDeleteConfirm(true); setDeletePassword(''); setDeleteError(''); }}
+            />
+          </View>
         </View>
       </ScrollView>
 
@@ -268,11 +270,12 @@ const styles = StyleSheet.create({
   header:       { padding: rs.md, paddingBottom: rh(20) },
   title:        { fontSize: rf(24), fontWeight: '700' },
   content:      { padding: rs.md, gap: rh(8) },
+  actionBtns:   { gap: rh(8), paddingHorizontal: rw(8), paddingBottom: rh(8) },
   sectionLabel: { fontSize: rf(11), fontWeight: '700', letterSpacing: 1, marginTop: rh(8), paddingHorizontal: rw(4) },
   card:         { borderRadius: rw(16), borderWidth: 1, overflow: 'hidden', marginTop: rh(6) },
   loadingRow:   { padding: rh(20), alignItems: 'center' },
   overlay:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
-  dialog:       { margin: rs.xl, borderRadius: rw(16), padding: rw(24), borderWidth: 1, gap: rh(16), width: '85%' },
+  dialog:       { margin: rs.xl, borderRadius: rw(16), padding: rw(20), borderWidth: 1, gap: rh(16), width: '85%' },
   dialogTitle:  { fontSize: rf(18), fontWeight: '700' },
   dialogMsg:    { fontSize: rf(14), lineHeight: rh(20) },
   dialogBtns:   { flexDirection: 'row', gap: rw(12) },

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, Image, TouchableOpacity, TextInput,
-  StyleSheet, ActivityIndicator, Switch,
+  StyleSheet, ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ import { resolveAvatarSource } from '@/constants/avatars';
 import { PLATFORM_LOGOS, normalizePlatformId } from '@/constants/platforms';
 
 export { ProfileHeader } from './ProfileHeader';
+export { SettingsRow, SettingsSwitchRow } from './SettingsRow';
 
 // ─── AppButton ────────────────────────────────────────────────────────────────
 export function AppButton({
@@ -21,12 +22,16 @@ export function AppButton({
   loading = false,
   disabled = false,
   variant = 'primary',
+  icon,
+  style,
 }: {
   label: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'destructive';
+  icon?: string;
+  style?: object;
 }) {
   const { colors } = useTheme();
   const isDestructive    = variant === 'destructive';
@@ -46,6 +51,7 @@ export function AppButton({
           borderWidth: isPrimary || isDestructive ? 0 : 1,
           opacity: disabled || loading ? 0.6 : 1,
         },
+        style,
       ]}
     >
       {loading ? (
@@ -159,90 +165,6 @@ const gcStyles = StyleSheet.create({
   progressFill:  { height: '100%', borderRadius: rh(2) },
 });
 
-// ─── SettingsRow ──────────────────────────────────────────────────────────────
-export function SettingsRow({
-  label,
-  sublabel,
-  iconName,
-  iconImage,
-  onPress,
-  rightLabel,
-}: {
-  label: string;
-  sublabel?: string;
-  iconName?: string;
-  iconImage?: any;
-  onPress?: () => void;
-  rightLabel?: string;
-}) {
-  const { colors } = useTheme();
-  let iconEl: React.ReactNode = null;
-  if (iconName) {
-    iconEl = <MaterialIcons name={iconName as any} size={rw(22)} color={colors.purple} style={srStyles.icon} />;
-  } else if (iconImage) {
-    iconEl = <Image source={iconImage} style={srStyles.imgIcon} />;
-  }
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[srStyles.row, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
-    >
-      {iconEl}
-      <View style={srStyles.textGroup}>
-        <Text style={[srStyles.label, { color: colors.text }]}>{label}</Text>
-        {sublabel ? <Text style={[srStyles.sub, { color: colors.textMuted }]}>{sublabel}</Text> : null}
-      </View>
-      {rightLabel ? (
-        <Text style={[srStyles.rightLabel, { color: colors.textMuted }]}>{rightLabel}</Text>
-      ) : (
-        <MaterialIcons name="chevron-right" size={rw(22)} color={colors.textMuted} />
-      )}
-    </TouchableOpacity>
-  );
-}
-const srStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: rh(14), paddingHorizontal: rs.md, borderBottomWidth: 1 },
-  icon: { marginRight: rs.md },
-  imgIcon: { width: rw(22), height: rw(22), resizeMode: 'contain', marginRight: rs.md },
-  textGroup: { flex: 1 },
-  label: { fontSize: rf(15) },
-  sub: { fontSize: rf(12), marginTop: rh(2) },
-  rightLabel: { fontSize: rf(14) },
-});
-
-// ─── SettingsSwitchRow ────────────────────────────────────────────────────────
-export function SettingsSwitchRow({
-  label,
-  sublabel,
-  iconName,
-  value,
-  onValueChange,
-}: {
-  label: string;
-  sublabel?: string;
-  iconName?: string;
-  value: boolean;
-  onValueChange: (v: boolean) => void;
-}) {
-  const { colors } = useTheme();
-  return (
-    <View style={[srStyles.row, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-      {iconName ? (
-        <MaterialIcons name={iconName as any} size={rw(22)} color={colors.purple} style={srStyles.icon} />
-      ) : null}
-      <View style={srStyles.textGroup}>
-        <Text style={[srStyles.label, { color: colors.text }]}>{label}</Text>
-        {sublabel ? <Text style={[srStyles.sub, { color: colors.textMuted }]}>{sublabel}</Text> : null}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: colors.cardBorder, true: colors.purpleBorder }}
-        thumbColor={value ? colors.purple : colors.textMuted}
-      />
-    </View>
-  );
-}
 
 // ─── PlayerCard ───────────────────────────────────────────────────────────────
 export function PlayerCard({
@@ -260,6 +182,7 @@ export function PlayerCard({
   actionDisabled?: boolean;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
   return (
     <TouchableOpacity
@@ -317,7 +240,9 @@ export function ChatRow({
 }) {
   const { colors } = useTheme();
   const avatarSource = resolveAvatarSource(avatar || getProfileAvatar(name), name);
-  const badgeCount = unreadCount && unreadCount > 0 ? (unreadCount > 99 ? '+99' : String(unreadCount)) : null;
+  const rawCount   = unreadCount ?? 0;
+  const badgeLabel = rawCount > 99 ? '+99' : String(rawCount);
+  const badgeCount = rawCount > 0 ? badgeLabel : null;
   return (
     <TouchableOpacity
       onPress={onPress}

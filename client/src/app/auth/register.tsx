@@ -12,7 +12,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { rw, rh, rf, rs } from '@/utils/responsive';
 import { generateUsername } from '@/utils/usernameGenerator';
-import { track } from '@/services/analytics';
 
 interface PasswordRule {
   key: string;
@@ -258,10 +257,8 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await register(email.trim(), password, finalUsername, birthDate);
-      track('sign_up', { method: 'email' });
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.response?.data?.message || t('auth.register.errorFields');
-      track('sign_up_failed', { reason: msg });
       Alert.alert(t('common.error'), msg);
     } finally {
       setLoading(false);

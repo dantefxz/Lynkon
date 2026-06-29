@@ -72,7 +72,7 @@ function Under16Block() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: rw(32) }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: rw(32) }]} edges={['top', 'left', 'right']}>
       <View style={[styles.blockIconCircle, { backgroundColor: colors.purpleMuted }]}>
         <MaterialIcons name="lock-outline" size={rw(48)} color={colors.purple} />
       </View>
@@ -149,8 +149,8 @@ function ChatView({
   const scrollRef     = useRef<ScrollView>(null);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <View style={[styles.chatHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={onBack} style={styles.backBtn}>
             <MaterialIcons name="arrow-back" size={rw(24)} color={colors.purple} />
@@ -570,23 +570,21 @@ function SocialContent() {
     } catch {}
   };
 
+  const doRemoveFriend = async (userId: string) => {
+    try {
+      await friendApi.removeFriend(userId);
+      setFriends((prev) => prev.filter((f) => f.id !== userId));
+      setFriendIds((prev) => { const next = new Set(prev); next.delete(userId); return next; });
+    } catch {}
+  };
+
   const handleRemoveFriend = (userId: string, name: string) => {
     Alert.alert(
       t('social.removeFriendTitle'),
       t('social.removeFriendMsg', { name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('social.removeFriend'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await friendApi.removeFriend(userId);
-              setFriends((prev) => prev.filter((f) => f.id !== userId));
-              setFriendIds((prev) => { const next = new Set(prev); next.delete(userId); return next; });
-            } catch {}
-          },
-        },
+        { text: t('social.removeFriend'), style: 'destructive', onPress: () => doRemoveFriend(userId) },
       ],
     );
   };
@@ -638,6 +636,16 @@ function SocialContent() {
   };
 
 
+  const doRemoveFriendFromChat = async () => {
+    if (!selectedUser) return;
+    try {
+      await friendApi.removeFriend(selectedUser.id);
+      setFriends((prev) => prev.filter((f) => f.id !== selectedUser.id));
+      setFriendIds((prev) => { const next = new Set(prev); next.delete(selectedUser.id); return next; });
+      setSelectedUser(null);
+    } catch {}
+  };
+
   const handleRemoveFriendFromChat = () => {
     if (!selectedUser) return;
     Alert.alert(
@@ -645,18 +653,7 @@ function SocialContent() {
       t('social.removeFriendMsg', { name: selectedUser.name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('social.removeFriend'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await friendApi.removeFriend(selectedUser.id);
-              setFriends((prev) => prev.filter((f) => f.id !== selectedUser.id));
-              setFriendIds((prev) => { const next = new Set(prev); next.delete(selectedUser.id); return next; });
-              setSelectedUser(null);
-            } catch {}
-          },
-        },
+        { text: t('social.removeFriend'), style: 'destructive', onPress: doRemoveFriendFromChat },
       ],
     );
   };
@@ -683,7 +680,7 @@ function SocialContent() {
   const displayList = searchQuery.length >= 2 ? searchResults : friends;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={[styles.screenHeader, { backgroundColor: colors.cardAlt }]}>
           <Text style={[styles.screenTitle, { color: colors.text }]}>{t('social.title')}</Text>
@@ -738,10 +735,10 @@ const styles = StyleSheet.create({
   blockIconCircle:  { width: rw(90), height: rw(90), borderRadius: rw(45), alignItems: 'center', justifyContent: 'center', marginBottom: rh(16) },
   blockTitle:       { fontSize: rf(20), fontWeight: '700', textAlign: 'center', marginBottom: rh(8) },
   blockSubtitle:    { fontSize: rf(14), textAlign: 'center', lineHeight: rh(22) },
-  screenHeader:     { padding: rs.md, paddingBottom: rh(20), gap: rh(14) },
+  screenHeader:     { padding: rs.md, paddingBottom: rh(28), gap: rh(14) },
   screenTitle:      { fontSize: rf(24), fontWeight: '700' },
   loading:          { height: rh(180), alignItems: 'center', justifyContent: 'center' },
-  section:          { paddingHorizontal: rs.md, marginBottom: rh(20), gap: rh(10) },
+  section:          { paddingHorizontal: rs.md, marginBottom: rh(20), gap: rh(10), marginTop: rh(16) },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: rw(6) },
   sectionTitle:     { fontSize: rf(16), fontWeight: '600' },
   sectionSubtitle:  { fontSize: rf(12), marginTop: -rh(4) },
