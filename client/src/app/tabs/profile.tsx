@@ -59,7 +59,7 @@ function FavoritesSection({ favoriteGames, achievementCounts, skillLevels, onAdd
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleRow}>
           <MaterialIcons name="star-outline" size={rw(20)} color="#F59E0B" />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]} numberOfLines={1}>
             {t('profile.myFavorites')}{titleCount}
           </Text>
         </View>
@@ -138,7 +138,7 @@ function GamesSection({ profileGames, platforms, achievementCounts, skillLevels,
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleRow}>
           <MaterialIcons name="sports-esports" size={rw(20)} color={colors.purple} />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]} numberOfLines={1}>
             {t('profile.myGames')}{titleCount}
           </Text>
         </View>
@@ -603,9 +603,9 @@ const styles = StyleSheet.create({
   loading:         { height: rh(200), alignItems: 'center', justifyContent: 'center' },
   section:         { marginBottom: rh(24), marginTop: rh(8) },
   sectionHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: rs.md, marginBottom: rh(14) },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: rw(8) },
-  sectionTitle:    { fontSize: rf(18), fontWeight: '800' },
-  sectionActions:  { flexDirection: 'row', gap: rw(10) },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: rw(8), flex: 1, flexShrink: 1, marginRight: rw(10) },
+  sectionTitle:    { fontSize: rf(18), fontWeight: '800', flexShrink: 1 },
+  sectionActions:  { flexDirection: 'row', gap: rw(10), flexShrink: 0 },
   pill:            { flexDirection: 'row', alignItems: 'center', gap: rw(6), paddingHorizontal: rw(16), paddingVertical: rh(10), borderRadius: rw(22), borderWidth: 1.5 },
   pillText:        { fontSize: rf(14), fontWeight: '700' },
   emptyFavs:       { marginHorizontal: rs.md, borderRadius: rw(14), borderWidth: 1, paddingVertical: rh(20), alignItems: 'center', gap: rh(8), flexDirection: 'row', justifyContent: 'center' },
