@@ -3,18 +3,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 function resolveApiUrl(): string {
-  if (!__DEV__) {
-    return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
   }
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const host = hostUri.split(':')[0];
-    return `http://${host}:3000/api`;
+  if (__DEV__) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const host = hostUri.split(':')[0];
+      return `http://${host}:3000/api`;
+    }
   }
-  return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+  return 'http://localhost:3000/api';
 }
 
 export const API_BASE_URL = resolveApiUrl();
+console.log('[API] URL:', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
