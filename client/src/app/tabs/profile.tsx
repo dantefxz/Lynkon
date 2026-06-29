@@ -58,19 +58,19 @@ function FavoritesSection({ favoriteGames, achievementCounts, skillLevels, onAdd
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleRow}>
-          <MaterialIcons name="star-outline" size={rw(17)} color="#F59E0B" />
+          <MaterialIcons name="star-outline" size={rw(20)} color="#F59E0B" />
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             {t('profile.myFavorites')}{titleCount}
           </Text>
         </View>
         <View style={styles.sectionActions}>
           <TouchableOpacity
-            style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
+            style={[styles.pill, { borderColor: colors.purple, backgroundColor: colors.purple }]}
             onPress={onAddFav}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="add" size={rw(16)} color={colors.text} />
-            <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.add')}</Text>
+            <MaterialIcons name="add" size={rw(18)} color="#fff" />
+            <Text style={[styles.pillText, { color: '#fff' }]}>{t('profile.add')}</Text>
           </TouchableOpacity>
           {favoriteGames.length > 0 && (
             <TouchableOpacity
@@ -78,8 +78,8 @@ function FavoritesSection({ favoriteGames, achievementCounts, skillLevels, onAdd
               onPress={onEditFav}
               activeOpacity={0.8}
             >
-              <MaterialIcons name="edit" size={rw(16)} color={colors.text} />
-              <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.edit')}</Text>
+              <MaterialIcons name="edit" size={rw(18)} color={colors.purple} />
+              <Text style={[styles.pillText, { color: colors.purple }]}>{t('profile.edit')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -137,13 +137,21 @@ function GamesSection({ profileGames, platforms, achievementCounts, skillLevels,
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleRow}>
-          <MaterialIcons name="sports-esports" size={rw(17)} color={colors.purple} />
+          <MaterialIcons name="sports-esports" size={rw(20)} color={colors.purple} />
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             {t('profile.myGames')}{titleCount}
           </Text>
         </View>
         {platforms.length > 0 && (
           <View style={styles.sectionActions}>
+            <TouchableOpacity
+              style={[styles.pill, { borderColor: colors.purple, backgroundColor: colors.purple }]}
+              onPress={onAdd}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="add" size={rw(18)} color="#fff" />
+              <Text style={[styles.pillText, { color: '#fff' }]}>{t('common.add')}</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
               onPress={onSync}
@@ -152,16 +160,8 @@ function GamesSection({ profileGames, platforms, achievementCounts, skillLevels,
             >
               {syncing
                 ? <ActivityIndicator size="small" color={colors.purple} />
-                : <MaterialIcons name="refresh" size={rw(16)} color={colors.text} />}
-              <Text style={[styles.pillText, { color: colors.text }]}>{t('profile.reload')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.purpleMuted }]}
-              onPress={onAdd}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="add" size={rw(16)} color={colors.text} />
-              <Text style={[styles.pillText, { color: colors.text }]}>{t('common.add')}</Text>
+                : <MaterialIcons name="refresh" size={rw(18)} color={colors.purple} />}
+              <Text style={[styles.pillText, { color: colors.purple }]}>{t('profile.reload')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -602,12 +602,12 @@ const styles = StyleSheet.create({
   container:       { flex: 1 },
   loading:         { height: rh(200), alignItems: 'center', justifyContent: 'center' },
   section:         { marginBottom: rh(24), marginTop: rh(8) },
-  sectionHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: rs.md, marginBottom: rh(12) },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: rw(6) },
-  sectionTitle:    { fontSize: rf(15), fontWeight: '700' },
-  sectionActions:  { flexDirection: 'row', gap: rw(8) },
-  pill:            { flexDirection: 'row', alignItems: 'center', gap: rw(5), paddingHorizontal: rw(14), paddingVertical: rh(8), borderRadius: rw(20), borderWidth: 1 },
-  pillText:        { fontSize: rf(13), fontWeight: '600' },
+  sectionHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: rs.md, marginBottom: rh(14) },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: rw(8) },
+  sectionTitle:    { fontSize: rf(18), fontWeight: '800' },
+  sectionActions:  { flexDirection: 'row', gap: rw(10) },
+  pill:            { flexDirection: 'row', alignItems: 'center', gap: rw(6), paddingHorizontal: rw(16), paddingVertical: rh(10), borderRadius: rw(22), borderWidth: 1.5 },
+  pillText:        { fontSize: rf(14), fontWeight: '700' },
   emptyFavs:       { marginHorizontal: rs.md, borderRadius: rw(14), borderWidth: 1, paddingVertical: rh(20), alignItems: 'center', gap: rh(8), flexDirection: 'row', justifyContent: 'center' },
   emptyFavsText:   { fontSize: rf(13) },
   grid:            { flexDirection: 'row', flexWrap: 'wrap' },
