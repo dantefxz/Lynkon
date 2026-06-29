@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Alert,
+  Alert, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -341,6 +341,7 @@ function SocialContent() {
   const [searchQuery, setSearchQuery]           = useState('');
   const [searchResults, setSearchResults]       = useState<User[]>([]);
   const [loading, setLoading]                   = useState(true);
+  const [refreshing, setRefreshing]             = useState(false);
   const [pendingRequests, setPendingRequests]   = useState<Record<string, string>>({});
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
   const [chatMenuVisible, setChatMenuVisible]   = useState(false);
@@ -367,14 +368,13 @@ function SocialContent() {
   }, [navigation]);
 
   // ── Carga ─────────────────────
-  useFocusEffect(
-    useCallback(() => {
-      const load = async () => {
-        if (isFirstLoad.current) {
-          setLoading(true);
-          isFirstLoad.current = false;
-        }
-        try {
+  const load = useCallback(async (isRefresh = false) => {
+    if (isFirstLoad.current) {
+      setLoading(true);
+      isFirstLoad.current = false;
+    }
+    if (isRefresh) setRefreshing(true);
+    try {
           const [friendsRes, requestsRes, sentRes, recsRes, convsRes] = await Promise.allSettled([
             friendApi.getFriends(),
             friendApi.getFriendRequests(),
@@ -439,15 +439,15 @@ function SocialContent() {
             });
             setUnreadCounts(counts);
           }
-        } catch {
-          setFriends([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-      load();
-    }, [currentUser?.id]),
-  );
+    } catch {
+      setFriends([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [currentUser?.id]);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   // ── Polling en tiempo real cuando hay chat abierto ─────────────────────────
   useEffect(() => {
@@ -681,7 +681,12 @@ function SocialContent() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={[colors.purple]} tintColor={colors.purple} />
+        }
+      >
         <View style={[styles.screenHeader, { backgroundColor: colors.cardAlt }]}>
           <Text style={[styles.screenTitle, { color: colors.text }]}>{t('social.title')}</Text>
           <SearchBar value={searchQuery} onChangeText={handleSearch} placeholder={t('social.search')} />
